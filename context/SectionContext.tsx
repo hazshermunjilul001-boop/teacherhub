@@ -1,0 +1,104 @@
+'use client';
+
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '../lib/supabase';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TYPES
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface Section {
+  id: string;
+  teacher_id: string;
+  name: string;           // e.g. "STARGAZER"
+  grade_level: string;    // e.g. "Grade 7 (Year I)"
+  grade_number: number;   // e.g. 7
+  school_year: string;    // e.g. "2025 - 2026"
+  school_name: string;
+  school_id: string;
+  division: string;
+  region: string;
+  adviser: string;
+  student_count?: number;
+  created_at?: string;
+}
+
+interface SectionContextType {
+  sections: Section[];
+  activeSection: Section | null;
+  setActiveSection: (s: Section) => void;
+  loadSections: () => Promise<void>;
+  loading: boolean;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONTEXT
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SectionContext = createContext<SectionContextType>({
+  sections: [],
+  activeSection: null,
+  setActiveSection: () => {},
+  loadSections: async () => {},
+  loading: true,
+});
+
+export function SectionProvider({ children }: { children: ReactNode }) {
+  const [sections,       setSections]       = useState<Section[]>([]);
+  const [activeSection,  setActiveSectionState] = useState<Section | null>(null);
+  const [loading,        setLoading]        = useState(true);
+
+  const loadSections = async () => {
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setLoading(false); return; }
+
+    const { data, error } = await supabase
+      .from('sections')
+      .select('*')
+      .eq('teacher_id', user.id)
+      .order('created_at');
+
+    if (!error && data) {
+      setSections(data);
+      // Restore last active section from localStorage
+      const savedId = localStorage.getItem('activeSection_id');
+      const saved   = data.find((s: Section) => s.id === savedId);
+      if (saved) {
+        setActiveSectionState(saved);
+      } else if (data.length > 0) {
+        setActiveSectionState(data[0]);
+        localStorage.setItem('activeSection_id', data[0].id);
+      }
+    }
+    setLoading(false);
+  };
+
+  const setActiveSection = (s: Section) => {
+    setActiveSectionState(s);
+    localStorage.setItem('activeSection_id', s.id);
+  };
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN')  loadSections();
+      if (event === 'SIGNED_OUT') { setSections([]); setActiveSectionState(null); }
+    });
+    loadSections();
+    return () => subscription.unsubscribe();
+  }, []);
+
+  return (
+    <SectionContext.Provider value={{ sections, activeSection, setActiveSection, loadSections, loading }}>
+      {children}
+    </SectionContext.Provider>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HOOK — use this in every module instead of hardcoded constants
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function useSection() {
+  return useContext(SectionContext);
+}
