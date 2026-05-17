@@ -6,6 +6,7 @@ import {
   ChevronRight, AlertTriangle, CheckCircle, Calendar,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useActiveSection } from '../../lib/useActiveSection';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
