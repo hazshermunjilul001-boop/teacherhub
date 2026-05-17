@@ -6,7 +6,6 @@ import {
   ChevronRight, AlertTriangle, CheckCircle, Calendar,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { useActiveSection } from '../../lib/useActiveSection';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -88,7 +87,7 @@ function statusPrintChar(s?: Status) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function AttendancePage() {
-  const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear, adviser } = useActiveSection();
+  const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear, adviser, schoolHead, district } = useActiveSection();
   const [month, setMonth]         = useState('June');
   const [view, setView]           = useState<'tracker' | 'sf2'>('tracker');
   const [students, setStudents]   = useState<Student[]>([]);
@@ -300,7 +299,7 @@ export default function AttendancePage() {
                 <td className={`px-2 py-1 text-center font-bold border-l border-gray-800 ${absents > 0 ? 'text-red-400' : 'text-gray-600'}`}>{absents}</td>
                 <td className="px-2 py-1 text-center text-yellow-400 border-l border-gray-800">{getTardies(student.id)}</td>
                 <td className="px-2 py-1 text-center border-l border-gray-800">
-                  {alert && <AlertTriangle size={14} className="text-red-400 mx-auto" title="5+ consecutive absences!"/>}
+                  {alert && <span title="5+ consecutive absences!"><AlertTriangle size={14} className="text-red-400 mx-auto"/></span>}
                 </td>
               </tr>
             );
@@ -801,6 +800,7 @@ export default function AttendancePage() {
               <div style={{fontWeight:'bold', borderTop:'1px solid black', paddingTop:'1px', display:'inline-block', minWidth:'140px'}}>
                 &nbsp;
               </div>
+              <div style={{fontWeight:'bold'}}>{schoolHead || '________________________________'}</div>
               <div style={{fontSize:'7px'}}>(Signature of School Head over Printed Name)</div>
             </div>
             <div style={{textAlign:'center', marginTop:'4px', fontSize:'7px', color:'#666'}}>

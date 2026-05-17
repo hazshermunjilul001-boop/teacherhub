@@ -6,8 +6,9 @@ import {
   Mail, Lock, Menu, LogOut, BookOpen, Users, Calendar,
   Heart, Award, FileText, ChevronRight, BarChart2,
   GraduationCap, Bell, ChevronDown, Settings, Plus,
-  CheckCircle,
+  CheckCircle, CreditCard, Shield,
 } from 'lucide-react';
+import { useSubscription } from '../lib/useSubscription';
 import { supabase } from '../lib/supabase';
 import { useSection, type Section } from '../context/SectionContext';
 
@@ -196,6 +197,7 @@ function SectionSwitcher({ sidebarOpen, onManage }: { sidebarOpen: boolean; onMa
 function Dashboard({ user }: { user: any }) {
   const router = useRouter();
   const { activeSection, sections } = useSection();
+  const { planName, isFree, daysLeft } = useSubscription();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activePath,  setActivePath]  = useState('/');
   const [stats, setStats] = useState({ students: 0, average: 0, passing: 0, days: 0 });
@@ -289,14 +291,41 @@ function Dashboard({ user }: { user: any }) {
           })}
         </nav>
 
-        {/* Manage sections shortcut */}
+        {/* Plan badge + upgrade prompt */}
         {sidebarOpen && (
-          <div className="px-3 pb-2">
+          <div className="px-3 pb-1 space-y-1">
+            {/* Current plan indicator */}
+            <div className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs ${
+              isFree ? 'bg-gray-800 text-gray-400' : 'bg-blue-900/40 text-blue-300'
+            }`}>
+              <div className="flex items-center gap-1.5">
+                {isFree ? <CreditCard size={12}/> : <Shield size={12}/>}
+                <span className="font-semibold">{planName}</span>
+              </div>
+              {daysLeft !== null && daysLeft <= 7 && (
+                <span className="text-amber-400 text-xs">{daysLeft}d left</span>
+              )}
+            </div>
+            {/* Upgrade button for free users */}
+            {isFree && (
+              <button onClick={() => router.push('/subscribe')}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 hover:text-blue-300 transition text-xs font-semibold border border-blue-800">
+                ⭐ Upgrade to Pro — ₱99/mo
+              </button>
+            )}
             <button onClick={() => router.push('/sections')}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-gray-800 hover:text-gray-300 transition text-sm">
               <Settings size={16} className="flex-shrink-0"/>
               <span>Manage Sections</span>
             </button>
+            {/* Admin link — only visible to admin */}
+            {user?.email === 'hazsher.munjilul001@deped.gov.ph' && (
+              <button onClick={() => router.push('/admin')}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-purple-500 hover:bg-purple-900/20 hover:text-purple-400 transition text-sm">
+                <Shield size={14} className="flex-shrink-0"/>
+                <span>Admin Panel</span>
+              </button>
+            )}
           </div>
         )}
 
@@ -354,6 +383,23 @@ function Dashboard({ user }: { user: any }) {
 
         {/* Page content */}
         <main className="flex-1 p-8 overflow-y-auto">
+
+          {/* Upgrade banner for free users */}
+          {isFree && sections.length > 0 && (
+            <div className="bg-blue-950/30 border border-blue-800 rounded-2xl p-4 mb-6 flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-blue-400 font-bold">⭐ Unlock All 8 Modules</span>
+                  <span className="text-xs bg-blue-900 text-blue-300 px-2 py-0.5 rounded-full">Free Plan</span>
+                </div>
+                <p className="text-gray-400 text-sm">Upgrade to Teacher Pro for SF9, SF5, MPS, Behavior Record, SF8 and more.</p>
+              </div>
+              <button onClick={() => router.push('/subscribe')}
+                className="flex-shrink-0 ml-4 flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition">
+                <CreditCard size={16}/> ₱99/mo
+              </button>
+            </div>
+          )}
 
           {/* No section prompt */}
           {sections.length === 0 && (

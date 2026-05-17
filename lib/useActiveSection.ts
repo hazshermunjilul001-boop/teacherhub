@@ -21,6 +21,8 @@ export function useActiveSection() {
     region:      activeSection?.region      ?? 'Region XI',
     schoolYear:  activeSection?.school_year ?? '2025 - 2026',
     adviser:     activeSection?.adviser     ?? '',
+    schoolHead:  activeSection?.school_head  ?? '',
+    district:    activeSection?.district     ?? '',
 
     // Meta
     activeSection,
