@@ -3,26 +3,20 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// TYPES
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
 export interface Section {
-  district?:    string
-  division?:    string
-  region?:      string
-  school_head?: string
   id: string;
   teacher_id: string;
-  name: string;           // e.g. "STARGAZER"
-  grade_level: string;    // e.g. "Grade 7 (Year I)"
-  grade_number: number;   // e.g. 7
-  school_year: string;    // e.g. "2025 - 2026"
+  name: string;
+  grade_level: string;
+  grade_number: number;
+  school_year: string;
   school_name: string;
   school_id: string;
+  district?: string;
   division: string;
   region: string;
   adviser: string;
+  school_head?: string;
   student_count?: number;
   created_at?: string;
 }
@@ -35,10 +29,6 @@ interface SectionContextType {
   loading: boolean;
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// CONTEXT
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
 const SectionContext = createContext<SectionContextType>({
   sections: [],
   activeSection: null,
@@ -48,9 +38,9 @@ const SectionContext = createContext<SectionContextType>({
 });
 
 export function SectionProvider({ children }: { children: ReactNode }) {
-  const [sections,       setSections]       = useState<Section[]>([]);
-  const [activeSection,  setActiveSectionState] = useState<Section | null>(null);
-  const [loading,        setLoading]        = useState(true);
+  const [sections,      setSections]          = useState<Section[]>([]);
+  const [activeSection, setActiveSectionState] = useState<Section | null>(null);
+  const [loading,       setLoading]            = useState(true);
 
   const loadSections = async () => {
     setLoading(true);
@@ -65,7 +55,6 @@ export function SectionProvider({ children }: { children: ReactNode }) {
 
     if (!error && data) {
       setSections(data);
-      // Restore last active section from localStorage
       const savedId = localStorage.getItem('activeSection_id');
       const saved   = data.find((s: Section) => s.id === savedId);
       if (saved) {
@@ -99,11 +88,6 @@ export function SectionProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// HOOK â€” use this in every module instead of hardcoded constants
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
 export function useSection() {
   return useContext(SectionContext);
 }
-
