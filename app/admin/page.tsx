@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
-// ⚠️ Replace with your actual admin email
+// âš ï¸ Replace with your actual admin email
 const ADMIN_EMAIL = 'hazsher.munjilul001@deped.gov.ph';
 
 interface PaymentRequest {
@@ -27,6 +27,7 @@ interface PaymentRequest {
 }
 
 interface Subscription {
+  billing_cycle?: string
   user_id:    string;
   plan_id:    string;
   status:     string;
@@ -84,7 +85,7 @@ export default function AdminPage() {
   };
 
   const approve = async (req: PaymentRequest) => {
-    if (!confirm(`Approve ₱${req.amount_php} from ${req.user_email}?`)) return;
+    if (!confirm(`Approve â‚±${req.amount_php} from ${req.user_email}?`)) return;
     setProcessing(req.id);
 
     // Calculate expiry
@@ -117,7 +118,7 @@ export default function AdminPage() {
 
     await loadData();
     setProcessing(null);
-    alert(`✅ Approved! ${req.user_email} is now on ${req.plan_id} plan until ${expires.toLocaleDateString('en-PH')}`);
+    alert(`âœ… Approved! ${req.user_email} is now on ${req.plan_id} plan until ${expires.toLocaleDateString('en-PH')}`);
   };
 
   const reject = async (req: PaymentRequest) => {
@@ -184,7 +185,7 @@ export default function AdminPage() {
             <ArrowLeft size={20}/>
           </button>
           <div>
-            <h1 className="text-xl font-bold">TeacherHub PH — Admin</h1>
+            <h1 className="text-xl font-bold">TeacherHub PH â€” Admin</h1>
             <p className="text-gray-500 text-xs">Payment & Subscription Management</p>
           </div>
         </div>
@@ -201,7 +202,7 @@ export default function AdminPage() {
             { label:'Pro Teachers',    value:stats.pro,           color:'from-blue-500 to-blue-700',    icon: CheckCircle },
             { label:'School Plans',    value:stats.school,        color:'from-purple-600 to-purple-800', icon: Users },
             { label:'Pending',         value:stats.pending,       color:'from-amber-600 to-amber-800',  icon: Clock },
-            { label:'Total Revenue',   value:`₱${stats.revenue.toLocaleString()}`, color:'from-emerald-600 to-emerald-800', icon: DollarSign },
+            { label:'Total Revenue',   value:`â‚±${stats.revenue.toLocaleString()}`, color:'from-emerald-600 to-emerald-800', icon: DollarSign },
           ].map(stat => (
             <div key={stat.label} className={`bg-gradient-to-br ${stat.color} rounded-2xl p-4 shadow-lg`}>
               <p className="text-white/70 text-xs">{stat.label}</p>
@@ -213,9 +214,9 @@ export default function AdminPage() {
         {/* Tabs */}
         <div className="flex gap-1 mb-6 border-b border-gray-800">
           {[
-            { key:'pending',     label:`⏳ Pending (${pendingReqs.length})` },
-            { key:'all',         label:'📋 All Requests' },
-            { key:'subscribers', label:'👥 Subscribers' },
+            { key:'pending',     label:`â³ Pending (${pendingReqs.length})` },
+            { key:'all',         label:'ðŸ“‹ All Requests' },
+            { key:'subscribers', label:'ðŸ‘¥ Subscribers' },
           ].map(tab => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key as any)}
               className={`px-5 py-3 text-sm font-medium border-b-2 transition ${
@@ -258,7 +259,7 @@ export default function AdminPage() {
                         <span className={planBadge(req.plan_id)}>{req.plan_id}</span>
                       </td>
                       <td className="px-3 py-3 text-gray-400 text-xs capitalize">{req.billing_cycle}</td>
-                      <td className="px-3 py-3 text-white font-bold">₱{req.amount_php?.toLocaleString()}</td>
+                      <td className="px-3 py-3 text-white font-bold">â‚±{req.amount_php?.toLocaleString()}</td>
                       <td className="px-3 py-3">
                         <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${
                           req.payment_method==='gcash' ? 'bg-blue-900/50 text-blue-300' : 'bg-green-900/50 text-green-300'
@@ -290,7 +291,7 @@ export default function AdminPage() {
                         )}
                         {req.status !== 'pending' && (
                           <span className="text-gray-600 text-xs">
-                            {req.processed_at ? new Date(req.processed_at).toLocaleDateString('en-PH') : '—'}
+                            {req.processed_at ? new Date(req.processed_at).toLocaleDateString('en-PH') : 'â€”'}
                           </span>
                         )}
                       </td>
@@ -318,7 +319,7 @@ export default function AdminPage() {
               <tbody>
                 {subs.map(sub => (
                   <tr key={sub.user_id} className="border-t border-gray-800 hover:bg-gray-900/40">
-                    <td className="px-3 py-3 font-mono text-gray-400 text-xs">{sub.user_id.slice(0,16)}…</td>
+                    <td className="px-3 py-3 font-mono text-gray-400 text-xs">{sub.user_id.slice(0,16)}â€¦</td>
                     <td className="px-3 py-3">
                       <span className={planBadge(sub.plan_id)}>{sub.plan_id}</span>
                     </td>
