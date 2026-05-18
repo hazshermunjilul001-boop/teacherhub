@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import React from 'react';
 
 import { useState, useEffect } from 'react';
@@ -6,9 +6,9 @@ import { ArrowLeft, Printer, RefreshCw, Download, CheckCircle, XCircle, AlertCir
 import { supabase } from '../../lib/supabase';
 import { useActiveSection } from '../../lib/useActiveSection';
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // CONSTANTS
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 
@@ -57,9 +57,9 @@ const descriptor = (g:number) => {
   return 'Did Not Meet Expectations';
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // TYPES
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface Student { id:string; lrn:string; full_name:string; sex:string; }
 
@@ -79,9 +79,9 @@ interface LearnerSF5 {
   action: 'Promoted' | 'Retained' | 'Conditionally Promoted';
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function calcAvgScores(scores: number[], highs: number[]): number {
   // Only count slots where highest > 0 AND score > 0 (actual data entered)
@@ -111,7 +111,7 @@ function computeTransmutedFromGrade(row: any): number {
   const hpt = row.highest_pt??[100,100,100];
   const hst = row.highest_st??[50,50];
   const hte = row.highest_te??100;
-  // Guard: if ALL scores are zero, no data was encoded → return 0
+  // Guard: if ALL scores are zero, no data was encoded â†’ return 0
   const hasWW = ww.some(v => v > 0);
   const hasPT = pt.some(v => v > 0);
   const hasST = st.some(v => v > 0) || te > 0;
@@ -140,9 +140,9 @@ function determineAction(failedSubjects: string[]): LearnerSF5['action'] {
   return 'Retained';
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // MAIN PAGE
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function SF5Page() {
   const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear, division, region, adviser, schoolHead, district } = useActiveSection();
@@ -152,7 +152,7 @@ export default function SF5Page() {
   const [loading,   setLoading]   = useState(true);
   const [view,      setView]      = useState<'table'|'sf5'>('table');
 
-  // ── Load all data ──────────────────────────────────────────────────────────
+  // â”€â”€ Load all data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -231,7 +231,7 @@ export default function SF5Page() {
     })();
   }, []);
 
-  // ── CSV Export for LIS ─────────────────────────────────────────────────────
+  // â”€â”€ CSV Export for LIS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const exportCSV = () => {
     const headers = [
       'LRN','Last Name','First Name','Middle Name','Sex',
@@ -263,10 +263,10 @@ export default function SF5Page() {
         'Edukasyong Pantahanan at Pangkabuhayan (EPP)',
       ].forEach(subj => {
         const [t1,t2,t3] = d.termGrades[subj] ?? [0,0,0];
-        row.push(t1||'',t2||'',t3||'',d.finalGrades[subj]||'');
+        row.push(t1?String(t1):'',t2?String(t2):'',t3?String(t3):'',d.finalGrades[subj]?String(d.finalGrades[subj]):'');
       });
 
-      row.push(d.mapehFinal||'', d.generalAverage||'', d.action);
+      row.push(d.mapehFinal?String(d.mapehFinal):'', d.generalAverage?String(d.generalAverage):'', d.action);
       return row;
     });
 
@@ -280,7 +280,7 @@ export default function SF5Page() {
     URL.revokeObjectURL(url);
   };
 
-  // ── Summary counts ─────────────────────────────────────────────────────────
+  // â”€â”€ Summary counts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const promoted    = sf5Data.filter(d => d.action === 'Promoted').length;
   const conditional = sf5Data.filter(d => d.action === 'Conditionally Promoted').length;
   const retained    = sf5Data.filter(d => d.action === 'Retained').length;
@@ -289,9 +289,9 @@ export default function SF5Page() {
       / sf5Data.filter(d=>d.generalAverage>0).length
     : 0;
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // SF5 PRINT VIEW
-  // ─────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const SF5PrintView = () => {
     const actionText = (d: typeof sf5Data[0]) => {
       if (d.action === 'Promoted' && d.generalAverage >= 90) return 'PROMOTED WITH HONORS';
@@ -488,7 +488,7 @@ export default function SF5Page() {
   };
 
   // RENDER
-  // ─────────────────────────────────────────────────────────────────────────
+  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <>
       <style>{`@media print{.no-print{display:none!important}body{background:white!important}@page{size:landscape;margin:8mm}}`}</style>
@@ -502,13 +502,13 @@ export default function SF5Page() {
             </button>
             <div>
               <h1 className="text-2xl font-bold">SF5 / LIS Export</h1>
-              <p className="text-gray-400 text-sm">Report on Promotions · {sectionName} · {schoolYear}</p>
+              <p className="text-gray-400 text-sm">Report on Promotions Â· {sectionName} Â· {schoolYear}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex rounded-xl overflow-hidden border border-gray-700">
-              <button onClick={() => setView('table')} className={`px-4 py-2 text-sm font-medium transition ${view==='table'?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>📊 Table</button>
-              <button onClick={() => setView('sf5')}   className={`px-4 py-2 text-sm font-medium transition ${view==='sf5'?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>📄 SF5 Form</button>
+              <button onClick={() => setView('table')} className={`px-4 py-2 text-sm font-medium transition ${view==='table'?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>ðŸ“Š Table</button>
+              <button onClick={() => setView('sf5')}   className={`px-4 py-2 text-sm font-medium transition ${view==='sf5'?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>ðŸ“„ SF5 Form</button>
             </div>
             <button onClick={exportCSV}
               className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
@@ -523,7 +523,7 @@ export default function SF5Page() {
 
         {loading ? (
           <div className="flex items-center justify-center py-20 gap-3 text-gray-400">
-            <RefreshCw size={20} className="animate-spin"/>Computing grades from Class Record…
+            <RefreshCw size={20} className="animate-spin"/>Computing grades from Class Recordâ€¦
           </div>
         ) : (
           <div className="p-6">
@@ -542,7 +542,7 @@ export default function SF5Page() {
               <div className="bg-gradient-to-br from-amber-600 to-amber-800 rounded-2xl p-5">
                 <p className="text-white/70 text-sm">Conditionally Promoted</p>
                 <p className="text-4xl font-bold text-white">{conditional}</p>
-                <p className="text-white/60 text-xs">1–2 failed subjects</p>
+                <p className="text-white/60 text-xs">1â€“2 failed subjects</p>
               </div>
               <div className="bg-gradient-to-br from-red-600 to-red-800 rounded-2xl p-5">
                 <p className="text-white/70 text-sm">Retained</p>
@@ -587,19 +587,19 @@ export default function SF5Page() {
                           return (
                             <React.Fragment key={subj}>
                               {[t1,t2,t3].map((v,vi)=>(
-                                <td key={subj+vi} className="text-center py-2 border-l border-gray-800 text-xs text-gray-400 font-mono">{v||'—'}</td>
+                                <td key={subj+vi} className="text-center py-2 border-l border-gray-800 text-xs text-gray-400 font-mono">{v||'â€”'}</td>
                               ))}
                               <td className={`text-center py-2 border-l border-gray-800 font-bold ${final<75&&final>0?'text-red-400':final>=75?'text-white':'text-gray-600'}`}>
-                                {final||'—'}
+                                {final||'â€”'}
                               </td>
                             </React.Fragment>
                           );
                         })}
                         <td className={`text-center py-2 border-l border-gray-800 font-bold ${d.mapehFinal<75&&d.mapehFinal>0?'text-red-400':d.mapehFinal>=75?'text-white':'text-gray-600'}`}>
-                          {d.mapehFinal||'—'}
+                          {d.mapehFinal||'â€”'}
                         </td>
                         <td className={`text-center py-2 border-l border-gray-800 font-bold text-lg ${d.generalAverage<75&&d.generalAverage>0?'text-red-400':d.generalAverage>=75?'text-yellow-300':'text-gray-600'}`}>
-                          {d.generalAverage||'—'}
+                          {d.generalAverage||'â€”'}
                         </td>
                         <td className="text-center py-2 border-l border-gray-800 px-2">
                           {d.action === 'Promoted' && (
@@ -655,3 +655,4 @@ export default function SF5Page() {
     </>
   );
 }
+
