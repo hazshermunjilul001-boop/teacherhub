@@ -337,7 +337,7 @@ export default function AttendancePage() {
                 <td className={`px-2 py-1 text-center font-bold border-l border-gray-800 ${absents > 0 ? 'text-red-400' : 'text-gray-600'}`}>{absents}</td>
                 <td className="px-2 py-1 text-center text-yellow-400 border-l border-gray-800">{getTardies(student.id)}</td>
                 <td className="px-2 py-1 text-center border-l border-gray-800">
-                  {alert && <AlertTriangle size={14} className="text-red-400 mx-auto"/>}
+                  {alert && <span title="5+ consecutive absences!"><AlertTriangle size={14} className="text-red-400 mx-auto"/></span>}
                 </td>
               </tr>
             );
