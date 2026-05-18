@@ -275,7 +275,7 @@ export default function SF5Page() {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href = url;
-    a.download = `SF5_${sectionName}_${SCHOOL_YEAR.replace(' ','')}.csv`;
+    a.download = `SF5_${sectionName}_${schoolYear.replace(' ','')}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -655,4 +655,5 @@ export default function SF5Page() {
     </>
   );
 }
+
 
