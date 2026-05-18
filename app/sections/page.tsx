@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useRef } from 'react';
 import {
@@ -10,9 +10,9 @@ import { parseSF1, type SF1ParseResult } from '../../lib/parseSF1';
 import { useSection, type Section } from '../../context/SectionContext';
 import * as XLSX from 'xlsx';
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // BLANK SECTION FORM
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const BLANK: Partial<Section> = {
   name:        '',
@@ -28,9 +28,9 @@ const BLANK: Partial<Section> = {
   school_head: '',
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // SF1 IMPORT MODAL
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ImportModal({
   onClose, onImported,
@@ -66,7 +66,7 @@ function ImportModal({
   const handleSave = async () => {
     if (!result) return;
     setStage('saving');
-    setProgress('Getting user account…');
+    setProgress('Getting user accountâ€¦');
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { alert('Not logged in.'); setStage('preview'); return; }
@@ -87,7 +87,7 @@ function ImportModal({
       district:     (editSch.district ?? '').trim(),
     };
 
-    setProgress('Creating section…');
+    setProgress('Creating sectionâ€¦');
     const { data: newSection, error: secErr } = await supabase
       .from('sections')
       .insert(sectionData)
@@ -101,7 +101,7 @@ function ImportModal({
     }
 
     // Insert students
-    setProgress(`Importing ${result.students.length} students…`);
+    setProgress(`Importing ${result.students.length} studentsâ€¦`);
     const studentRows = result.students.map(s => ({
       id:         crypto.randomUUID(),
       section_id: newSection.id,
@@ -118,7 +118,7 @@ function ImportModal({
       if (error) {
         console.error('Student insert error:', error);
       }
-      setProgress(`Imported ${Math.min(i + 50, studentRows.length)} of ${studentRows.length} students…`);
+      setProgress(`Imported ${Math.min(i + 50, studentRows.length)} of ${studentRows.length} studentsâ€¦`);
     }
 
     setProgress('Done!');
@@ -167,9 +167,9 @@ function ImportModal({
                 </div>
               )}
 
-              {/* School info — editable */}
+              {/* School info â€” editable */}
               <div>
-                <h4 className="font-semibold text-white mb-3">📍 School Information <span className="text-gray-500 text-xs font-normal">(edit if incorrect)</span></h4>
+                <h4 className="font-semibold text-white mb-3">ðŸ“ School Information <span className="text-gray-500 text-xs font-normal">(edit if incorrect)</span></h4>
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { label:'School Name',  key:'name',     full: true },
@@ -213,9 +213,9 @@ function ImportModal({
               {/* Student preview */}
               <div>
                 <h4 className="font-semibold text-white mb-3">
-                  👥 Students Found: <span className="text-blue-400">{result.students.length}</span>
+                  ðŸ‘¥ Students Found: <span className="text-blue-400">{result.students.length}</span>
                   <span className="text-gray-500 text-xs font-normal ml-2">
-                    ({result.students.filter(s=>s.sex==='M').length}M · {result.students.filter(s=>s.sex==='F').length}F)
+                    ({result.students.filter(s=>s.sex==='M').length}M Â· {result.students.filter(s=>s.sex==='F').length}F)
                   </span>
                 </h4>
                 <div className="bg-gray-800 rounded-xl overflow-hidden max-h-52 overflow-y-auto">
@@ -249,7 +249,7 @@ function ImportModal({
               <div className="flex gap-3 pt-2">
                 <button onClick={() => { setStage('upload'); setResult(null); }}
                   className="flex-1 py-3 rounded-xl border border-gray-600 hover:bg-gray-800 transition text-sm">
-                  ← Upload Different File
+                  â† Upload Different File
                 </button>
                 <button onClick={handleSave}
                   className="flex-2 flex-grow-[2] py-3 rounded-xl bg-blue-600 hover:bg-blue-700 font-semibold transition text-sm flex items-center justify-center gap-2">
@@ -264,7 +264,7 @@ function ImportModal({
             <div className="text-center py-12">
               <RefreshCw size={40} className="animate-spin text-blue-400 mx-auto mb-4"/>
               <p className="text-white font-semibold text-lg">{progress}</p>
-              <p className="text-gray-400 text-sm mt-2">Please wait, do not close this window…</p>
+              <p className="text-gray-400 text-sm mt-2">Please wait, do not close this windowâ€¦</p>
             </div>
           )}
         </div>
@@ -273,9 +273,9 @@ function ImportModal({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // CREATE MANUAL SECTION MODAL
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function CreateManualModal({
   onClose, onCreated,
@@ -340,7 +340,7 @@ function CreateManualModal({
             <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-600 hover:bg-gray-800 transition text-sm">Cancel</button>
             <button onClick={save} disabled={saving || !form.name || !form.grade_level}
               className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 font-semibold transition text-sm disabled:opacity-60">
-              {saving ? 'Creating…' : 'Create Section'}
+              {saving ? 'Creatingâ€¦' : 'Create Section'}
             </button>
           </div>
         </div>
@@ -349,9 +349,9 @@ function CreateManualModal({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // EDIT SECTION MODAL
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function EditSectionModal({
   section, onClose, onUpdated,
@@ -390,7 +390,7 @@ function EditSectionModal({
       <div className="bg-gray-900 rounded-2xl w-full max-w-lg border border-gray-700 shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-800">
           <h3 className="text-xl font-bold">Edit Section</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition">✕</button>
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition">âœ•</button>
         </div>
         <div className="p-6 space-y-4">
           {[
@@ -415,7 +415,7 @@ function EditSectionModal({
 
           {/* School head highlight */}
           <div className="bg-amber-950/30 border border-amber-800 rounded-xl p-3 text-xs text-amber-300">
-            💡 The <strong>School Head / Principal</strong> name appears on SF2, SF8, SF5, and SF9 signature lines.
+            ðŸ’¡ The <strong>School Head / Principal</strong> name appears on SF2, SF8, SF5, and SF9 signature lines.
             Make sure to fill this in before printing any school forms.
           </div>
 
@@ -426,7 +426,7 @@ function EditSectionModal({
             </button>
             <button onClick={save} disabled={saving || !form.name || !form.grade_level}
               className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 font-semibold transition text-sm disabled:opacity-60">
-              {saving ? 'Saving…' : 'Save Changes'}
+              {saving ? 'Savingâ€¦' : 'Save Changes'}
             </button>
           </div>
         </div>
@@ -435,9 +435,9 @@ function EditSectionModal({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // MAIN PAGE
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function SectionsPage() {
   const { sections, activeSection, setActiveSection, loadSections } = useSection();
@@ -530,7 +530,7 @@ export default function SectionsPage() {
           ) : (
             <div>
               <p className="text-gray-400 text-sm mb-6">
-                Click a section card to make it the <strong className="text-white">active section</strong> — all modules will use that section's data.
+                Click a section card to make it the <strong className="text-white">active section</strong> â€” all modules will use that section's data.
                 Currently active: <span className="text-blue-400 font-semibold">{activeSection?.name ?? 'None'}</span>
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -562,7 +562,7 @@ export default function SectionsPage() {
 
                       <div className="mt-4 space-y-1">
                         <div className="flex items-center gap-2 text-xs text-gray-400">
-                          <Users size={12}/> {section.student_count ?? '—'} students
+                          <Users size={12}/> {section.student_count ?? 'â€”'} students
                         </div>
                         {section.school_name && (
                           <div className="text-xs text-gray-500 truncate">{section.school_name}</div>
@@ -571,7 +571,7 @@ export default function SectionsPage() {
                           <div className="text-xs text-gray-500">{section.adviser}</div>
                         )}
                         {section.school_head && (
-                          <div className="text-xs text-gray-500">🏫 {section.school_head}</div>
+                          <div className="text-xs text-gray-500">ðŸ« {section.school_head}</div>
                         )}
                       </div>
 
