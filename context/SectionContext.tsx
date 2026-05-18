@@ -106,3 +106,4 @@ export function SectionProvider({ children }: { children: ReactNode }) {
 export function useSection() {
   return useContext(SectionContext);
 }
+
