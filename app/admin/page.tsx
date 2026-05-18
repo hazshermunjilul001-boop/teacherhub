@@ -185,7 +185,7 @@ export default function AdminPage() {
             <ArrowLeft size={20}/>
           </button>
           <div>
-            <h1 className="text-xl font-bold">TeacherHub PH â€” Admin</h1>
+            <h1 className="text-xl font-bold">TeacherHub PH "” Admin</h1>
             <p className="text-gray-500 text-xs">Payment & Subscription Management</p>
           </div>
         </div>
@@ -291,7 +291,7 @@ export default function AdminPage() {
                         )}
                         {req.status !== 'pending' && (
                           <span className="text-gray-600 text-xs">
-                            {req.processed_at ? new Date(req.processed_at).toLocaleDateString('en-PH') : 'â€”'}
+                            {req.processed_at ? new Date(req.processed_at).toLocaleDateString('en-PH') : '"”'}
                           </span>
                         )}
                       </td>
@@ -319,7 +319,7 @@ export default function AdminPage() {
               <tbody>
                 {subs.map(sub => (
                   <tr key={sub.user_id} className="border-t border-gray-800 hover:bg-gray-900/40">
-                    <td className="px-3 py-3 font-mono text-gray-400 text-xs">{sub.user_id.slice(0,16)}â€¦</td>
+                    <td className="px-3 py-3 font-mono text-gray-400 text-xs">{sub.user_id.slice(0,16)}"¦</td>
                     <td className="px-3 py-3">
                       <span className={planBadge(sub.plan_id)}>{sub.plan_id}</span>
                     </td>

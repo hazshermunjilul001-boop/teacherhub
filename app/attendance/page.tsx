@@ -14,7 +14,7 @@ import { useActiveSection } from '../../lib/useActiveSection';
 
 // Section constants now come from useActiveSection() hook inside the component
 
-// DepEd School Year 2026-2027 (June 2026 â€“ March 2027)
+// DepEd School Year 2026-2027 (June 2026 "“ March 2027)
 const MONTHS = [
   'June','July','August','September','October','November',
   'December','January','February','March',
@@ -236,7 +236,7 @@ export default function AttendancePage() {
   const fEnroll   = females.length;
 
   // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // RENDER â€” DIGITAL TRACKER VIEW
+  // RENDER "” DIGITAL TRACKER VIEW
   // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const TrackerView = () => (
     <div className="px-4 pb-10 overflow-x-auto">
@@ -380,7 +380,7 @@ export default function AttendancePage() {
         <div className="bg-gray-900 border border-gray-700 rounded-2xl p-4">
           <p className="text-gray-400 text-xs">Total Enrollment</p>
           <p className="text-3xl font-bold text-white">{totalEnrollment}</p>
-          <p className="text-xs text-gray-500">{mEnroll}M Â· {fEnroll}F</p>
+          <p className="text-xs text-gray-500">{mEnroll}M · {fEnroll}F</p>
         </div>
         <div className="bg-gray-900 border border-gray-700 rounded-2xl p-4">
           <p className="text-gray-400 text-xs">School Days</p>
@@ -390,12 +390,12 @@ export default function AttendancePage() {
         <div className="bg-gray-900 border border-red-900/50 rounded-2xl p-4">
           <p className="text-gray-400 text-xs">Total Absences</p>
           <p className="text-3xl font-bold text-red-400">{mAbsents + fAbsents}</p>
-          <p className="text-xs text-gray-500">{mAbsents}M Â· {fAbsents}F</p>
+          <p className="text-xs text-gray-500">{mAbsents}M · {fAbsents}F</p>
         </div>
         <div className="bg-gray-900 border border-yellow-900/50 rounded-2xl p-4">
           <p className="text-gray-400 text-xs">Total Tardies</p>
           <p className="text-3xl font-bold text-yellow-400">{mTardies + fTardies}</p>
-          <p className="text-xs text-gray-500">{mTardies}M Â· {fTardies}F</p>
+          <p className="text-xs text-gray-500">{mTardies}M · {fTardies}F</p>
         </div>
       </div>
 
@@ -406,7 +406,7 @@ export default function AttendancePage() {
             <AlertTriangle size={16}/> Learners with 5+ Consecutive Absences (Requires Home Visit)
           </div>
           {students.filter(s => hasConsecAbsences(s.id)).map(s => (
-            <div key={s.id} className="text-sm text-red-300 ml-6">â€¢ {s.full_name}</div>
+            <div key={s.id} className="text-sm text-red-300 ml-6">"¢ {s.full_name}</div>
           ))}
         </div>
       )}
@@ -414,7 +414,7 @@ export default function AttendancePage() {
   );
 
   // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // RENDER â€” SF2 PRINT VIEW (matches official DepEd format)
+  // RENDER "” SF2 PRINT VIEW (matches official DepEd format)
   // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const SF2View = () => {
     const totalDailyAttendance = schoolDays.reduce((sum, d) => sum + dayPresents(fmt(d)), 0);
@@ -838,7 +838,7 @@ export default function AttendancePage() {
             </button>
             <div>
               <h1 className="text-2xl font-bold">SF2 Daily Attendance</h1>
-              <p className="text-gray-400 text-sm">{sectionName} Â· {gradeLevel} Â· {schoolYear}</p>
+              <p className="text-gray-400 text-sm">{sectionName} · {gradeLevel} · {schoolYear}</p>
             </div>
           </div>
 
@@ -885,7 +885,7 @@ export default function AttendancePage() {
         {/* Content */}
         {loading ? (
           <div className="flex items-center justify-center py-20 gap-3 text-gray-400">
-            <RefreshCw size={20} className="animate-spin"/> Loading attendance dataâ€¦
+            <RefreshCw size={20} className="animate-spin"/> Loading attendance data"¦
           </div>
         ) : (
           <div className={view === 'sf2' ? 'bg-white p-4' : 'p-4'}>
@@ -902,7 +902,7 @@ export default function AttendancePage() {
               ðŸ–ï¸ Holidays / Non-School Days
             </h3>
             <p className="text-gray-400 text-sm mb-4">
-              Declare weekdays that are NOT school days â€” holidays, typhoon suspensions,
+              Declare weekdays that are NOT school days "” holidays, typhoon suspensions,
               special non-working days. These will be <strong className="text-white">removed
               from the attendance grid</strong> and won't count in the SF2 school day total.
             </p>
@@ -925,7 +925,7 @@ export default function AttendancePage() {
             {/* Holiday list */}
             <div className="mb-4">
               <p className="text-xs text-gray-500 mb-2 font-semibold uppercase tracking-wide">
-                Declared â€” {holidays.length} non-school day{holidays.length !== 1 ? 's' : ''}
+                Declared "” {holidays.length} non-school day{holidays.length !== 1 ? 's' : ''}
               </p>
               {holidays.length === 0 ? (
                 <div className="text-center text-gray-600 text-sm py-3">None declared yet.</div>

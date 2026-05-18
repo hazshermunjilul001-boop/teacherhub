@@ -187,7 +187,7 @@ export default function SubscribePage() {
         <div className="max-w-xl mx-auto">
           <h2 className="text-3xl font-bold mb-2">Complete Payment</h2>
           <p className="text-gray-400 mb-8">
-            Upgrading to <strong className="text-blue-400">{selectedPlanData.name}</strong> â€”
+            Upgrading to <strong className="text-blue-400">{selectedPlanData.name}</strong> "”
             â‚±{price.toLocaleString()}/{billing === 'yearly' ? 'year' : 'month'}
           </p>
 
@@ -221,7 +221,7 @@ export default function SubscribePage() {
               <div className="text-gray-400 text-sm mb-1">Amount to Send</div>
               <div className="text-4xl font-black text-white">â‚±{price.toLocaleString()}</div>
               <div className="text-gray-500 text-xs mt-1">
-                {selectedPlanData.name} Â· {billing === 'yearly' ? '1 Year' : '1 Month'}
+                {selectedPlanData.name} · {billing === 'yearly' ? '1 Year' : '1 Month'}
               </div>
             </div>
 
@@ -263,7 +263,7 @@ export default function SubscribePage() {
             onClick={submitPayment}
             disabled={submitting || !refNo.trim()}
             className="w-full py-4 bg-blue-600 hover:bg-blue-700 rounded-2xl font-bold text-lg transition disabled:opacity-50 flex items-center justify-center gap-2">
-            {submitting ? <><RefreshCw size={20} className="animate-spin"/> Submittingâ€¦</> : 'âœ“ Submit Payment'}
+            {submitting ? <><RefreshCw size={20} className="animate-spin"/> Submitting"¦</> : 'âœ“ Submit Payment'}
           </button>
 
           <p className="text-center text-gray-600 text-xs mt-4">
@@ -430,11 +430,11 @@ export default function SubscribePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
               { q: 'How do I pay?', a: 'Send via GCash or Landbank to our number, then submit your reference number. We activate your account within 24 hours.' },
-              { q: 'What if I stop paying?', a: 'Your account reverts to the Free plan. Your data stays safe â€” you just lose access to the Pro modules.' },
+              { q: 'What if I stop paying?', a: 'Your account reverts to the Free plan. Your data stays safe "” you just lose access to the Pro modules.' },
               { q: 'Can I upgrade mid-year?', a: 'Yes! Pay anytime and your plan activates from that date for the billing period you choose.' },
               { q: 'Is the data safe?', a: 'Yes. All data is stored securely in Supabase (enterprise-grade PostgreSQL). We never share your data.' },
               { q: 'What about the School Plan?', a: 'Contact us directly for School Plan setup. We help onboard all teachers in your school.' },
-              { q: 'Do I need internet?', a: 'Yes, TeacherHub PH is a web app. A basic internet connection is enough â€” it works on any browser.' },
+              { q: 'Do I need internet?', a: 'Yes, TeacherHub PH is a web app. A basic internet connection is enough "” it works on any browser.' },
             ].map(({ q, a }) => (
               <div key={q} className="bg-gray-900 rounded-2xl p-4">
                 <div className="font-semibold text-white text-sm mb-1">{q}</div>
@@ -445,7 +445,7 @@ export default function SubscribePage() {
         </div>
 
         <div className="mt-8 text-center text-gray-600 text-xs">
-          TeacherHub PH Â· Questions? Email {PAYMENT_INFO.admin_email}
+          TeacherHub PH · Questions? Email {PAYMENT_INFO.admin_email}
         </div>
       </div>
     </div>

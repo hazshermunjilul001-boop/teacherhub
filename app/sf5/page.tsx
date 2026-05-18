@@ -502,7 +502,7 @@ export default function SF5Page() {
             </button>
             <div>
               <h1 className="text-2xl font-bold">SF5 / LIS Export</h1>
-              <p className="text-gray-400 text-sm">Report on Promotions Â· {sectionName} Â· {schoolYear}</p>
+              <p className="text-gray-400 text-sm">Report on Promotions · {sectionName} · {schoolYear}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -523,7 +523,7 @@ export default function SF5Page() {
 
         {loading ? (
           <div className="flex items-center justify-center py-20 gap-3 text-gray-400">
-            <RefreshCw size={20} className="animate-spin"/>Computing grades from Class Recordâ€¦
+            <RefreshCw size={20} className="animate-spin"/>Computing grades from Class Record"¦
           </div>
         ) : (
           <div className="p-6">
@@ -542,7 +542,7 @@ export default function SF5Page() {
               <div className="bg-gradient-to-br from-amber-600 to-amber-800 rounded-2xl p-5">
                 <p className="text-white/70 text-sm">Conditionally Promoted</p>
                 <p className="text-4xl font-bold text-white">{conditional}</p>
-                <p className="text-white/60 text-xs">1â€“2 failed subjects</p>
+                <p className="text-white/60 text-xs">1"“2 failed subjects</p>
               </div>
               <div className="bg-gradient-to-br from-red-600 to-red-800 rounded-2xl p-5">
                 <p className="text-white/70 text-sm">Retained</p>
@@ -587,19 +587,19 @@ export default function SF5Page() {
                           return (
                             <React.Fragment key={subj}>
                               {[t1,t2,t3].map((v,vi)=>(
-                                <td key={subj+vi} className="text-center py-2 border-l border-gray-800 text-xs text-gray-400 font-mono">{v||'â€”'}</td>
+                                <td key={subj+vi} className="text-center py-2 border-l border-gray-800 text-xs text-gray-400 font-mono">{v||'"”'}</td>
                               ))}
                               <td className={`text-center py-2 border-l border-gray-800 font-bold ${final<75&&final>0?'text-red-400':final>=75?'text-white':'text-gray-600'}`}>
-                                {final||'â€”'}
+                                {final||'"”'}
                               </td>
                             </React.Fragment>
                           );
                         })}
                         <td className={`text-center py-2 border-l border-gray-800 font-bold ${d.mapehFinal<75&&d.mapehFinal>0?'text-red-400':d.mapehFinal>=75?'text-white':'text-gray-600'}`}>
-                          {d.mapehFinal||'â€”'}
+                          {d.mapehFinal||'"”'}
                         </td>
                         <td className={`text-center py-2 border-l border-gray-800 font-bold text-lg ${d.generalAverage<75&&d.generalAverage>0?'text-red-400':d.generalAverage>=75?'text-yellow-300':'text-gray-600'}`}>
-                          {d.generalAverage||'â€”'}
+                          {d.generalAverage||'"”'}
                         </td>
                         <td className="text-center py-2 border-l border-gray-800 px-2">
                           {d.action === 'Promoted' && (
