@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -6,12 +6,12 @@ import { CheckCircle, Star, Shield, ArrowLeft, Copy, RefreshCw, AlertCircle } fr
 import { supabase } from '../../lib/supabase';
 import { useSubscription } from '../../lib/useSubscription';
 
-// ─── YOUR GCASH / Landbank DETAILS ────────────────────────────────────────────────
-// ⚠️ Replace these with your actual payment details
+// â”€â”€â”€ YOUR GCASH / Landbank DETAILS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// âš ï¸ Replace these with your actual payment details
 const PAYMENT_INFO = {
   gcash_number:    '0933-349-6704',
   gcash_name:      'HAZSHER M.',
-  landbank_acc:    '0167-1603-52',       // ← key must have no spaces
+  landbank_acc:    '0167-1603-52',       // â† key must have no spaces
   landbank_name:   'HAZSHER MUNJILUL',
   admin_email:     'hazsher.munjilul001@deped.gov.ph',
 };
@@ -25,16 +25,16 @@ const PLANS = [
     color:    'border-gray-700',
     badge:    null,
     features: [
-      '✓ 1 section only',
-      '✓ Up to 45 students',
-      '✓ Class Record',
-      '✓ Attendance (SF2)',
-      '✗ MPS & Item Analysis',
-      '✗ SF8 Health & Nutrition',
-      '✗ Behavior Record',
-      '✗ SF5 / LIS Export',
-      '✗ SF9 Report Card',
-      '✗ Subject Teacher Sharing',
+      'âœ“ 1 section only',
+      'âœ“ Up to 45 students',
+      'âœ“ Class Record',
+      'âœ“ Attendance (SF2)',
+      'âœ— MPS & Item Analysis',
+      'âœ— SF8 Health & Nutrition',
+      'âœ— Behavior Record',
+      'âœ— SF5 / LIS Export',
+      'âœ— SF9 Report Card',
+      'âœ— Subject Teacher Sharing',
     ],
   },
   {
@@ -43,18 +43,18 @@ const PLANS = [
     monthly:  99,
     yearly:   799,
     color:    'border-blue-500',
-    badge:    '⭐ Most Popular',
+    badge:    'â­ Most Popular',
     features: [
-      '✓ Unlimited sections',
-      '✓ Unlimited students',
-      '✓ ALL 8 modules',
-      '✓ Class Record + SF2',
-      '✓ MPS & Item Analysis',
-      '✓ SF8 Health & Nutrition',
-      '✓ Behavior Record',
-      '✓ SF5 / LIS Export',
-      '✓ SF9 Report Card',
-      '✓ Subject Teacher Sharing',
+      'âœ“ Unlimited sections',
+      'âœ“ Unlimited students',
+      'âœ“ ALL 8 modules',
+      'âœ“ Class Record + SF2',
+      'âœ“ MPS & Item Analysis',
+      'âœ“ SF8 Health & Nutrition',
+      'âœ“ Behavior Record',
+      'âœ“ SF5 / LIS Export',
+      'âœ“ SF9 Report Card',
+      'âœ“ Subject Teacher Sharing',
     ],
   },
   {
@@ -63,21 +63,21 @@ const PLANS = [
     monthly:  499,
     yearly:   3999,
     color:    'border-purple-500',
-    badge:    '🏫 Best for Schools',
+    badge:    'ðŸ« Best for Schools',
     features: [
-      '✓ Everything in Teacher Pro',
-      '✓ All teachers in 1 school',
-      '✓ School admin dashboard',
-      '✓ LIS bulk export',
-      '✓ Priority support',
-      '✓ Setup assistance',
+      'âœ“ Everything in Teacher Pro',
+      'âœ“ All teachers in 1 school',
+      'âœ“ School admin dashboard',
+      'âœ“ LIS bulk export',
+      'âœ“ Priority support',
+      'âœ“ Setup assistance',
     ],
   },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // MAIN PAGE
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function SubscribePage() {
   const router   = useRouter();
@@ -142,7 +142,7 @@ export default function SubscribePage() {
     </div>
   );
 
-  // ── CONFIRMATION SCREEN ───────────────────────────────────────────────────
+  // â”€â”€ CONFIRMATION SCREEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (step === 'confirm') return (
     <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-6">
       <div className="text-center max-w-md">
@@ -174,7 +174,7 @@ export default function SubscribePage() {
     </div>
   );
 
-  // ── PAYMENT SCREEN ────────────────────────────────────────────────────────
+  // â”€â”€ PAYMENT SCREEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (step === 'payment' && selectedPlanData) {
     const price = getPrice(selectedPlanData);
     return (
@@ -187,8 +187,8 @@ export default function SubscribePage() {
         <div className="max-w-xl mx-auto">
           <h2 className="text-3xl font-bold mb-2">Complete Payment</h2>
           <p className="text-gray-400 mb-8">
-            Upgrading to <strong className="text-blue-400">{selectedPlanData.name}</strong> —
-            ₱{price.toLocaleString()}/{billing === 'yearly' ? 'year' : 'month'}
+            Upgrading to <strong className="text-blue-400">{selectedPlanData.name}</strong> â€”
+            â‚±{price.toLocaleString()}/{billing === 'yearly' ? 'year' : 'month'}
           </p>
 
           {/* Payment method toggle */}
@@ -200,7 +200,7 @@ export default function SubscribePage() {
                     ? 'bg-blue-600 border-blue-500 text-white'
                     : 'bg-gray-900 border-gray-700 text-gray-400 hover:border-gray-600'
                 }`}>
-                {m === 'gcash' ? '💙 GCash' : '💚 landbank'}
+                {m === 'gcash' ? 'ðŸ’™ GCash' : 'ðŸ’š landbank'}
               </button>
             ))}
           </div>
@@ -208,7 +208,7 @@ export default function SubscribePage() {
           {/* Payment details card */}
           <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 mb-6">
             <div className="text-center mb-4">
-              <div className="text-5xl mb-2">{payMethod === 'gcash' ? '💙' : '💚'}</div>
+              <div className="text-5xl mb-2">{payMethod === 'gcash' ? 'ðŸ’™' : 'ðŸ’š'}</div>
               <div className="text-2xl font-black text-white">
                 {payMethod === 'gcash' ? PAYMENT_INFO.gcash_number : PAYMENT_INFO.landbank_acc}
               </div>
@@ -219,25 +219,25 @@ export default function SubscribePage() {
 
             <div className="bg-gray-800 rounded-xl p-4 text-center mb-4">
               <div className="text-gray-400 text-sm mb-1">Amount to Send</div>
-              <div className="text-4xl font-black text-white">₱{price.toLocaleString()}</div>
+              <div className="text-4xl font-black text-white">â‚±{price.toLocaleString()}</div>
               <div className="text-gray-500 text-xs mt-1">
-                {selectedPlanData.name} · {billing === 'yearly' ? '1 Year' : '1 Month'}
+                {selectedPlanData.name} Â· {billing === 'yearly' ? '1 Year' : '1 Month'}
               </div>
             </div>
 
             <button
-              onClick={() => handleCopy(payMethod === 'gcash' ? PAYMENT_INFO.gcash_number : PAYMENT_INFO.Landbank_acc)}
+              onClick={() => handleCopy(payMethod === 'gcash' ? PAYMENT_INFO.gcash_number : PAYMENT_INFO.landbank_acc)}
               className="w-full py-2.5 bg-gray-700 hover:bg-gray-600 rounded-xl text-sm transition flex items-center justify-center gap-2">
-              <Copy size={14}/> {copied ? '✓ Copied!' : 'Copy Number'}
+              <Copy size={14}/> {copied ? 'âœ“ Copied!' : 'Copy Number'}
             </button>
           </div>
 
           {/* Steps */}
           <div className="bg-blue-950/30 border border-blue-800 rounded-2xl p-5 mb-6 text-sm">
-            <div className="font-semibold text-blue-400 mb-3">📋 How to Pay:</div>
+            <div className="font-semibold text-blue-400 mb-3">ðŸ“‹ How to Pay:</div>
             <ol className="space-y-2 text-blue-200 text-sm list-decimal list-inside">
               <li>Open your {payMethod === 'gcash' ? 'GCash' : 'Landbank'} app</li>
-              <li>Send <strong>₱{price.toLocaleString()}</strong> to the number above</li>
+              <li>Send <strong>â‚±{price.toLocaleString()}</strong> to the number above</li>
               <li>Copy your <strong>reference/transaction number</strong></li>
               <li>Paste it below and submit</li>
             </ol>
@@ -263,7 +263,7 @@ export default function SubscribePage() {
             onClick={submitPayment}
             disabled={submitting || !refNo.trim()}
             className="w-full py-4 bg-blue-600 hover:bg-blue-700 rounded-2xl font-bold text-lg transition disabled:opacity-50 flex items-center justify-center gap-2">
-            {submitting ? <><RefreshCw size={20} className="animate-spin"/> Submitting…</> : '✓ Submit Payment'}
+            {submitting ? <><RefreshCw size={20} className="animate-spin"/> Submittingâ€¦</> : 'âœ“ Submit Payment'}
           </button>
 
           <p className="text-center text-gray-600 text-xs mt-4">
@@ -274,7 +274,7 @@ export default function SubscribePage() {
     );
   }
 
-  // ── PLANS SCREEN ──────────────────────────────────────────────────────────
+  // â”€â”€ PLANS SCREEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       {/* Header */}
@@ -294,7 +294,7 @@ export default function SubscribePage() {
         {/* Hero */}
         <div className="text-center mb-10 pt-4">
           <h2 className="text-4xl font-black mb-3">
-            Built for Filipino Teachers 🇵🇭
+            Built for Filipino Teachers ðŸ‡µðŸ‡­
           </h2>
           <p className="text-gray-400 text-lg">
             All DepEd school forms automated. Affordable for every teacher.
@@ -348,11 +348,11 @@ export default function SubscribePage() {
                       <span className="text-4xl font-black text-white">Free</span>
                     ) : (
                       <>
-                        <span className="text-4xl font-black text-white">₱{price.toLocaleString()}</span>
+                        <span className="text-4xl font-black text-white">â‚±{price.toLocaleString()}</span>
                         <span className="text-gray-400 text-sm">/{billing==='yearly'?'year':'month'}</span>
                         {billing === 'yearly' && (
                           <div className="text-emerald-400 text-xs mt-1">
-                            ₱{Math.round(price/12).toLocaleString()}/month billed yearly
+                            â‚±{Math.round(price/12).toLocaleString()}/month billed yearly
                           </div>
                         )}
                       </>
@@ -363,7 +363,7 @@ export default function SubscribePage() {
                 <ul className="space-y-2 mb-6">
                   {plan.features.map((f, i) => (
                     <li key={i} className={`text-sm flex items-start gap-2
-                      ${f.startsWith('✓') ? 'text-gray-200' : 'text-gray-600'}`}>
+                      ${f.startsWith('âœ“') ? 'text-gray-200' : 'text-gray-600'}`}>
                       <span className="flex-shrink-0 mt-0.5">{f.slice(0,1)}</span>
                       <span>{f.slice(2)}</span>
                     </li>
@@ -385,7 +385,7 @@ export default function SubscribePage() {
                           ? 'bg-blue-600 text-white shadow-lg'
                           : 'bg-gray-800 text-white hover:bg-gray-700 border border-gray-600'
                       }`}>
-                    {isCurrent ? 'Current Plan' : isSelected ? '✓ Selected' : 'Select Plan'}
+                    {isCurrent ? 'Current Plan' : isSelected ? 'âœ“ Selected' : 'Select Plan'}
                   </button>
                 )}
               </div>
@@ -398,10 +398,10 @@ export default function SubscribePage() {
           <div className="text-center">
             <button onClick={() => setStep('payment')}
               className="px-12 py-4 bg-blue-600 hover:bg-blue-700 rounded-2xl font-bold text-lg transition shadow-xl shadow-blue-900/30">
-              Proceed to Payment →
+              Proceed to Payment â†’
             </button>
             <p className="text-gray-600 text-sm mt-3">
-              Pay via GCash or Landbank. Activated within 24 hours. ₱{
+              Pay via GCash or Landbank. Activated within 24 hours. â‚±{
                 getPrice(PLANS.find(p=>p.id===selectedPlan)!).toLocaleString()
               }/{billing==='yearly'?'year':'month'}
             </p>
@@ -430,11 +430,11 @@ export default function SubscribePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
               { q: 'How do I pay?', a: 'Send via GCash or Landbank to our number, then submit your reference number. We activate your account within 24 hours.' },
-              { q: 'What if I stop paying?', a: 'Your account reverts to the Free plan. Your data stays safe — you just lose access to the Pro modules.' },
+              { q: 'What if I stop paying?', a: 'Your account reverts to the Free plan. Your data stays safe â€” you just lose access to the Pro modules.' },
               { q: 'Can I upgrade mid-year?', a: 'Yes! Pay anytime and your plan activates from that date for the billing period you choose.' },
               { q: 'Is the data safe?', a: 'Yes. All data is stored securely in Supabase (enterprise-grade PostgreSQL). We never share your data.' },
               { q: 'What about the School Plan?', a: 'Contact us directly for School Plan setup. We help onboard all teachers in your school.' },
-              { q: 'Do I need internet?', a: 'Yes, TeacherHub PH is a web app. A basic internet connection is enough — it works on any browser.' },
+              { q: 'Do I need internet?', a: 'Yes, TeacherHub PH is a web app. A basic internet connection is enough â€” it works on any browser.' },
             ].map(({ q, a }) => (
               <div key={q} className="bg-gray-900 rounded-2xl p-4">
                 <div className="font-semibold text-white text-sm mb-1">{q}</div>
@@ -445,7 +445,7 @@ export default function SubscribePage() {
         </div>
 
         <div className="mt-8 text-center text-gray-600 text-xs">
-          TeacherHub PH · Questions? Email {PAYMENT_INFO.admin_email}
+          TeacherHub PH Â· Questions? Email {PAYMENT_INFO.admin_email}
         </div>
       </div>
     </div>
