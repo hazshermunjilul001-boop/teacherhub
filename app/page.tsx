@@ -422,7 +422,7 @@ function Dashboard({ user }: { user: any }) {
             <p className="text-gray-400 mt-1">
               {activeSection
                 ? `${activeSection.name} · ${activeSection.grade_level} · SY ${activeSection.school_year}`
-                : 'School Year 2025–2026 · Revised K-12 Curriculum'}
+                : 'School Year 2026–2027 · Revised K-12 Curriculum'}
               {' · Term 1'}
             </p>
           </div>

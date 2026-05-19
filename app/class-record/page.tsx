@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Plus, Printer, Users, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Plus, Printer, Users, RefreshCw, FileText, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useActiveSection } from '../../lib/useActiveSection';
 
@@ -47,7 +47,7 @@ const TRANSMUTATION = [
   { min: 82.00, max: 82.99, trans: 84  }, { min: 81.00, max: 81.99, trans: 83 },
   { min: 80.00, max: 80.99, trans: 82  }, { min: 79.00, max: 79.99, trans: 81 },
   { min: 78.00, max: 78.99, trans: 80  }, { min: 77.00, max: 77.99, trans: 79 },
-  { min: 76.00, max: 76.99, trans: 78  }, { min: 75.00, max: 75.99, trans: 77 },
+  { min: 76.00, max: 76.99, trans: 78  }, { min: 75.00, max: 75.75, trans: 77 },
   { min: 73.00, max: 74.99, trans: 76  }, { min: 70.00, max: 72.99, trans: 75 },
   { min: 68.00, max: 69.99, trans: 74  }, { min: 66.00, max: 67.99, trans: 73 },
   { min: 64.00, max: 65.99, trans: 72  }, { min: 62.00, max: 63.99, trans: 71 },
@@ -61,11 +61,11 @@ const TRANSMUTATION = [
 
 const transmute = (v: number) => TRANSMUTATION.find(t => v >= t.min && v <= t.max)?.trans ?? 60;
 const descriptor = (g: number) => {
-  if (g >= 90) return { label: 'Advancing (Namumukod- tangi)',           color: 'text-emerald-400' };
-  if (g >= 80) return { label: 'Benchmarking (Napamamalas)',     color: 'text-green-400'   };
-  if (g >= 75) return { label: 'Connecting (Natutungo)',          color: 'text-blue-400'    };
-  if (g <= 74) return { label: 'Developing (Napauunlad)',   color: 'text-yellow-400'  };
-  return              { label: 'Emerging (Nasisimula)', color: 'text-red-400' };
+  if (g >= 90) return { label: 'Advancing (Namumukod-tangi)', short: 'Advancing',   color: 'text-emerald-400' };
+  if (g >= 80) return { label: 'Benchmarking (Napamamalas)',  short: 'Benchmarking', color: 'text-green-400'   };
+  if (g >= 75) return { label: 'Connecting (Natutungo)',      short: 'Connecting',   color: 'text-blue-400'    };
+  if (g <= 74) return { label: 'Developing (Napauunlad)',     short: 'Developing',   color: 'text-yellow-400'  };
+  return              { label: 'Emerging (Nasisimula)',       short: 'Emerging',     color: 'text-red-400'     };
 };
 const calcAvg = (scores: number[], highs: number[]) => {
   let tot = 0, cnt = 0;
@@ -76,6 +76,7 @@ const calcAvg = (scores: number[], highs: number[]) => {
 interface Student { id: string; lrn: string; full_name: string; sex?: string; }
 interface Highest { ww: number[]; pt: number[]; st: number[]; te: number; }
 interface Scores  { ww: Record<number,number>; pt: Record<number,number>; st: Record<number,number>; te: number; }
+interface TermData { scores: Record<string, Scores>; highest: Highest; }
 
 function AddStudentModal({ onClose, onAdd, sectionId }:
   { onClose:()=>void; onAdd:(s:Student)=>void; sectionId:string }) {
@@ -108,13 +109,294 @@ function AddStudentModal({ onClose, onAdd, sectionId }:
           <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-600 hover:bg-gray-800 transition">Cancel</button>
           <button onClick={save} disabled={saving}
             className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 font-semibold transition disabled:opacity-60">
-            {saving?'Saving…':'Add Learner'}</button>
+            {saving ? 'Saving...' : 'Add Learner'}</button>
         </div>
       </div>
     </div>
   );
 }
 
+// ── E-CLASS RECORD PRINT VIEW ─────────────────────────────────────────────────
+function EClassRecordView({
+  students, subject, sectionName, gradeLevel, schoolName, schoolId,
+  schoolYear, division, region, adviser, allTermData, onClose,
+}: {
+  students: Student[];
+  subject: string;
+  sectionName: string; gradeLevel: string; schoolName: string;
+  schoolId: string; schoolYear: string; division: string;
+  region: string; adviser: string;
+  allTermData: Record<number, TermData>;
+  onClose: () => void;
+}) {
+  const weights = SUBJECT_WEIGHTS[subject] ?? { ww: 0.25, pt: 0.50, ta: 0.25 };
+  const hasTA = (weights.ta ?? 0) > 0;
+
+  const computeTerm = (sid: string, termNum: number) => {
+    const td = allTermData[termNum];
+    if (!td) return { transmuted: 0, initial: 0 };
+    const s = td.scores[sid] || { ww: {}, pt: {}, st: {}, te: 0 };
+    const ww = Array.from({ length: 5 }, (_, i) => s.ww?.[i] ?? 0);
+    const pt = Array.from({ length: 3 }, (_, i) => s.pt?.[i] ?? 0);
+    const st = Array.from({ length: 2 }, (_, i) => s.st?.[i] ?? 0);
+    const te = s.te ?? 0;
+    const avgWW = calcAvg(ww, td.highest.ww);
+    const avgPT = calcAvg(pt, td.highest.pt);
+    const avgTA = calcAvg([...st, te], [...td.highest.st, td.highest.te]);
+    const initial = avgWW * weights.ww + avgPT * weights.pt + avgTA * (weights.ta ?? 0.25);
+    return { transmuted: transmute(initial), initial, ww, pt, st, te, avgWW, avgPT, avgTA };
+  };
+
+  const td = { border: '1px solid #666', padding: '2px 4px', fontSize: '8px', textAlign: 'center' as const };
+  const th = { ...td, background: '#e8e8e8', fontWeight: 'bold' as const };
+  const males   = students.filter(s => s.sex === 'M');
+  const females = students.filter(s => s.sex === 'F');
+
+  const renderTermTable = (termNum: number) => {
+    const termData = allTermData[termNum];
+    if (!termData) return <div style={{ fontSize: '9px', color: '#999', padding: '4px' }}>No data for Term {termNum}</div>;
+    const { highest } = termData;
+
+    const renderGroup = (group: Student[], label: string) => (
+      <>
+        <tr>
+          <td colSpan={hasTA ? 20 : 16} style={{ ...td, background: label === 'MALE' ? '#dbeafe' : '#fce7f3', fontWeight: 'bold', textAlign: 'left' }}>
+            {label}
+          </td>
+        </tr>
+        {group.map((student, idx) => {
+          const c = computeTerm(student.id, termNum) as any;
+          const desc = descriptor(c.transmuted);
+          return (
+            <tr key={student.id} style={{ background: idx % 2 === 0 ? 'white' : '#f9fafb' }}>
+              <td style={td}>{idx + 1}</td>
+              <td style={{ ...td, textAlign: 'left', minWidth: '140px' }}>{student.full_name}</td>
+              {(c.ww || [0,0,0,0,0]).map((v: number, i: number) => <td key={i} style={td}>{v || ''}</td>)}
+              <td style={{ ...td, background: '#dbeafe' }}>{c.avgWW?.toFixed(1) || ''}</td>
+              {(c.pt || [0,0,0]).map((v: number, i: number) => <td key={i} style={td}>{v || ''}</td>)}
+              <td style={{ ...td, background: '#ede9fe' }}>{c.avgPT?.toFixed(1) || ''}</td>
+              {hasTA && <>
+                {(c.st || [0,0]).map((v: number, i: number) => <td key={i} style={td}>{v || ''}</td>)}
+                <td style={td}>{c.te || ''}</td>
+                <td style={{ ...td, background: '#fef3c7' }}>{c.avgTA?.toFixed(1) || ''}</td>
+              </>}
+              <td style={{ ...td, background: '#f0fdf4' }}>{c.initial?.toFixed(2) || ''}</td>
+              <td style={{ ...td, fontWeight: 'bold', fontSize: '9px', color: c.transmuted >= 75 ? '#166534' : '#991b1b' }}>{c.transmuted || ''}</td>
+              <td style={{ ...td, fontSize: '7px' }}>{desc.short}</td>
+            </tr>
+          );
+        })}
+      </>
+    );
+
+    return (
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8px', marginBottom: '4px' }}>
+        <thead>
+          <tr>
+            <th style={th} rowSpan={2}>#</th>
+            <th style={{ ...th, textAlign: 'left' }} rowSpan={2}>LEARNERS' NAMES</th>
+            <th style={th} colSpan={5}>WRITTEN / ORAL WORKS ({(weights.ww * 100).toFixed(0)}%)</th>
+            <th style={{ ...th, background: '#dbeafe' }} rowSpan={2}>PS</th>
+            <th style={th} colSpan={3}>PRODUCT / PERFORMANCE TASKS ({(weights.pt * 100).toFixed(0)}%)</th>
+            <th style={{ ...th, background: '#ede9fe' }} rowSpan={2}>PS</th>
+            {hasTA && <>
+              <th style={th} colSpan={2}>SUMMATIVE TESTS</th>
+              <th style={th}>TERM EXAM</th>
+              <th style={{ ...th, background: '#fef3c7' }} rowSpan={2}>TA PS</th>
+            </>}
+            <th style={{ ...th, background: '#f0fdf4' }} rowSpan={2}>Initial</th>
+            <th style={{ ...th, fontWeight: 'bold' }} rowSpan={2}>TG</th>
+            <th style={th} rowSpan={2}>Descriptor</th>
+          </tr>
+          <tr>
+            {highest.ww.map((v, i) => <th key={i} style={th}>{v || i + 1}</th>)}
+            {highest.pt.map((v, i) => <th key={i} style={th}>{v || i + 1}</th>)}
+            {hasTA && <>
+              {highest.st.map((v, i) => <th key={i} style={th}>{v || i + 1}</th>)}
+              <th style={th}>{highest.te || 100}</th>
+            </>}
+          </tr>
+        </thead>
+        <tbody>
+          {renderGroup(males, 'MALE')}
+          {renderGroup(females, 'FEMALE')}
+        </tbody>
+      </table>
+    );
+  };
+
+  const renderSummaryTable = () => {
+    const renderGroup = (group: Student[], label: string) => (
+      <>
+        <tr>
+          <td colSpan={8} style={{ ...td, background: label === 'MALE' ? '#dbeafe' : '#fce7f3', fontWeight: 'bold', textAlign: 'left' }}>
+            {label}
+          </td>
+        </tr>
+        {group.map((student, idx) => {
+          const t1 = computeTerm(student.id, 1);
+          const t2 = computeTerm(student.id, 2);
+          const t3 = computeTerm(student.id, 3);
+          const validTerms = [t1, t2, t3].filter(t => t.transmuted > 0);
+          const finalGrade = validTerms.length > 0
+            ? Math.round(validTerms.reduce((s, t) => s + t.transmuted, 0) / validTerms.length)
+            : 0;
+          const desc = descriptor(finalGrade);
+          const remarks = finalGrade >= 75 ? 'PASSED' : 'FAILED';
+          return (
+            <tr key={student.id} style={{ background: idx % 2 === 0 ? 'white' : '#f9fafb' }}>
+              <td style={td}>{idx + 1}</td>
+              <td style={{ ...td, textAlign: 'left', minWidth: '140px' }}>{student.full_name}</td>
+              <td style={td}>{t1.transmuted || ''}</td>
+              <td style={td}>{t2.transmuted || ''}</td>
+              <td style={td}>{t3.transmuted || ''}</td>
+              <td style={{ ...td, fontWeight: 'bold', fontSize: '10px', color: finalGrade >= 75 ? '#166534' : '#991b1b' }}>
+                {finalGrade || ''}
+              </td>
+              <td style={{ ...td, fontSize: '7px' }}>{finalGrade ? desc.short : ''}</td>
+              <td style={{ ...td, fontWeight: 'bold', color: remarks === 'PASSED' ? '#166534' : '#991b1b' }}>
+                {finalGrade ? remarks : ''}
+              </td>
+            </tr>
+          );
+        })}
+      </>
+    );
+
+    return (
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8px' }}>
+        <thead>
+          <tr>
+            <th style={th}>#</th>
+            <th style={{ ...th, textAlign: 'left' }}>LEARNERS' NAMES</th>
+            <th style={th}>TERM 1</th>
+            <th style={th}>TERM 2</th>
+            <th style={th}>TERM 3</th>
+            <th style={{ ...th, background: '#d1fae5' }}>FINAL GRADE</th>
+            <th style={th}>DESCRIPTOR</th>
+            <th style={th}>REMARKS</th>
+          </tr>
+        </thead>
+        <tbody>
+          {renderGroup(males, 'MALE')}
+          {renderGroup(females, 'FEMALE')}
+        </tbody>
+      </table>
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 z-50 overflow-auto">
+      {/* Toolbar — hidden on print */}
+      <div className="no-print sticky top-0 bg-gray-900 border-b border-gray-700 px-6 py-3 flex items-center justify-between z-10">
+        <div className="flex items-center gap-3">
+          <FileText size={18} className="text-blue-400"/>
+          <span className="font-semibold">E-Class Record — {subject}</span>
+          <span className="text-gray-400 text-sm">{sectionName} · {schoolYear}</span>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={() => window.print()}
+            className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
+            <Printer size={16}/> Print
+          </button>
+          <button onClick={onClose}
+            className="flex items-center gap-2 bg-red-900/50 hover:bg-red-800 px-4 py-2 rounded-xl text-sm font-semibold transition">
+            <X size={16}/> Close
+          </button>
+        </div>
+      </div>
+
+      {/* Print content */}
+      <div className="eclass-print bg-white text-black p-4" style={{ minWidth: '1100px', fontFamily: 'Arial, sans-serif' }}>
+
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: '6px' }}>
+          <div style={{ fontWeight: 'bold', fontSize: '12px' }}>CLASS RECORD</div>
+          <div style={{ fontSize: '8px', color: '#555' }}>(Waiting for the Official DepEd Order)</div>
+        </div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '4px', fontSize: '8px' }}>
+          <tbody>
+            <tr>
+              <td style={{ ...td, textAlign: 'left' }}><strong>REGION:</strong> {region}</td>
+              <td style={{ ...td, textAlign: 'left' }}><strong>DIVISION:</strong> {division}</td>
+              <td style={{ ...td, textAlign: 'left' }}><strong>SCHOOL ID:</strong> {schoolId}</td>
+              <td style={{ ...td, textAlign: 'left' }}><strong>SCHOOL YEAR:</strong> {schoolYear}</td>
+            </tr>
+            <tr>
+              <td colSpan={2} style={{ ...td, textAlign: 'left' }}><strong>SCHOOL NAME:</strong> {schoolName}</td>
+              <td style={{ ...td, textAlign: 'left' }}><strong>GRADE & SECTION:</strong> {gradeLevel} — {sectionName}</td>
+              <td style={{ ...td, textAlign: 'left' }}><strong>SUBJECT:</strong> {subject}</td>
+            </tr>
+            <tr>
+              <td colSpan={2} style={{ ...td, textAlign: 'left' }}><strong>TEACHER:</strong> {adviser?.toUpperCase()}</td>
+              <td colSpan={2} style={{ ...td, textAlign: 'left' }}>
+                <strong>WEIGHTS:</strong> WW {(weights.ww * 100).toFixed(0)}% | PT {(weights.pt * 100).toFixed(0)}%
+                {hasTA ? ` | TA ${((weights.ta ?? 0) * 100).toFixed(0)}%` : ''}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* TERM 1 */}
+        <div style={{ fontWeight: 'bold', fontSize: '9px', background: '#1e3a5f', color: 'white', padding: '3px 6px', marginBottom: '2px', marginTop: '6px' }}>
+          TERM 1
+        </div>
+        {renderTermTable(1)}
+
+        {/* TERM 2 */}
+        <div style={{ fontWeight: 'bold', fontSize: '9px', background: '#1e3a5f', color: 'white', padding: '3px 6px', marginBottom: '2px', marginTop: '8px' }}>
+          TERM 2
+        </div>
+        {renderTermTable(2)}
+
+        {/* TERM 3 */}
+        <div style={{ fontWeight: 'bold', fontSize: '9px', background: '#1e3a5f', color: 'white', padding: '3px 6px', marginBottom: '2px', marginTop: '8px' }}>
+          TERM 3
+        </div>
+        {renderTermTable(3)}
+
+        {/* SUMMARY OF GRADES */}
+        <div style={{ fontWeight: 'bold', fontSize: '9px', background: '#14532d', color: 'white', padding: '3px 6px', marginBottom: '2px', marginTop: '8px' }}>
+          SUMMARY OF GRADES
+        </div>
+        {renderSummaryTable()}
+
+        {/* Signature area */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', fontSize: '8px' }}>
+          <div style={{ textAlign: 'center', minWidth: '200px' }}>
+            <div style={{ fontWeight: 'bold', borderTop: '1px solid black', paddingTop: '2px', marginTop: '20px' }}>
+              {adviser?.toUpperCase()}
+            </div>
+            <div>Subject Teacher</div>
+          </div>
+          <div style={{ textAlign: 'center', minWidth: '200px' }}>
+            <div style={{ borderTop: '1px solid black', paddingTop: '2px', marginTop: '20px' }}>
+              ________________________________
+            </div>
+            <div>School Head</div>
+          </div>
+          <div style={{ textAlign: 'center', minWidth: '200px' }}>
+            <div style={{ borderTop: '1px solid black', paddingTop: '2px', marginTop: '20px' }}>
+              ________________________________
+            </div>
+            <div>Date</div>
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          body { background: white !important; }
+          .eclass-print { padding: 4mm; min-width: 100% !important; }
+          @page { size: landscape; margin: 6mm; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// ── MAIN PAGE ─────────────────────────────────────────────────────────────────
 export default function ClassRecord() {
   const [subject,setSubject] = useState('Filipino');
   const [term,setTerm]       = useState(1);
@@ -124,8 +406,11 @@ export default function ClassRecord() {
   const [loading,setLoading] = useState(true);
   const [saving,setSaving]   = useState<string|null>(null);
   const [showAdd,setShowAdd] = useState(false);
-  const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear, division, region, adviser } = useActiveSection();
+  const [showEClass,setShowEClass] = useState(false);
+  const [allTermData,setAllTermData] = useState<Record<number, TermData>>({});
+  const [loadingEClass,setLoadingEClass] = useState(false);
 
+  const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear, division, region, adviser } = useActiveSection();
   const weights = SUBJECT_WEIGHTS[subject] ?? { ww:0.25, pt:0.50, ta:0.25 };
 
   useEffect(()=>{
@@ -186,6 +471,29 @@ export default function ClassRecord() {
 
   const hasTA=(weights.ta??0)>0;
 
+  // Load all 3 terms data for E-Class Record view
+  const openEClassRecord = async () => {
+    setLoadingEClass(true);
+    const termMap: Record<number, TermData> = {};
+    for (const t of [1, 2, 3]) {
+      const { data } = await supabase.from('grades').select('*').eq('subject', subject).eq('term', t);
+      const m: Record<string, Scores> = {};
+      let h: Highest = { ww: [100,100,100,100,100], pt: [100,100,100], st: [50,50], te: 100 };
+      if (data && data.length > 0) {
+        data.forEach((r: any) => {
+          m[r.student_id] = { ww: r.written_scores||{}, pt: r.pt_scores||{}, st: r.st_scores||{}, te: r.te_score||0 };
+        });
+        if (data[0]?.highest_ww) {
+          h = { ww: data[0].highest_ww, pt: data[0].highest_pt, st: data[0].highest_st||[50,50], te: data[0].highest_te||100 };
+        }
+      }
+      termMap[t] = { scores: m, highest: h };
+    }
+    setAllTermData(termMap);
+    setLoadingEClass(false);
+    setShowEClass(true);
+  };
+
   return (
     <>
       <style>{`@media print{body{background:white!important;color:black!important}.no-print{display:none!important}input{border:none!important;background:transparent!important;color:black!important}table{font-size:8px}}`}</style>
@@ -205,6 +513,13 @@ export default function ClassRecord() {
               <span className="font-semibold text-blue-300">Avg: {classAvg.toFixed(0)}</span>
             </div>
             <button onClick={()=>setShowAdd(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl text-sm font-semibold transition"><Plus size={16}/>Add Learner</button>
+            <button
+              onClick={openEClassRecord}
+              disabled={loadingEClass}
+              className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-600 px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-60">
+              {loadingEClass ? <RefreshCw size={16} className="animate-spin"/> : <FileText size={16}/>}
+              E-Class Record
+            </button>
             <button onClick={()=>window.print()} className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-sm font-semibold transition"><Printer size={16}/>Print</button>
           </div>
         </div>
@@ -217,7 +532,6 @@ export default function ClassRecord() {
             <optgroup label="Senior High School">{SUBJECTS_SHS.map(s=><option key={s}>{s}</option>)}</optgroup>
           </select>
 
-          {/* TERM 1–3, not Quarter */}
           <div className="flex rounded-xl overflow-hidden border border-gray-700">
             {[1,2,3].map(t=>(
               <button key={t} onClick={()=>setTerm(t)}
@@ -236,7 +550,7 @@ export default function ClassRecord() {
 
         {/* Table */}
         {loading?(
-          <div className="flex items-center justify-center py-20 gap-3 text-gray-400"><RefreshCw size={20} className="animate-spin"/>Loading learners…</div>
+          <div className="flex items-center justify-center py-20 gap-3 text-gray-400"><RefreshCw size={20} className="animate-spin"/>Loading learners...</div>
         ):(
           <div className="px-6 pb-10 overflow-x-auto">
             <table className="w-full min-w-[1600px] text-sm border-separate border-spacing-0">
@@ -259,7 +573,7 @@ export default function ClassRecord() {
                 </tr>
                 <tr className="text-xs">
                   <td className="bg-gray-900 px-3 py-1 text-gray-600"></td>
-                  <td className="bg-gray-900 px-3 py-1 italic text-gray-600 text-xs">Highest Possible Score →</td>
+                  <td className="bg-gray-900 px-3 py-1 italic text-gray-600 text-xs">Highest Possible Score</td>
                   {highest.ww.map((v,i)=>(
                     <td key={i} className="bg-gray-900 px-1 py-1 border-l border-gray-800">
                       <input type="number" value={v||''} onChange={e=>setHighest(p=>({...p,ww:p.ww.map((x,j)=>j===i?+e.target.value:x)}))}
@@ -361,8 +675,26 @@ export default function ClassRecord() {
           </div>
         )}
       </div>
-      {showAdd&&<AddStudentModal sectionId={sectionId} onClose={()=>setShowAdd(false)}
+
+      {showAdd && <AddStudentModal sectionId={sectionId} onClose={()=>setShowAdd(false)}
         onAdd={s=>setStudents(prev=>[...prev,s].sort((a,b)=>a.full_name.localeCompare(b.full_name)))}/>}
+
+      {showEClass && (
+        <EClassRecordView
+          students={students}
+          subject={subject}
+          sectionName={sectionName}
+          gradeLevel={gradeLevel}
+          schoolName={schoolName}
+          schoolId={schoolId}
+          schoolYear={schoolYear}
+          division={division}
+          region={region}
+          adviser={adviser}
+          allTermData={allTermData}
+          onClose={() => setShowEClass(false)}
+        />
+      )}
     </>
   );
 }
