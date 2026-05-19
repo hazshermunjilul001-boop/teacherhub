@@ -8,9 +8,9 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useActiveSection } from '../../lib/useActiveSection';
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Section constants now come from useActiveSection() hook inside the component
 
@@ -35,9 +35,9 @@ type Status = 'P' | 'A' | 'L';  // Present, Absent, Late/Tardy
 interface Student { id: string; lrn: string; full_name: string; sex: string; }
 interface AttRecord { [date: string]: Status }  // date = 'YYYY-MM-DD'
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 
 function getSchoolDays(month: string, holidays: string[] = []): Date[] {
   const year = MONTH_YEAR[month];
@@ -83,9 +83,9 @@ function statusPrintChar(s?: Status) {
   return '';   // Present = blank per DepEd
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 // MAIN PAGE
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function AttendancePage() {
   const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear, adviser, schoolHead, district } = useActiveSection();
@@ -102,7 +102,7 @@ export default function AttendancePage() {
 
   const schoolDays = useMemo(() => getSchoolDays(month, holidays), [month, holidays]);
 
-  // â”€â”€ Load students â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Load students ──────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -122,7 +122,7 @@ export default function AttendancePage() {
     })();
   }, []);
 
-  // â”€â”€ Load holidays for this section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Load holidays for this section ───────────────────────────────────────────
   useEffect(() => {
     (async () => {
       const { data } = await supabase
@@ -133,7 +133,7 @@ export default function AttendancePage() {
     })();
   }, [sectionId]);
 
-  // â”€â”€ Load attendance for this month â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Load attendance for this month ─────────────────────────────────────────
   useEffect(() => {
     (async () => {
       if (!students.length) return;
@@ -154,7 +154,7 @@ export default function AttendancePage() {
     })();
   }, [students, schoolDays]);
 
-  // â”€â”€ Add holiday â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Add holiday ────────────────────────────────────────────────────────────
   const addHoliday = async () => {
     if (!holInput) return;
     const exists = holidays.includes(holInput);
@@ -174,7 +174,7 @@ export default function AttendancePage() {
       .eq('section_id', sectionId).eq('date', date);
   };
 
-  // â”€â”€ Toggle attendance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Toggle attendance ──────────────────────────────────────────────────────
   const toggle = async (sid: string, date: string) => {
     const cur = records[sid]?.[date];
     const next = cycleStatus(cur);
@@ -187,7 +187,7 @@ export default function AttendancePage() {
     setSaving(null);
   };
 
-  // â”€â”€ Mark all present for a day â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Mark all present for a day ─────────────────────────────────────────────
   const markAllPresent = async (date: string) => {
     const updates = students.map(s => ({
       student_id: s.id, section_id: sectionId, date, status: 'P' as Status,
@@ -200,7 +200,7 @@ export default function AttendancePage() {
     await supabase.from('attendance').upsert(updates, { onConflict: 'student_id,date' });
   };
 
-  // â”€â”€ Stats helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Stats helpers ──────────────────────────────────────────────────────────
   const getAbsents  = (sid: string) => schoolDays.filter(d => records[sid]?.[fmt(d)] === 'A').length;
   const getTardies  = (sid: string) => schoolDays.filter(d => records[sid]?.[fmt(d)] === 'L').length;
   const getPresents = (sid: string) => schoolDays.filter(d => {
@@ -235,9 +235,9 @@ export default function AttendancePage() {
   const mEnroll   = males.length;
   const fEnroll   = females.length;
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────────────────────
   // RENDER "” DIGITAL TRACKER VIEW
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────────────────────
   const TrackerView = () => (
     <div className="px-4 pb-10 overflow-x-auto">
       {/* Legend */}
@@ -264,7 +264,7 @@ export default function AttendancePage() {
             <th className="bg-blue-900 text-center px-2 py-2 text-blue-300">Days Present</th>
             <th className="bg-red-900 text-center px-2 py-2 text-red-300">Absences</th>
             <th className="bg-yellow-900 text-center px-2 py-2 text-yellow-300">Tardies</th>
-            <th className="bg-gray-800 text-center px-2 py-2 rounded-tr-xl">âš ï¸</th>
+            <th className="bg-gray-800 text-center px-2 py-2 rounded-tr-xl">⚠️</th>
           </tr>
         </thead>
         <tbody>
@@ -413,9 +413,9 @@ export default function AttendancePage() {
     </div>
   );
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────────────────────
   // RENDER "” SF2 PRINT VIEW (matches official DepEd format)
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────────────────────
   const SF2View = () => {
     const totalDailyAttendance = schoolDays.reduce((sum, d) => sum + dayPresents(fmt(d)), 0);
     const ada  = totalSchoolDays > 0 ? (totalDailyAttendance / totalSchoolDays) : 0;
@@ -427,13 +427,13 @@ export default function AttendancePage() {
     return (
       <div className="sf2-print bg-white text-black font-sans" style={{fontSize:'9px', minWidth:'1100px', padding:'4mm'}}>
 
-        {/* â”€â”€ TITLE â”€â”€ */}
+        {/* ── TITLE ── */}
         <div style={{textAlign:'center', marginBottom:'3px'}}>
           <div style={{fontWeight:'bold', fontSize:'11px'}}>School Form 2 (SF2) Daily Attendance Report of Learners</div>
           <div style={{fontSize:'8px'}}>(This replaces Form 1, Form 2 &amp; STS Form 4 - Absenteeism and Dropout Profile)</div>
         </div>
 
-        {/* â”€â”€ HEADER â”€â”€ */}
+        {/* ── HEADER ── */}
         <table style={{width:'100%', borderCollapse:'collapse', marginBottom:'2px', fontSize:'8px'}}>
           <tbody>
             <tr>
@@ -453,7 +453,7 @@ export default function AttendancePage() {
           </tbody>
         </table>
 
-        {/* â”€â”€ MAIN ATTENDANCE TABLE â”€â”€ */}
+        {/* ── MAIN ATTENDANCE TABLE ── */}
         <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8px'}}>
           <thead>
             <tr>
@@ -626,7 +626,7 @@ export default function AttendancePage() {
           </tbody>
         </table>
 
-        {/* â”€â”€ BOTTOM SECTION: GUIDELINES + CODES + SUMMARY â”€â”€ */}
+        {/* ── BOTTOM SECTION: GUIDELINES + CODES + SUMMARY ── */}
         <div style={{display:'flex', gap:'4px', marginTop:'4px', fontSize:'8px'}}>
 
           {/* GUIDELINES */}
@@ -813,9 +813,9 @@ export default function AttendancePage() {
     );
   };
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────────────────────
   // MAIN RETURN
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────────────────────
   return (
     <>
       <style>{`
@@ -863,17 +863,17 @@ export default function AttendancePage() {
             <div className="flex rounded-xl overflow-hidden border border-gray-700">
               <button onClick={() => setView('tracker')}
                 className={`px-4 py-2 text-sm font-medium transition ${view==='tracker'?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>
-                ðŸ“‹ Tracker
+                ✓ Tracker
               </button>
               <button onClick={() => setView('sf2')}
                 className={`px-4 py-2 text-sm font-medium transition ${view==='sf2'?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>
-                ðŸ“„ SF2 Form
+                → SF2 Form
               </button>
             </div>
 
             <button onClick={() => setShowHolModal(true)}
               className="flex items-center gap-2 bg-amber-700 hover:bg-amber-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
-              ðŸ–ï¸ Holidays {holidays.length > 0 && <span className="bg-amber-900 px-1.5 py-0.5 rounded-full text-xs">{holidays.length}</span>}
+              ⚠️ Holidays {holidays.length > 0 && <span className="bg-amber-900 px-1.5 py-0.5 rounded-full text-xs">{holidays.length}</span>}
             </button>
             <button onClick={() => window.print()}
               className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
@@ -894,7 +894,7 @@ export default function AttendancePage() {
         )}
       </div>
 
-      {/* â”€â”€ Holiday Modal â”€â”€ */}
+      {/* ── Holiday Modal ── */}
       {showHolModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-md border border-gray-700 shadow-2xl">
