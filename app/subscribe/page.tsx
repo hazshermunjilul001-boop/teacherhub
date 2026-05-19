@@ -20,7 +20,6 @@ const PLANS = [
   {
     id:       'free',
     name:     'Free',
-    monthly:  0,
     yearly:   0,
     color:    'border-gray-700',
     badge:    null,
@@ -40,8 +39,7 @@ const PLANS = [
   {
     id:       'pro',
     name:     'Teacher Pro',
-    monthly:  99,
-    yearly:   799,
+    yearly:   199,
     color:    'border-blue-500',
     badge:    '₱­ Most Popular',
     features: [
@@ -60,8 +58,7 @@ const PLANS = [
   {
     id:       'school',
     name:     'School Plan',
-    monthly:  499,
-    yearly:   3999,
+    yearly:   2999,
     color:    'border-purple-500',
     badge:    '⭐ Best for Schools',
     features: [
@@ -83,7 +80,7 @@ export default function SubscribePage() {
   const router   = useRouter();
   const { subscription, isPro, isSchool, isFree, planName, daysLeft, loading } = useSubscription();
 
-  const [billing,       setBilling]       = useState<'monthly'|'yearly'>('monthly');
+  const [billing,       setBilling]       = useState<'yearly'>('yearly');
   const [selectedPlan,  setSelectedPlan]  = useState<string|null>(null);
   const [step,          setStep]          = useState<'plans'|'payment'|'confirm'>('plans');
   const [payMethod,     setPayMethod]     = useState<'gcash'|'landbank'>('gcash');
@@ -104,7 +101,7 @@ export default function SubscribePage() {
   };
 
   const getPrice = (plan: typeof PLANS[0]) =>
-    billing === 'yearly' ? plan.yearly : plan.monthly;
+    billing === 'yearly' ? plan.yearly;
 
   const selectedPlanData = PLANS.find(p => p.id === selectedPlan);
 
@@ -113,9 +110,8 @@ export default function SubscribePage() {
     setSubmitting(true);
 
     const amount = billing === 'yearly'
-      ? PLANS.find(p=>p.id===selectedPlan)?.yearly ?? 0
-      : PLANS.find(p=>p.id===selectedPlan)?.monthly ?? 0;
-
+      ? PLANS.find(p=>p.id===selectedPlan)?.yearly ?? 0;
+      
     const { error } = await supabase.from('payment_requests').insert({
       user_id:        user.id,
       user_email:     user.email,
@@ -188,7 +184,7 @@ export default function SubscribePage() {
           <h2 className="text-3xl font-bold mb-2">Complete Payment</h2>
           <p className="text-gray-400 mb-8">
             Upgrading to <strong className="text-blue-400">{selectedPlanData.name}</strong> "”
-            ₱{price.toLocaleString()}/{billing === 'yearly' ? 'year' : 'month'}
+            ₱{price.toLocaleString()}/{billing === 'yearly' ? 'year'}
           </p>
 
           {/* Payment method toggle */}
@@ -221,7 +217,7 @@ export default function SubscribePage() {
               <div className="text-gray-400 text-sm mb-1">Amount to Send</div>
               <div className="text-4xl font-black text-white">₱{price.toLocaleString()}</div>
               <div className="text-gray-500 text-xs mt-1">
-                {selectedPlanData.name} · {billing === 'yearly' ? '1 Year' : '1 Month'}
+                {selectedPlanData.name} · {billing === 'yearly' ? '1 Year' }
               </div>
             </div>
 
@@ -302,8 +298,8 @@ export default function SubscribePage() {
 
           {/* Billing toggle */}
           <div className="flex items-center justify-center gap-4 mt-6">
-            <span className={`text-sm ${billing==='monthly'?'text-white':'text-gray-500'}`}>Monthly</span>
-            <button onClick={() => setBilling(b => b==='monthly'?'yearly':'monthly')}
+            <span className={`text-sm ${billing==='yearly'?'text-white':'text-gray-500'}`}>Yearly</span>
+            <button onClick={() => setBilling(b => b==='yearly'?'yearly':'yearly')}
               className={`w-14 h-7 rounded-full transition-colors relative ${billing==='yearly'?'bg-blue-600':'bg-gray-700'}`}>
               <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-transform ${billing==='yearly'?'translate-x-8':'translate-x-1'}`}/>
             </button>
@@ -349,10 +345,10 @@ export default function SubscribePage() {
                     ) : (
                       <>
                         <span className="text-4xl font-black text-white">₱{price.toLocaleString()}</span>
-                        <span className="text-gray-400 text-sm">/{billing==='yearly'?'year':'month'}</span>
+                        <span className="text-gray-400 text-sm">/{billing==='yearly'?'year'}</span>
                         {billing === 'yearly' && (
                           <div className="text-emerald-400 text-xs mt-1">
-                            ₱{Math.round(price/12).toLocaleString()}/month billed yearly
+                            ₱{Math.round(price/12).toLocaleString()}/year billed yearly
                           </div>
                         )}
                       </>
@@ -403,7 +399,7 @@ export default function SubscribePage() {
             <p className="text-gray-600 text-sm mt-3">
               Pay via GCash or Landbank. Activated within 24 hours. ₱{
                 getPrice(PLANS.find(p=>p.id===selectedPlan)!).toLocaleString()
-              }/{billing==='yearly'?'year':'month'}
+              }/{billing==='yearly'?'year'}
             </p>
           </div>
         )}

@@ -202,7 +202,7 @@ export default function AdminPage() {
             { label:'Pro Teachers',    value:stats.pro,           color:'from-blue-500 to-blue-700',    icon: CheckCircle },
             { label:'School Plans',    value:stats.school,        color:'from-purple-600 to-purple-800', icon: Users },
             { label:'Pending',         value:stats.pending,       color:'from-amber-600 to-amber-800',  icon: Clock },
-            { label:'Total Revenue',   value:`â‚±${stats.revenue.toLocaleString()}`, color:'from-emerald-600 to-emerald-800', icon: DollarSign },
+            { label:'Total Revenue',   value:`${stats.revenue.toLocaleString()}`, color:'from-emerald-600 to-emerald-800', icon: DollarSign },
           ].map(stat => (
             <div key={stat.label} className={`bg-gradient-to-br ${stat.color} rounded-2xl p-4 shadow-lg`}>
               <p className="text-white/70 text-xs">{stat.label}</p>
