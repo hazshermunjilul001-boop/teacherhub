@@ -146,7 +146,7 @@ export function parseSF1(fileBuffer: ArrayBuffer): SF1ParseResult {
   if (!school_name) errors.push('Could not read School Name from row 4.');
   if (!grade_level) errors.push('Could not read Grade Level — please enter manually.');
   if (!section)     errors.push('Could not read Section name — please enter manually.');
-  if (!school_year) school_year = '2025 - 2026';
+  if (!school_year) school_year = '2026 - 2027';
 
   const school: SF1School = {
     school_id,
