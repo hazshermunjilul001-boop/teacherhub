@@ -19,7 +19,7 @@ export function useActiveSection() {
     schoolId:    activeSection?.school_id   ?? '304393',
     division:    activeSection?.division    ?? 'Davao City',
     region:      activeSection?.region      ?? 'Region XI',
-    schoolYear:  activeSection?.school_year ?? '2025 - 2026',
+    schoolYear:  activeSection?.school_year ?? '2026 - 2027',
     adviser:     activeSection?.adviser     ?? '',
     schoolHead:  activeSection?.school_head  ?? '',
     district:    activeSection?.district     ?? '',
