@@ -389,14 +389,14 @@ function Dashboard({ user }: { user: any }) {
             <div className="bg-blue-950/30 border border-blue-800 rounded-2xl p-4 mb-6 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-blue-400 font-bold">⭐ Unlock All 8 Modules</span>
+                  <span className="text-blue-400 font-bold">⭐ Add More Sections</span>
                   <span className="text-xs bg-blue-900 text-blue-300 px-2 py-0.5 rounded-full">Free Plan</span>
                 </div>
-                <p className="text-gray-400 text-sm">Upgrade to Teacher Pro for SF9, SF5, MPS, Behavior Record, SF8 and more.</p>
+                <p className="text-gray-400 text-sm">Upgrade to Teacher Pro for more sections to add.</p>
               </div>
               <button onClick={() => router.push('/subscribe')}
                 className="flex-shrink-0 ml-4 flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition">
-                <CreditCard size={16}/> ₱99/mo
+                <CreditCard size={16}/> ₱199/yr
               </button>
             </div>
           )}
