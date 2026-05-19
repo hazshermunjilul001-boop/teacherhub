@@ -294,7 +294,7 @@ export default function SubscribePage() {
         {/* Hero */}
         <div className="text-center mb-10 pt-4">
           <h2 className="text-4xl font-black mb-3">
-            Built for Filipino Teachers ðŸ‡µðŸ‡­
+            Built for Filipino Teachers
           </h2>
           <p className="text-gray-400 text-lg">
             All DepEd school forms automated. Affordable for every teacher.
