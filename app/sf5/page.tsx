@@ -135,7 +135,7 @@ function computeTransmutedFromGrade(row: any): number {
 }
 
 function determineAction(failedSubjects: string[]): LearnerSF5['action'] {
-  if (failedSubjects.length === 0) return 'Promoted';
+  if (failedSubjects.length === 0) return 'Retained';
   if (failedSubjects.length <= 2)  return 'Conditionally Promoted';
   return 'Retained';
 }
