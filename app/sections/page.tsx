@@ -722,13 +722,9 @@ export default function SectionsPage() {
 
             {/* Pricing reminder */}
             <div className="flex gap-3 mb-6">
-              <div className="flex-1 bg-gray-800 rounded-xl p-3 text-center">
-                <div className="text-xs text-gray-500 mb-1">Monthly</div>
-                <div className="text-xl font-black text-white">PHP 99</div>
-              </div>
               <div className="flex-1 bg-blue-900/30 border border-blue-700 rounded-xl p-3 text-center">
-                <div className="text-xs text-emerald-400 mb-1">Save 33%</div>
-                <div className="text-xl font-black text-white">PHP 799</div>
+                <div className="text-xs text-emerald-400 mb-1">PHP 17/month billed annually</div>
+                <div className="text-xl font-black text-white">PHP 199</div>
                 <div className="text-xs text-gray-500">/year</div>
               </div>
             </div>
