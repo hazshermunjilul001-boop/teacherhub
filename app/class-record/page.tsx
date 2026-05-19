@@ -417,7 +417,13 @@ export default function ClassRecord() {
     (async()=>{
       setLoading(true);
       const {data,error}=await supabase.from('students').select('*').eq('section_id',sectionId).order('full_name');
-      if(!error&&data?.length) setStudents(data);
+      const sortByGenderThenName = (arr: Student[]) =>
+        [...arr].sort((a,b)=>{
+          const sexA=a.sex==='M'?0:1, sexB=b.sex==='M'?0:1;
+          if(sexA!==sexB) return sexA-sexB;
+          return a.full_name.localeCompare(b.full_name);
+        });
+      if(!error&&data?.length) setStudents(sortByGenderThenName(data));
       else setStudents([
         {id:'1',lrn:'129694170087',full_name:'ALVAREZ, ZEV C.',sex:'M'},
         {id:'2',lrn:'129702120162',full_name:'ARNADO, ERWIN N.',sex:'M'},
@@ -605,55 +611,75 @@ export default function ClassRecord() {
                 </tr>
               </thead>
               <tbody>
-                {students.map((student,idx)=>{
-                  const {ww,pt,st,te,avgWW,avgPT,avgTA,initial,transmuted}=compute(student.id);
-                  const desc=descriptor(transmuted);
-                  const isSaving=saving===student.id;
+                {(()=>{
                   const inp=(color:string)=>`w-14 text-center bg-transparent border border-gray-700 hover:border-${color}-600 focus:border-${color}-500 rounded py-2 text-white text-sm outline-none focus:bg-gray-900`;
-                  return (
-                    <tr key={student.id} className={`border-t border-gray-800 hover:bg-gray-900/50 transition-colors ${transmuted<75?'bg-red-950/10':''}`}>
-                      <td className="px-3 py-2 text-center text-gray-500 text-xs">{idx+1}</td>
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          {isSaving&&<RefreshCw size={12} className="animate-spin text-blue-400"/>}
-                          <span className="text-sm font-medium">{student.full_name}</span>
-                          {student.sex&&<span className="text-xs text-gray-600">{student.sex}</span>}
-                        </div>
-                        <div className="text-xs text-gray-600">{student.lrn}</div>
-                      </td>
-                      {ww.map((v,i)=>(
-                        <td key={i} className="px-1 py-1 border-l border-gray-800">
-                          <input type="number" min={0} max={highest.ww[i]} value={v||''}
-                            onChange={e=>updateScore(student.id,'ww',i,+e.target.value)} className={inp('blue')}/>
+                  const totalCols = 2 + 5 + 1 + 3 + 1 + (hasTA ? 4 : 0) + 3;
+                  const renderGroup = (group: Student[], label: string, bgClass: string) => (
+                    <>
+                      <tr>
+                        <td colSpan={totalCols} className={`px-4 py-1.5 text-xs font-bold tracking-widest uppercase border-t border-gray-700 ${bgClass}`}>
+                          {label} ({group.length})
                         </td>
-                      ))}
-                      <td className="px-2 py-2 text-center text-blue-300 text-xs border-l border-gray-800 font-mono">{avgWW.toFixed(1)}</td>
-                      {pt.map((v,i)=>(
-                        <td key={i} className="px-1 py-1 border-l border-gray-800">
-                          <input type="number" min={0} max={highest.pt[i]} value={v||''}
-                            onChange={e=>updateScore(student.id,'pt',i,+e.target.value)} className={inp('purple')}/>
-                        </td>
-                      ))}
-                      <td className="px-2 py-2 text-center text-purple-300 text-xs border-l border-gray-800 font-mono">{avgPT.toFixed(1)}</td>
-                      {hasTA&&<>
-                        {st.map((v,i)=>(
-                          <td key={i} className="px-1 py-1 border-l border-gray-800">
-                            <input type="number" min={0} max={highest.st[i]} value={v||''}
-                              onChange={e=>updateScore(student.id,'st',i,+e.target.value)} className={inp('amber')}/>
-                          </td>
-                        ))}
-                        <td className="px-1 py-1 border-l border-gray-800">
-                          <input type="number" min={0} max={highest.te} value={te||''}
-                            onChange={e=>updateScore(student.id,'te',null,+e.target.value)} className={inp('orange')}/>
-                        </td>
-                        <td className="px-2 py-2 text-center text-amber-300 text-xs border-l border-gray-800 font-mono">{avgTA.toFixed(1)}</td>
-                      </>}
-                      <td className="px-3 py-2 text-center text-gray-400 text-xs border-l border-gray-800 font-mono">{initial.toFixed(2)}</td>
-                      <td className={`px-3 py-2 text-center font-bold text-2xl border-l border-gray-800 ${transmuted>=75?'text-white':'text-red-400'}`}>{transmuted}</td>
-                      <td className={`px-3 py-2 text-center text-xs font-medium border-l border-gray-800 ${desc.color}`}>{desc.label}</td>
-                    </tr>
+                      </tr>
+                      {group.map((student,idx)=>{
+                        const {ww,pt,st,te,avgWW,avgPT,avgTA,initial,transmuted}=compute(student.id);
+                        const desc=descriptor(transmuted);
+                        const isSaving=saving===student.id;
+                        return (
+                          <tr key={student.id} className={`border-t border-gray-800 hover:bg-gray-900/50 transition-colors ${transmuted<75?'bg-red-950/10':''}`}>
+                            <td className="px-3 py-2 text-center text-gray-500 text-xs">{idx+1}</td>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-2">
+                                {isSaving&&<RefreshCw size={12} className="animate-spin text-blue-400"/>}
+                                <span className="text-sm font-medium">{student.full_name}</span>
+                                {student.sex&&<span className="text-xs text-gray-600">{student.sex}</span>}
+                              </div>
+                              <div className="text-xs text-gray-600">{student.lrn}</div>
+                            </td>
+                            {ww.map((v,i)=>(
+                              <td key={i} className="px-1 py-1 border-l border-gray-800">
+                                <input type="number" min={0} max={highest.ww[i]} value={v||''}
+                                  onChange={e=>updateScore(student.id,'ww',i,+e.target.value)} className={inp('blue')}/>
+                              </td>
+                            ))}
+                            <td className="px-2 py-2 text-center text-blue-300 text-xs border-l border-gray-800 font-mono">{avgWW.toFixed(1)}</td>
+                            {pt.map((v,i)=>(
+                              <td key={i} className="px-1 py-1 border-l border-gray-800">
+                                <input type="number" min={0} max={highest.pt[i]} value={v||''}
+                                  onChange={e=>updateScore(student.id,'pt',i,+e.target.value)} className={inp('purple')}/>
+                              </td>
+                            ))}
+                            <td className="px-2 py-2 text-center text-purple-300 text-xs border-l border-gray-800 font-mono">{avgPT.toFixed(1)}</td>
+                            {hasTA&&<>
+                              {st.map((v,i)=>(
+                                <td key={i} className="px-1 py-1 border-l border-gray-800">
+                                  <input type="number" min={0} max={highest.st[i]} value={v||''}
+                                    onChange={e=>updateScore(student.id,'st',i,+e.target.value)} className={inp('amber')}/>
+                                </td>
+                              ))}
+                              <td className="px-1 py-1 border-l border-gray-800">
+                                <input type="number" min={0} max={highest.te} value={te||''}
+                                  onChange={e=>updateScore(student.id,'te',null,+e.target.value)} className={inp('orange')}/>
+                              </td>
+                              <td className="px-2 py-2 text-center text-amber-300 text-xs border-l border-gray-800 font-mono">{avgTA.toFixed(1)}</td>
+                            </>}
+                            <td className="px-3 py-2 text-center text-gray-400 text-xs border-l border-gray-800 font-mono">{initial.toFixed(2)}</td>
+                            <td className={`px-3 py-2 text-center font-bold text-2xl border-l border-gray-800 ${transmuted>=75?'text-white':'text-red-400'}`}>{transmuted}</td>
+                            <td className={`px-3 py-2 text-center text-xs font-medium border-l border-gray-800 ${desc.color}`}>{desc.label}</td>
+                          </tr>
+                        );
+                      })}
+                    </>
                   );
-                })}
+                  const males   = students.filter(s=>s.sex==='M');
+                  const females = students.filter(s=>s.sex==='F');
+                  const others  = students.filter(s=>s.sex!=='M'&&s.sex!=='F');
+                  return <>
+                    {males.length>0   && renderGroup(males,   'Male',   'bg-blue-950/40 text-blue-300')}
+                    {females.length>0 && renderGroup(females, 'Female', 'bg-pink-950/40 text-pink-300')}
+                    {others.length>0  && renderGroup(others,  'Other',  'bg-gray-800/60 text-gray-400')}
+                  </>;
+                })()}
                 {students.length>0&&(
                   <tr className="border-t-2 border-gray-700 bg-gray-900">
                     <td></td>
@@ -677,7 +703,11 @@ export default function ClassRecord() {
       </div>
 
       {showAdd && <AddStudentModal sectionId={sectionId} onClose={()=>setShowAdd(false)}
-        onAdd={s=>setStudents(prev=>[...prev,s].sort((a,b)=>a.full_name.localeCompare(b.full_name)))}/>}
+        onAdd={s=>setStudents(prev=>[...prev,s].sort((a,b)=>{
+          const sexA=a.sex==='M'?0:1, sexB=b.sex==='M'?0:1;
+          if(sexA!==sexB) return sexA-sexB;
+          return a.full_name.localeCompare(b.full_name);
+        }))}/>}
 
       {showEClass && (
         <EClassRecordView
