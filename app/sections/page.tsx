@@ -8,11 +8,12 @@ import {
 import { supabase } from '../../lib/supabase';
 import { parseSF1, type SF1ParseResult } from '../../lib/parseSF1';
 import { useSection, type Section } from '../../context/SectionContext';
+import { useSubscription } from '../../lib/useSubscription';
 import * as XLSX from 'xlsx';
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 // BLANK SECTION FORM
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 
 const BLANK: Partial<Section> = {
   name:        '',
@@ -28,9 +29,9 @@ const BLANK: Partial<Section> = {
   school_head: '',
 };
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 // SF1 IMPORT MODAL
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 
 function ImportModal({
   onClose, onImported,
@@ -66,7 +67,7 @@ function ImportModal({
   const handleSave = async () => {
     if (!result) return;
     setStage('saving');
-    setProgress('Getting user accountâ€¦');
+    setProgress('Getting user account…');
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { alert('Not logged in.'); setStage('preview'); return; }
@@ -87,7 +88,7 @@ function ImportModal({
       district:     (editSch.district ?? '').trim(),
     };
 
-    setProgress('Creating sectionâ€¦');
+    setProgress('Creating section…');
     const { data: newSection, error: secErr } = await supabase
       .from('sections')
       .insert(sectionData)
@@ -101,7 +102,7 @@ function ImportModal({
     }
 
     // Insert students
-    setProgress(`Importing ${result.students.length} studentsâ€¦`);
+    setProgress(`Importing ${result.students.length} students…`);
     const studentRows = result.students.map(s => ({
       id:         crypto.randomUUID(),
       section_id: newSection.id,
@@ -118,7 +119,7 @@ function ImportModal({
       if (error) {
         console.error('Student insert error:', error);
       }
-      setProgress(`Imported ${Math.min(i + 50, studentRows.length)} of ${studentRows.length} studentsâ€¦`);
+      setProgress(`Imported ${Math.min(i + 50, studentRows.length)} of ${studentRows.length} students…`);
     }
 
     setProgress('Done!');
@@ -167,9 +168,9 @@ function ImportModal({
                 </div>
               )}
 
-              {/* School info â€” editable */}
+              {/* School info — editable */}
               <div>
-                <h4 className="font-semibold text-white mb-3">ðŸ“ School Information <span className="text-gray-500 text-xs font-normal">(edit if incorrect)</span></h4>
+                <h4 className="font-semibold text-white mb-3">📍 School Information <span className="text-gray-500 text-xs font-normal">(edit if incorrect)</span></h4>
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { label:'School Name',  key:'name',     full: true },
@@ -213,9 +214,9 @@ function ImportModal({
               {/* Student preview */}
               <div>
                 <h4 className="font-semibold text-white mb-3">
-                  ðŸ‘¥ Students Found: <span className="text-blue-400">{result.students.length}</span>
+                  👥 Students Found: <span className="text-blue-400">{result.students.length}</span>
                   <span className="text-gray-500 text-xs font-normal ml-2">
-                    ({result.students.filter(s=>s.sex==='M').length}M Â· {result.students.filter(s=>s.sex==='F').length}F)
+                    ({result.students.filter(s=>s.sex==='M').length}M · {result.students.filter(s=>s.sex==='F').length}F)
                   </span>
                 </h4>
                 <div className="bg-gray-800 rounded-xl overflow-hidden max-h-52 overflow-y-auto">
@@ -249,7 +250,7 @@ function ImportModal({
               <div className="flex gap-3 pt-2">
                 <button onClick={() => { setStage('upload'); setResult(null); }}
                   className="flex-1 py-3 rounded-xl border border-gray-600 hover:bg-gray-800 transition text-sm">
-                  â† Upload Different File
+                  ← Upload Different File
                 </button>
                 <button onClick={handleSave}
                   className="flex-2 flex-grow-[2] py-3 rounded-xl bg-blue-600 hover:bg-blue-700 font-semibold transition text-sm flex items-center justify-center gap-2">
@@ -264,7 +265,7 @@ function ImportModal({
             <div className="text-center py-12">
               <RefreshCw size={40} className="animate-spin text-blue-400 mx-auto mb-4"/>
               <p className="text-white font-semibold text-lg">{progress}</p>
-              <p className="text-gray-400 text-sm mt-2">Please wait, do not close this windowâ€¦</p>
+              <p className="text-gray-400 text-sm mt-2">Please wait, do not close this window…</p>
             </div>
           )}
         </div>
@@ -273,9 +274,9 @@ function ImportModal({
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 // CREATE MANUAL SECTION MODAL
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 
 function CreateManualModal({
   onClose, onCreated,
@@ -340,7 +341,7 @@ function CreateManualModal({
             <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-600 hover:bg-gray-800 transition text-sm">Cancel</button>
             <button onClick={save} disabled={saving || !form.name || !form.grade_level}
               className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 font-semibold transition text-sm disabled:opacity-60">
-              {saving ? 'Creatingâ€¦' : 'Create Section'}
+              {saving ? 'Creating…' : 'Create Section'}
             </button>
           </div>
         </div>
@@ -349,9 +350,9 @@ function CreateManualModal({
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 // EDIT SECTION MODAL
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 
 function EditSectionModal({
   section, onClose, onUpdated,
@@ -390,7 +391,7 @@ function EditSectionModal({
       <div className="bg-gray-900 rounded-2xl w-full max-w-lg border border-gray-700 shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-800">
           <h3 className="text-xl font-bold">Edit Section</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition">âœ•</button>
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition">✕</button>
         </div>
         <div className="p-6 space-y-4">
           {[
@@ -415,7 +416,7 @@ function EditSectionModal({
 
           {/* School head highlight */}
           <div className="bg-amber-950/30 border border-amber-800 rounded-xl p-3 text-xs text-amber-300">
-            ðŸ’¡ The <strong>School Head / Principal</strong> name appears on SF2, SF8, SF5, and SF9 signature lines.
+            💡 The <strong>School Head / Principal</strong> name appears on SF2, SF8, SF5, and SF9 signature lines.
             Make sure to fill this in before printing any school forms.
           </div>
 
@@ -426,7 +427,7 @@ function EditSectionModal({
             </button>
             <button onClick={save} disabled={saving || !form.name || !form.grade_level}
               className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 font-semibold transition text-sm disabled:opacity-60">
-              {saving ? 'Savingâ€¦' : 'Save Changes'}
+              {saving ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
         </div>
@@ -435,12 +436,14 @@ function EditSectionModal({
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 // MAIN PAGE
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function SectionsPage() {
   const { sections, activeSection, setActiveSection, loadSections } = useSection();
+  const { isFree, maxSections } = useSubscription();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showImport, setShowImport]   = useState(false);
   const [showManual, setShowManual]   = useState(false);
   const [showEdit,   setShowEdit]     = useState(false);
@@ -495,11 +498,23 @@ export default function SectionsPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={() => setShowManual(true)}
+            <button onClick={() => {
+                if (isFree && sections.length >= maxSections) {
+                  setShowUpgradeModal(true);
+                } else {
+                  setShowManual(true);
+                }
+              }}
               className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
               <Plus size={16}/> Create Manually
             </button>
-            <button onClick={() => setShowImport(true)}
+            <button onClick={() => {
+                if (isFree && sections.length >= maxSections) {
+                  setShowUpgradeModal(true);
+                } else {
+                  setShowImport(true);
+                }
+              }}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl text-sm font-semibold transition">
               <Upload size={16}/> Import SF1 from LIS
             </button>
@@ -507,6 +522,40 @@ export default function SectionsPage() {
         </div>
 
         <div className="p-6">
+
+          {/* Plan indicator banner */}
+          {isFree && (
+            <div className={`flex items-center justify-between rounded-2xl px-5 py-4 mb-6 border ${
+              sections.length >= maxSections
+                ? 'bg-red-950/30 border-red-800'
+                : 'bg-amber-950/30 border-amber-800'
+            }`}>
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">
+                  {sections.length >= maxSections ? '🔒' : '📋'}
+                </span>
+                <div>
+                  <div className={`font-semibold text-sm ${
+                    sections.length >= maxSections ? 'text-red-400' : 'text-amber-400'
+                  }`}>
+                    Free Plan &mdash; {sections.length}/{maxSections} section used
+                  </div>
+                  <div className="text-gray-400 text-xs mt-0.5">
+                    {sections.length >= maxSections
+                      ? 'You have reached your section limit. Upgrade to add more sections.'
+                      : 'You can add 1 section on the Free plan. Upgrade for unlimited sections.'
+                    }
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => window.location.href = '/subscribe'}
+                className="flex-shrink-0 ml-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition">
+                Upgrade &rarr;
+              </button>
+            </div>
+          )}
+
           {sections.length === 0 ? (
             /* Empty state */
             <div className="text-center py-20">
@@ -517,11 +566,23 @@ export default function SectionsPage() {
                 or create one manually.
               </p>
               <div className="flex gap-4 justify-center">
-                <button onClick={() => setShowManual(true)}
+                <button onClick={() => {
+                    if (isFree && sections.length >= maxSections) {
+                      setShowUpgradeModal(true);
+                    } else {
+                      setShowManual(true);
+                    }
+                  }}
                   className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-6 py-3 rounded-2xl font-semibold transition">
                   <Plus size={18}/> Create Manually
                 </button>
-                <button onClick={() => setShowImport(true)}
+                <button onClick={() => {
+                    if (isFree && sections.length >= maxSections) {
+                      setShowUpgradeModal(true);
+                    } else {
+                      setShowImport(true);
+                    }
+                  }}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-2xl font-semibold transition">
                   <Upload size={18}/> Import SF1 from LIS
                 </button>
@@ -530,7 +591,7 @@ export default function SectionsPage() {
           ) : (
             <div>
               <p className="text-gray-400 text-sm mb-6">
-                Click a section card to make it the <strong className="text-white">active section</strong> â€” all modules will use that section's data.
+                Click a section card to make it the <strong className="text-white">active section</strong> — all modules will use that section's data.
                 Currently active: <span className="text-blue-400 font-semibold">{activeSection?.name ?? 'None'}</span>
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -562,7 +623,7 @@ export default function SectionsPage() {
 
                       <div className="mt-4 space-y-1">
                         <div className="flex items-center gap-2 text-xs text-gray-400">
-                          <Users size={12}/> {section.student_count ?? 'â€”'} students
+                          <Users size={12}/> {section.student_count ?? '—'} students
                         </div>
                         {section.school_name && (
                           <div className="text-xs text-gray-500 truncate">{section.school_name}</div>
@@ -571,7 +632,7 @@ export default function SectionsPage() {
                           <div className="text-xs text-gray-500">{section.adviser}</div>
                         )}
                         {section.school_head && (
-                          <div className="text-xs text-gray-500">ðŸ« {section.school_head}</div>
+                          <div className="text-xs text-gray-500">🏫 {section.school_head}</div>
                         )}
                       </div>
 
@@ -594,10 +655,25 @@ export default function SectionsPage() {
                 })}
 
                 {/* Add more card */}
-                <button onClick={() => setShowImport(true)}
+                <button onClick={() => {
+                    if (isFree && sections.length >= maxSections) {
+                      setShowUpgradeModal(true);
+                    } else {
+                      setShowImport(true);
+                    }
+                  }}
                   className="rounded-2xl border-2 border-dashed border-gray-700 hover:border-blue-600 p-5 flex flex-col items-center justify-center gap-3 text-gray-500 hover:text-blue-400 transition-all min-h-[180px]">
                   <Upload size={28}/>
-                  <span className="text-sm font-medium">Import Another SF1</span>
+                  <span className="text-sm font-medium">
+                    {isFree && sections.length >= maxSections
+                      ? 'Upgrade to Add More'
+                      : 'Import Another SF1'}
+                  </span>
+                  {isFree && sections.length >= maxSections && (
+                    <span className="text-xs bg-amber-900/50 text-amber-400 px-2 py-1 rounded-full">
+                      Free plan: 1 section only
+                    </span>
+                  )}
                 </button>
               </div>
             </div>
@@ -607,6 +683,68 @@ export default function SectionsPage() {
 
       {showImport && <ImportModal onClose={() => setShowImport(false)} onImported={handleImported}/>}
       {showManual && <CreateManualModal onClose={() => setShowManual(false)} onCreated={handleCreated}/>}
+
+      {/* Upgrade Modal — shown when free user tries to add more than 1 section */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-2xl w-full max-w-md border border-amber-800 shadow-2xl p-8 text-center">
+            <div className="w-16 h-16 bg-amber-900/40 rounded-full flex items-center justify-center mx-auto mb-5">
+              <span className="text-3xl">🔒</span>
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-2">Section Limit Reached</h3>
+            <p className="text-gray-400 mb-2">
+              The <span className="text-white font-semibold">Free plan</span> allows only{' '}
+              <span className="text-amber-400 font-bold">1 section</span>.
+            </p>
+            <p className="text-gray-400 text-sm mb-6">
+              Upgrade to <span className="text-blue-400 font-semibold">Teacher Pro</span> to add
+              unlimited sections — perfect for teachers with multiple class loads.
+            </p>
+
+            {/* What they unlock */}
+            <div className="bg-gray-800 rounded-2xl p-4 mb-6 text-left text-sm space-y-2">
+              <div className="text-gray-300 font-semibold mb-2">Teacher Pro unlocks:</div>
+              {[
+                'Unlimited sections (all your class loads)',
+                'Unlimited students per section',
+                'SF9 Report Card generator',
+                'SF5 / LIS Export',
+                'MPS & Item Analysis',
+                'SF8 Health & Nutrition',
+                'Behavior Record',
+                'Subject Teacher Sharing',
+              ].map(f => (
+                <div key={f} className="flex items-center gap-2 text-gray-300">
+                  <span className="text-emerald-400 font-bold flex-shrink-0">+</span> {f}
+                </div>
+              ))}
+            </div>
+
+            {/* Pricing reminder */}
+            <div className="flex gap-3 mb-6">
+              <div className="flex-1 bg-gray-800 rounded-xl p-3 text-center">
+                <div className="text-xs text-gray-500 mb-1">Monthly</div>
+                <div className="text-xl font-black text-white">PHP 99</div>
+              </div>
+              <div className="flex-1 bg-blue-900/30 border border-blue-700 rounded-xl p-3 text-center">
+                <div className="text-xs text-emerald-400 mb-1">Save 33%</div>
+                <div className="text-xl font-black text-white">PHP 799</div>
+                <div className="text-xs text-gray-500">/year</div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => { setShowUpgradeModal(false); window.location.href = '/subscribe'; }}
+              className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 rounded-2xl font-bold transition mb-3">
+              Upgrade to Teacher Pro
+            </button>
+            <button onClick={() => setShowUpgradeModal(false)}
+              className="w-full py-3 text-gray-500 hover:text-gray-300 transition text-sm">
+              Maybe later
+            </button>
+          </div>
+        </div>
+      )}
       {showEdit && editTarget && (
         <EditSectionModal
           section={editTarget}
