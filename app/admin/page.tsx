@@ -185,7 +185,7 @@ export default function AdminPage() {
             <ArrowLeft size={20}/>
           </button>
           <div>
-            <h1 className="text-xl font-bold">TeacherHub PH "” Admin</h1>
+            <h1 className="text-xl font-bold">TeacherHub PH Admin</h1>
             <p className="text-gray-500 text-xs">Payment & Subscription Management</p>
           </div>
         </div>

@@ -507,8 +507,8 @@ export default function SF5Page() {
           </div>
           <div className="flex items-center gap-3">
             <div className="flex rounded-xl overflow-hidden border border-gray-700">
-              <button onClick={() => setView('table')} className={`px-4 py-2 text-sm font-medium transition ${view==='table'?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>ðŸ“Š Table</button>
-              <button onClick={() => setView('sf5')}   className={`px-4 py-2 text-sm font-medium transition ${view==='sf5'?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>ðŸ“„ SF5 Form</button>
+              <button onClick={() => setView('table')} className={`px-4 py-2 text-sm font-medium transition ${view==='table'?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>⭐ Table</button>
+              <button onClick={() => setView('sf5')}   className={`px-4 py-2 text-sm font-medium transition ${view==='sf5'?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>⭐ SF5 Form</button>
             </div>
             <button onClick={exportCSV}
               className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
