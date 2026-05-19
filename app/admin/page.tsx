@@ -214,9 +214,9 @@ export default function AdminPage() {
         {/* Tabs */}
         <div className="flex gap-1 mb-6 border-b border-gray-800">
           {[
-            { key:'pending',     label:`â³ Pending (${pendingReqs.length})` },
-            { key:'all',         label:'ðŸ“‹ All Requests' },
-            { key:'subscribers', label:'ðŸ‘¥ Subscribers' },
+            { key:'pending',     label:`⭐ Pending (${pendingReqs.length})` },
+            { key:'all',         label:'⭐‹ All Requests' },
+            { key:'subscribers', label:'⭐ Subscribers' },
           ].map(tab => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key as any)}
               className={`px-5 py-3 text-sm font-medium border-b-2 transition ${
