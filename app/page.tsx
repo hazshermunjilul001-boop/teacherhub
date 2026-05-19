@@ -310,7 +310,7 @@ function Dashboard({ user }: { user: any }) {
             {isFree && (
               <button onClick={() => router.push('/subscribe')}
                 className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 hover:text-blue-300 transition text-xs font-semibold border border-blue-800">
-                ⭐ Upgrade to Pro — ₱99/mo
+                ⭐ Upgrade to Pro — ₱199/yr
               </button>
             )}
             <button onClick={() => router.push('/sections')}

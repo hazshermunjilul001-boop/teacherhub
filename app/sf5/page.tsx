@@ -542,7 +542,7 @@ export default function SF5Page() {
               <div className="bg-gradient-to-br from-amber-600 to-amber-800 rounded-2xl p-5">
                 <p className="text-white/70 text-sm">Conditionally Promoted</p>
                 <p className="text-4xl font-bold text-white">{conditional}</p>
-                <p className="text-white/60 text-xs">1"“2 failed subjects</p>
+                <p className="text-white/60 text-xs">1 or 2 failed subjects</p>
               </div>
               <div className="bg-gradient-to-br from-red-600 to-red-800 rounded-2xl p-5">
                 <p className="text-white/70 text-sm">Retained</p>
