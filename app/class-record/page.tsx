@@ -73,13 +73,92 @@ const calcAvg = (scores: number[], highs: number[]) => {
   return cnt > 0 ? tot / cnt : 0;
 };
 
-interface Student { id: string; lrn: string; full_name: string; sex?: string; }
+type StudentStatus = 'active' | 'dropped' | 'transferred';
+interface Student { id: string; lrn: string; full_name: string; sex?: string; status?: StudentStatus; status_date?: string; status_reason?: string; }
 interface Highest { ww: number[]; pt: number[]; st: number[]; te: number; }
 interface Scores  { ww: Record<number,number>; pt: Record<number,number>; st: Record<number,number>; te: number; }
 interface TermData { scores: Record<string, Scores>; highest: Highest; }
 
-function AddStudentModal({ onClose, onAdd, sectionId }:
-  { onClose:()=>void; onAdd:(s:Student)=>void; sectionId:string }) {
+// ── STUDENT STATUS MODAL ──────────────────────────────────────────────────────
+function StudentStatusModal({ student, onClose, onUpdate }: {
+  student: Student;
+  onClose: () => void;
+  onUpdate: (updated: Student) => void;
+}) {
+  const current = student.status || 'active';
+  const [status, setStatus] = useState<StudentStatus>(current);
+  const [date, setDate] = useState(student.status_date || new Date().toISOString().slice(0,10));
+  const [reason, setReason] = useState(student.status_reason || '');
+  const [saving, setSaving] = useState(false);
+
+  const statusConfig = {
+    active:      { label: 'Active',      bg: 'bg-emerald-600', ring: 'ring-emerald-500', icon: '✓', desc: 'Student is currently enrolled and attending.' },
+    dropped:     { label: 'Dropped',     bg: 'bg-red-600',     ring: 'ring-red-500',     icon: '✕', desc: 'Student stopped schooling / out-of-school youth.' },
+    transferred: { label: 'Transferred', bg: 'bg-amber-500',   ring: 'ring-amber-400',   icon: '→', desc: 'Student transferred to another school.' },
+  };
+
+  const save = async () => {
+    setSaving(true);
+    const updates = { status, status_date: status === 'active' ? null : date, status_reason: status === 'active' ? null : reason.trim() || null };
+    const { error } = await supabase.from('students').update(updates).eq('id', student.id);
+    if (error) { alert('Error: ' + error.message); setSaving(false); return; }
+    onUpdate({ ...student, ...updates });
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-md border border-gray-700 shadow-2xl" onClick={e=>e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-lg font-bold text-white">{student.full_name}</h3>
+            <p className="text-xs text-gray-400 mt-0.5">LRN: {student.lrn} · {student.sex === 'M' ? 'Male' : 'Female'}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition"><X size={20}/></button>
+        </div>
+
+        <p className="text-xs text-gray-400 uppercase tracking-widest mb-3 font-semibold">Learner Status</p>
+        <div className="grid grid-cols-3 gap-2 mb-5">
+          {(['active','dropped','transferred'] as StudentStatus[]).map(s => {
+            const c = statusConfig[s];
+            const active = status === s;
+            return (
+              <button key={s} onClick={() => setStatus(s)}
+                className={`flex flex-col items-center gap-1.5 py-4 px-2 rounded-xl border-2 transition-all ${active ? `${c.bg} border-transparent text-white` : 'border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white'}`}>
+                <span className="text-xl font-bold">{c.icon}</span>
+                <span className="text-xs font-semibold">{c.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-gray-500 mb-4">{statusConfig[status].desc}</p>
+
+        {status !== 'active' && (
+          <div className="space-y-3 mb-5">
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Effectivity Date</label>
+              <input type="date" value={date} onChange={e=>setDate(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white text-sm"/>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Reason <span className="text-gray-600">(optional)</span></label>
+              <input value={reason} onChange={e=>setReason(e.target.value)} placeholder={status==='dropped'?'e.g. Health reasons, work, etc.':'e.g. Transferred to ABC School'}
+                className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white text-sm"/>
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-600 hover:bg-gray-800 transition text-sm">Cancel</button>
+          <button onClick={save} disabled={saving}
+            className={`flex-1 py-2.5 rounded-xl font-semibold transition text-sm disabled:opacity-60 ${statusConfig[status].bg} text-white hover:opacity-90`}>
+            {saving ? 'Saving...' : 'Save Status'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
   const [lrn,setLrn]=useState(''); const [name,setName]=useState('');
   const [sex,setSex]=useState('M'); const [saving,setSaving]=useState(false);
   const save = async () => {
@@ -119,7 +198,7 @@ function AddStudentModal({ onClose, onAdd, sectionId }:
 // ── E-CLASS RECORD PRINT VIEW ─────────────────────────────────────────────────
 function EClassRecordView({
   students, subject, sectionName, gradeLevel, schoolName, schoolId,
-  schoolYear, division, region, adviser, allTermData, currentTerm, onClose,
+  schoolYear, division, region, adviser, allTermData, onClose,
 }: {
   students: Student[];
   subject: string;
@@ -127,105 +206,40 @@ function EClassRecordView({
   schoolId: string; schoolYear: string; division: string;
   region: string; adviser: string;
   allTermData: Record<number, TermData>;
-  currentTerm: number;
   onClose: () => void;
 }) {
   const weights = SUBJECT_WEIGHTS[subject] ?? { ww: 0.25, pt: 0.50, ta: 0.25 };
   const hasTA = (weights.ta ?? 0) > 0;
 
   const computeTerm = (sid: string, termNum: number) => {
-    const termData = allTermData[termNum];
-    if (!termData) return { transmuted: 0, initial: 0, ww: [], pt: [], st: [], te: 0, avgWW: 0, avgPT: 0, avgTA: 0 };
-    const s = termData.scores[sid] || { ww: {}, pt: {}, st: {}, te: 0 };
+    const td = allTermData[termNum];
+    if (!td) return { transmuted: 0, initial: 0 };
+    const s = td.scores[sid] || { ww: {}, pt: {}, st: {}, te: 0 };
     const ww = Array.from({ length: 5 }, (_, i) => s.ww?.[i] ?? 0);
     const pt = Array.from({ length: 3 }, (_, i) => s.pt?.[i] ?? 0);
     const st = Array.from({ length: 2 }, (_, i) => s.st?.[i] ?? 0);
     const te = s.te ?? 0;
-    const avgWW = calcAvg(ww, termData.highest.ww);
-    const avgPT = calcAvg(pt, termData.highest.pt);
-    const avgTA = calcAvg([...st, te], [...termData.highest.st, termData.highest.te]);
+    const avgWW = calcAvg(ww, td.highest.ww);
+    const avgPT = calcAvg(pt, td.highest.pt);
+    const avgTA = calcAvg([...st, te], [...td.highest.st, td.highest.te]);
     const initial = avgWW * weights.ww + avgPT * weights.pt + avgTA * (weights.ta ?? 0.25);
     return { transmuted: transmute(initial), initial, ww, pt, st, te, avgWW, avgPT, avgTA };
   };
 
-  // shared cell styles
-  const cs = { border: '1px solid #aaa', padding: '2px 4px', fontSize: '8px', textAlign: 'center' as const };
-  const hs = { ...cs, background: '#d9e1f2', fontWeight: 'bold' as const };
-
+  const td = { border: '1px solid #666', padding: '2px 4px', fontSize: '8px', textAlign: 'center' as const };
+  const th = { ...td, background: '#e8e8e8', fontWeight: 'bold' as const };
   const males   = students.filter(s => s.sex === 'M');
   const females = students.filter(s => s.sex === 'F');
-  const allStudents = [...males, ...females];
 
-  // ── Shared header ────────────────────────────────────────────────────────
-  const renderHeader = (termLabel: string) => (
-    <>
-      <div style={{ textAlign: 'center', marginBottom: '4px' }}>
-        <div style={{ fontWeight: 'bold', fontSize: '13px', letterSpacing: '1px' }}>CLASS RECORD</div>
-        <div style={{ fontSize: '8px', color: '#555' }}>(Waiting for the Official DepEd Order)</div>
-      </div>
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '6px', fontSize: '8px' }}>
-        <tbody>
-          <tr>
-            <td style={{ ...cs, textAlign: 'left' }}><strong>REGION:</strong> {region}</td>
-            <td style={{ ...cs, textAlign: 'left' }}><strong>DIVISION:</strong> {division}</td>
-            <td style={{ ...cs, textAlign: 'left' }}><strong>SCHOOL ID:</strong> {schoolId}</td>
-            <td style={{ ...cs, textAlign: 'left' }}><strong>SCHOOL YEAR:</strong> {schoolYear || '2026-2027'}</td>
-          </tr>
-          <tr>
-            <td colSpan={2} style={{ ...cs, textAlign: 'left' }}><strong>SCHOOL NAME:</strong> {schoolName}</td>
-            <td style={{ ...cs, textAlign: 'left' }}><strong>GRADE & SECTION:</strong> {gradeLevel} — {sectionName}</td>
-            <td style={{ ...cs, textAlign: 'left' }}><strong>SUBJECT:</strong> {subject}</td>
-          </tr>
-          <tr>
-            <td style={{ ...cs, textAlign: 'left' }}><strong>TERM:</strong> {termLabel}</td>
-            <td style={{ ...cs, textAlign: 'left' }}><strong>TEACHER:</strong> {adviser?.toUpperCase()}</td>
-            <td colSpan={2} style={{ ...cs, textAlign: 'left' }}>
-              <strong>WEIGHTS:</strong> WW {(weights.ww*100).toFixed(0)}% | PT {(weights.pt*100).toFixed(0)}%
-              {hasTA ? ` | TA ${((weights.ta??0)*100).toFixed(0)}%` : ''}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </>
-  );
-
-  // ── Signatures ───────────────────────────────────────────────────────────
-  const renderSignatures = () => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '14px', fontSize: '8px' }}>
-      <div style={{ textAlign: 'center', minWidth: '200px' }}>
-        <div style={{ fontWeight: 'bold', borderTop: '1px solid black', paddingTop: '2px', marginTop: '24px' }}>
-          {adviser?.toUpperCase()}
-        </div>
-        <div>Subject Teacher</div>
-      </div>
-      <div style={{ textAlign: 'center', minWidth: '200px' }}>
-        <div style={{ borderTop: '1px solid black', paddingTop: '2px', marginTop: '24px' }}>________________________________</div>
-        <div>School Head</div>
-      </div>
-      <div style={{ textAlign: 'center', minWidth: '200px' }}>
-        <div style={{ borderTop: '1px solid black', paddingTop: '2px', marginTop: '24px' }}>________________________________</div>
-        <div>Date</div>
-      </div>
-    </div>
-  );
-
-  // ── Class record table for one term ─────────────────────────────────────
   const renderTermTable = (termNum: number) => {
     const termData = allTermData[termNum];
-    if (!termData) return (
-      <div style={{ fontSize: '9px', color: '#999', padding: '8px', border: '1px solid #ddd' }}>
-        No data saved yet for Term {termNum}.
-      </div>
-    );
+    if (!termData) return <div style={{ fontSize: '9px', color: '#999', padding: '4px' }}>No data for Term {termNum}</div>;
     const { highest } = termData;
 
     const renderGroup = (group: Student[], label: string) => (
       <>
         <tr>
-          <td
-            colSpan={2 + 5 + 1 + 3 + 1 + (hasTA ? 4 : 0) + 3}
-            style={{ ...cs, background: label === 'MALE' ? '#dbeafe' : '#fce7f3', fontWeight: 'bold', textAlign: 'left', padding: '3px 6px' }}
-          >
+          <td colSpan={hasTA ? 20 : 16} style={{ ...td, background: label === 'MALE' ? '#dbeafe' : '#fce7f3', fontWeight: 'bold', textAlign: 'left' }}>
             {label}
           </td>
         </tr>
@@ -233,21 +247,21 @@ function EClassRecordView({
           const c = computeTerm(student.id, termNum) as any;
           const desc = descriptor(c.transmuted);
           return (
-            <tr key={student.id} style={{ background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-              <td style={cs}>{idx + 1}</td>
-              <td style={{ ...cs, textAlign: 'left', minWidth: '150px', whiteSpace: 'nowrap' }}>{student.full_name}</td>
-              {(c.ww || [0,0,0,0,0]).map((v: number, i: number) => <td key={i} style={cs}>{v || ''}</td>)}
-              <td style={{ ...cs, background: '#dbeafe', fontWeight: 'bold' }}>{c.avgWW?.toFixed(1) || ''}</td>
-              {(c.pt || [0,0,0]).map((v: number, i: number) => <td key={i} style={cs}>{v || ''}</td>)}
-              <td style={{ ...cs, background: '#ede9fe', fontWeight: 'bold' }}>{c.avgPT?.toFixed(1) || ''}</td>
+            <tr key={student.id} style={{ background: idx % 2 === 0 ? 'white' : '#f9fafb' }}>
+              <td style={td}>{idx + 1}</td>
+              <td style={{ ...td, textAlign: 'left', minWidth: '140px' }}>{student.full_name}</td>
+              {(c.ww || [0,0,0,0,0]).map((v: number, i: number) => <td key={i} style={td}>{v || ''}</td>)}
+              <td style={{ ...td, background: '#dbeafe' }}>{c.avgWW?.toFixed(1) || ''}</td>
+              {(c.pt || [0,0,0]).map((v: number, i: number) => <td key={i} style={td}>{v || ''}</td>)}
+              <td style={{ ...td, background: '#ede9fe' }}>{c.avgPT?.toFixed(1) || ''}</td>
               {hasTA && <>
-                {(c.st || [0,0]).map((v: number, i: number) => <td key={i} style={cs}>{v || ''}</td>)}
-                <td style={cs}>{c.te || ''}</td>
-                <td style={{ ...cs, background: '#fef3c7', fontWeight: 'bold' }}>{c.avgTA?.toFixed(1) || ''}</td>
+                {(c.st || [0,0]).map((v: number, i: number) => <td key={i} style={td}>{v || ''}</td>)}
+                <td style={td}>{c.te || ''}</td>
+                <td style={{ ...td, background: '#fef3c7' }}>{c.avgTA?.toFixed(1) || ''}</td>
               </>}
-              <td style={{ ...cs, background: '#f0fdf4' }}>{c.initial?.toFixed(2) || ''}</td>
-              <td style={{ ...cs, fontWeight: 'bold', fontSize: '10px', color: c.transmuted >= 75 ? '#166534' : '#991b1b' }}>{c.transmuted || ''}</td>
-              <td style={{ ...cs, fontSize: '7px' }}>{desc.short}</td>
+              <td style={{ ...td, background: '#f0fdf4' }}>{c.initial?.toFixed(2) || ''}</td>
+              <td style={{ ...td, fontWeight: 'bold', fontSize: '9px', color: c.transmuted >= 75 ? '#166534' : '#991b1b' }}>{c.transmuted || ''}</td>
+              <td style={{ ...td, fontSize: '7px' }}>{desc.short}</td>
             </tr>
           );
         })}
@@ -255,34 +269,30 @@ function EClassRecordView({
     );
 
     return (
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8px', marginBottom: '6px' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8px', marginBottom: '4px' }}>
         <thead>
           <tr>
-            <th style={hs} rowSpan={2}>#</th>
-            <th style={{ ...hs, textAlign: 'left' }} rowSpan={2}>LEARNERS' NAMES</th>
-            <th style={{ ...hs, background: '#bfdbfe' }} colSpan={5}>
-              WRITTEN / ORAL WORKS ({(weights.ww*100).toFixed(0)}%)
-            </th>
-            <th style={{ ...hs, background: '#93c5fd' }} rowSpan={2}>WW PS</th>
-            <th style={{ ...hs, background: '#ddd6fe' }} colSpan={3}>
-              PERFORMANCE TASKS ({(weights.pt*100).toFixed(0)}%)
-            </th>
-            <th style={{ ...hs, background: '#a78bfa' }} rowSpan={2}>PT PS</th>
+            <th style={th} rowSpan={2}>#</th>
+            <th style={{ ...th, textAlign: 'left' }} rowSpan={2}>LEARNERS' NAMES</th>
+            <th style={th} colSpan={5}>WRITTEN / ORAL WORKS ({(weights.ww * 100).toFixed(0)}%)</th>
+            <th style={{ ...th, background: '#dbeafe' }} rowSpan={2}>PS</th>
+            <th style={th} colSpan={3}>PRODUCT / PERFORMANCE TASKS ({(weights.pt * 100).toFixed(0)}%)</th>
+            <th style={{ ...th, background: '#ede9fe' }} rowSpan={2}>PS</th>
             {hasTA && <>
-              <th style={{ ...hs, background: '#fde68a' }} colSpan={2}>ST (ST1 &amp; ST2)</th>
-              <th style={{ ...hs, background: '#fcd34d' }}>TERM EXAM</th>
-              <th style={{ ...hs, background: '#f59e0b' }} rowSpan={2}>TA PS ({((weights.ta??0)*100).toFixed(0)}%)</th>
+              <th style={th} colSpan={2}>SUMMATIVE TESTS</th>
+              <th style={th}>TERM EXAM</th>
+              <th style={{ ...th, background: '#fef3c7' }} rowSpan={2}>TA PS</th>
             </>}
-            <th style={{ ...hs, background: '#bbf7d0' }} rowSpan={2}>Initial Grade</th>
-            <th style={{ ...hs, background: '#6ee7b7' }} rowSpan={2}>TERM GRADE</th>
-            <th style={hs} rowSpan={2}>DESCRIPTOR</th>
+            <th style={{ ...th, background: '#f0fdf4' }} rowSpan={2}>Initial</th>
+            <th style={{ ...th, fontWeight: 'bold' }} rowSpan={2}>TG</th>
+            <th style={th} rowSpan={2}>Descriptor</th>
           </tr>
           <tr>
-            {highest.ww.map((v, i) => <th key={i} style={{ ...hs, background: '#eff6ff' }}>{v || ''}</th>)}
-            {highest.pt.map((v, i) => <th key={i} style={{ ...hs, background: '#f5f3ff' }}>{v || ''}</th>)}
+            {highest.ww.map((v, i) => <th key={i} style={th}>{v || i + 1}</th>)}
+            {highest.pt.map((v, i) => <th key={i} style={th}>{v || i + 1}</th>)}
             {hasTA && <>
-              {highest.st.map((v, i) => <th key={i} style={{ ...hs, background: '#fffbeb' }}>ST{i+1}: {v || ''}</th>)}
-              <th style={{ ...hs, background: '#fffbeb' }}>TE: {highest.te || ''}</th>
+              {highest.st.map((v, i) => <th key={i} style={th}>{v || i + 1}</th>)}
+              <th style={th}>{highest.te || 100}</th>
             </>}
           </tr>
         </thead>
@@ -294,138 +304,11 @@ function EClassRecordView({
     );
   };
 
-  // ── Test/Exam Result Analysis table ─────────────────────────────────────
-  const renderAnalysisTable = (termNum: number) => {
-    const termData = allTermData[termNum];
-    if (!termData || !hasTA) return null;
-    const { highest, scores: termScores } = termData;
-
-    const n = allStudents.length;
-    if (n === 0) return null;
-
-    const st1Scores = allStudents.map(s => termScores[s.id]?.st?.[0] ?? 0);
-    const st2Scores = allStudents.map(s => termScores[s.id]?.st?.[1] ?? 0);
-    const teScores  = allStudents.map(s => termScores[s.id]?.te ?? 0);
-
-    const hST1 = highest.st[0] || 0;
-    const hST2 = highest.st[1] || 0;
-    const hTE  = highest.te   || 0;
-
-    const calcStats = (arr: number[], hps: number) => {
-      const valid = arr.filter(v => v > 0);
-      const count = allStudents.length;
-      const mean   = count > 0 ? arr.reduce((a, b) => a + b, 0) / count : 0;
-      const sorted = [...arr].sort((a, b) => a - b);
-      const median = count > 0
-        ? count % 2 === 0 ? (sorted[count/2-1] + sorted[count/2]) / 2 : sorted[Math.floor(count/2)]
-        : 0;
-      const variance = count > 0 ? arr.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / count : 0;
-      const sd  = Math.sqrt(variance);
-      const mps = hps > 0 ? (mean / hps) * 100 : 0;
-      const above75 = hps > 0 ? arr.filter(v => (v / hps) * 100 >= 75).length : 0;
-      const below75 = count - above75;
-      const highest_s = valid.length > 0 ? Math.max(...valid) : 0;
-      const lowest_s  = valid.length > 0 ? Math.min(...valid) : 0;
-      const total_s   = arr.reduce((a, b) => a + b, 0);
-      return { count, mean, median, sd, mps, above75, below75, highest_s, lowest_s, total_s };
-    };
-
-    const s1 = calcStats(st1Scores, hST1);
-    const s2 = calcStats(st2Scores, hST2);
-    const se = calcStats(teScores,  hTE);
-
-    const pct = (x: number, total: number) => total > 0 ? ((x / total) * 100).toFixed(2) + '%' : '0.00%';
-
-    const acs: React.CSSProperties = { border: '1px solid #999', padding: '2px 6px', fontSize: '8px', textAlign: 'center' };
-    const acsL: React.CSSProperties = { ...acs, textAlign: 'left' };
-    const acsSub: React.CSSProperties = { ...acs, background: '#e2e8f0', fontWeight: 'bold', textAlign: 'left' };
-
-    return (
-      <div style={{ marginTop: '10px' }}>
-        <div style={{ fontWeight: 'bold', fontSize: '9px', background: '#374151', color: 'white', padding: '3px 8px', marginBottom: '3px', letterSpacing: '0.5px' }}>
-          TEST / EXAM RESULT ANALYSIS — TERM {termNum}
-        </div>
-        <table style={{ borderCollapse: 'collapse', fontSize: '8px' }}>
-          <thead>
-            <tr>
-              <th style={{ ...acs, background: '#f1f5f9', minWidth: '200px', textAlign: 'left' }}></th>
-              <th style={{ ...acs, background: '#fef3c7', minWidth: '70px' }}>ST1</th>
-              <th style={{ ...acs, background: '#fef3c7', minWidth: '70px' }}>ST2</th>
-              <th style={{ ...acs, background: '#fde68a', minWidth: '70px' }}>TE</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style={acsL}>Number of Examinees</td>
-              <td style={acs}>{s1.count}</td><td style={acs}>{s2.count}</td><td style={acs}>{se.count}</td>
-            </tr>
-            <tr>
-              <td style={acsL}>Highest Possible Score (HPS)</td>
-              <td style={acs}>{hST1 || ''}</td><td style={acs}>{hST2 || ''}</td><td style={acs}>{hTE || ''}</td>
-            </tr>
-            <tr><td colSpan={4} style={acsSub}>CRITERION-REFERENCED</td></tr>
-            <tr>
-              <td style={acsL}>&nbsp;&nbsp;Got 75% &amp; above</td>
-              <td style={acs}>{s1.above75}</td><td style={acs}>{s2.above75}</td><td style={acs}>{se.above75}</td>
-            </tr>
-            <tr>
-              <td style={acsL}>&nbsp;&nbsp;Percentage</td>
-              <td style={acs}>{pct(s1.above75, s1.count)}</td>
-              <td style={acs}>{pct(s2.above75, s2.count)}</td>
-              <td style={acs}>{pct(se.above75, se.count)}</td>
-            </tr>
-            <tr>
-              <td style={acsL}>&nbsp;&nbsp;Got below 75%</td>
-              <td style={acs}>{s1.below75}</td><td style={acs}>{s2.below75}</td><td style={acs}>{se.below75}</td>
-            </tr>
-            <tr>
-              <td style={acsL}>&nbsp;&nbsp;Percentage</td>
-              <td style={acs}>{pct(s1.below75, s1.count)}</td>
-              <td style={acs}>{pct(s2.below75, s2.count)}</td>
-              <td style={acs}>{pct(se.below75, se.count)}</td>
-            </tr>
-            <tr><td colSpan={4} style={acsSub}>NORM-REFERENCED</td></tr>
-            <tr>
-              <td style={acsL}>Mean</td>
-              <td style={acs}>{s1.mean.toFixed(2)}</td><td style={acs}>{s2.mean.toFixed(2)}</td><td style={acs}>{se.mean.toFixed(2)}</td>
-            </tr>
-            <tr>
-              <td style={acsL}>Median</td>
-              <td style={acs}>{s1.median.toFixed(2)}</td><td style={acs}>{s2.median.toFixed(2)}</td><td style={acs}>{se.median.toFixed(2)}</td>
-            </tr>
-            <tr>
-              <td style={acsL}>SD (Standard Deviation)</td>
-              <td style={acs}>{s1.sd.toFixed(2)}</td><td style={acs}>{s2.sd.toFixed(2)}</td><td style={acs}>{se.sd.toFixed(2)}</td>
-            </tr>
-            <tr>
-              <td style={acsL}>MPS / PL (Mean Percentage Score)</td>
-              <td style={acs}>{s1.mps.toFixed(2)}%</td><td style={acs}>{s2.mps.toFixed(2)}%</td><td style={acs}>{se.mps.toFixed(2)}%</td>
-            </tr>
-            <tr><td colSpan={4} style={acsSub}>OTHER INFO</td></tr>
-            <tr>
-              <td style={acsL}>Highest Score</td>
-              <td style={acs}>{s1.highest_s || ''}</td><td style={acs}>{s2.highest_s || ''}</td><td style={acs}>{se.highest_s || ''}</td>
-            </tr>
-            <tr>
-              <td style={acsL}>Lowest Score</td>
-              <td style={acs}>{s1.lowest_s || ''}</td><td style={acs}>{s2.lowest_s || ''}</td><td style={acs}>{se.lowest_s || ''}</td>
-            </tr>
-            <tr>
-              <td style={acsL}>Total Score</td>
-              <td style={acs}>{s1.total_s}</td><td style={acs}>{s2.total_s}</td><td style={acs}>{se.total_s}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    );
-  };
-
-  // ── Summary of Grades table ──────────────────────────────────────────────
   const renderSummaryTable = () => {
     const renderGroup = (group: Student[], label: string) => (
       <>
         <tr>
-          <td colSpan={8} style={{ ...cs, background: label === 'MALE' ? '#dbeafe' : '#fce7f3', fontWeight: 'bold', textAlign: 'left', padding: '3px 6px' }}>
+          <td colSpan={8} style={{ ...td, background: label === 'MALE' ? '#dbeafe' : '#fce7f3', fontWeight: 'bold', textAlign: 'left' }}>
             {label}
           </td>
         </tr>
@@ -440,18 +323,18 @@ function EClassRecordView({
           const desc = descriptor(finalGrade);
           const remarks = finalGrade >= 75 ? 'PASSED' : 'FAILED';
           return (
-            <tr key={student.id} style={{ background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-              <td style={cs}>{idx + 1}</td>
-              <td style={{ ...cs, textAlign: 'left', minWidth: '150px' }}>{student.full_name}</td>
-              <td style={cs}>{t1.transmuted > 0 ? t1.transmuted : ''}</td>
-              <td style={cs}>{t2.transmuted > 0 ? t2.transmuted : ''}</td>
-              <td style={cs}>{t3.transmuted > 0 ? t3.transmuted : ''}</td>
-              <td style={{ ...cs, fontWeight: 'bold', fontSize: '11px', background: '#d1fae5', color: finalGrade >= 75 ? '#166534' : '#991b1b' }}>
-                {finalGrade > 0 ? finalGrade : ''}
+            <tr key={student.id} style={{ background: idx % 2 === 0 ? 'white' : '#f9fafb' }}>
+              <td style={td}>{idx + 1}</td>
+              <td style={{ ...td, textAlign: 'left', minWidth: '140px' }}>{student.full_name}</td>
+              <td style={td}>{t1.transmuted || ''}</td>
+              <td style={td}>{t2.transmuted || ''}</td>
+              <td style={td}>{t3.transmuted || ''}</td>
+              <td style={{ ...td, fontWeight: 'bold', fontSize: '10px', color: finalGrade >= 75 ? '#166534' : '#991b1b' }}>
+                {finalGrade || ''}
               </td>
-              <td style={{ ...cs, fontSize: '7px' }}>{finalGrade > 0 ? desc.short : ''}</td>
-              <td style={{ ...cs, fontWeight: 'bold', color: remarks === 'PASSED' ? '#166534' : '#991b1b' }}>
-                {finalGrade > 0 ? remarks : ''}
+              <td style={{ ...td, fontSize: '7px' }}>{finalGrade ? desc.short : ''}</td>
+              <td style={{ ...td, fontWeight: 'bold', color: remarks === 'PASSED' ? '#166534' : '#991b1b' }}>
+                {finalGrade ? remarks : ''}
               </td>
             </tr>
           );
@@ -463,14 +346,14 @@ function EClassRecordView({
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8px' }}>
         <thead>
           <tr>
-            <th style={hs}>#</th>
-            <th style={{ ...hs, textAlign: 'left' }}>LEARNERS' NAMES</th>
-            <th style={hs}>TERM 1</th>
-            <th style={hs}>TERM 2</th>
-            <th style={hs}>TERM 3</th>
-            <th style={{ ...hs, background: '#6ee7b7' }}>FINAL GRADE</th>
-            <th style={hs}>DESCRIPTOR</th>
-            <th style={hs}>REMARKS</th>
+            <th style={th}>#</th>
+            <th style={{ ...th, textAlign: 'left' }}>LEARNERS' NAMES</th>
+            <th style={th}>TERM 1</th>
+            <th style={th}>TERM 2</th>
+            <th style={th}>TERM 3</th>
+            <th style={{ ...th, background: '#d1fae5' }}>FINAL GRADE</th>
+            <th style={th}>DESCRIPTOR</th>
+            <th style={th}>REMARKS</th>
           </tr>
         </thead>
         <tbody>
@@ -481,16 +364,14 @@ function EClassRecordView({
     );
   };
 
-  // ── Root render ──────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 bg-black/80 z-50 overflow-auto">
-
       {/* Toolbar — hidden on print */}
       <div className="no-print sticky top-0 bg-gray-900 border-b border-gray-700 px-6 py-3 flex items-center justify-between z-10">
         <div className="flex items-center gap-3">
           <FileText size={18} className="text-blue-400"/>
           <span className="font-semibold">E-Class Record — {subject}</span>
-          <span className="text-gray-400 text-sm">{sectionName} · Term {currentTerm} · {schoolYear || '2026-2027'}</span>
+          <span className="text-gray-400 text-sm">{sectionName} · {schoolYear}</span>
         </div>
         <div className="flex gap-3">
           <button onClick={() => window.print()}
@@ -504,38 +385,89 @@ function EClassRecordView({
         </div>
       </div>
 
-      {/* ══ PAGE 1: Active Term Class Record + Analysis ══ */}
-      <div className="eclass-print bg-white text-black p-4 print-page"
-        style={{ minWidth: '1100px', fontFamily: 'Arial, sans-serif', pageBreakAfter: 'always' }}>
-        {renderHeader(`TERM ${currentTerm}`)}
+      {/* Print content */}
+      <div className="eclass-print bg-white text-black p-4" style={{ minWidth: '1100px', fontFamily: 'Arial, sans-serif' }}>
 
-        <div style={{ fontWeight: 'bold', fontSize: '9px', background: '#1e3a5f', color: 'white', padding: '3px 8px', marginBottom: '3px' }}>
-          TERM {currentTerm} — CLASS RECORD
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: '6px' }}>
+          <div style={{ fontWeight: 'bold', fontSize: '12px' }}>CLASS RECORD</div>
+          <div style={{ fontSize: '8px', color: '#555' }}>(Waiting for the Official DepEd Order)</div>
         </div>
-        {renderTermTable(currentTerm)}
-        {renderAnalysisTable(currentTerm)}
-        {renderSignatures()}
-      </div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '4px', fontSize: '8px' }}>
+          <tbody>
+            <tr>
+              <td style={{ ...td, textAlign: 'left' }}><strong>REGION:</strong> {region}</td>
+              <td style={{ ...td, textAlign: 'left' }}><strong>DIVISION:</strong> {division}</td>
+              <td style={{ ...td, textAlign: 'left' }}><strong>SCHOOL ID:</strong> {schoolId}</td>
+              <td style={{ ...td, textAlign: 'left' }}><strong>SCHOOL YEAR:</strong> {schoolYear}</td>
+            </tr>
+            <tr>
+              <td colSpan={2} style={{ ...td, textAlign: 'left' }}><strong>SCHOOL NAME:</strong> {schoolName}</td>
+              <td style={{ ...td, textAlign: 'left' }}><strong>GRADE & SECTION:</strong> {gradeLevel} — {sectionName}</td>
+              <td style={{ ...td, textAlign: 'left' }}><strong>SUBJECT:</strong> {subject}</td>
+            </tr>
+            <tr>
+              <td colSpan={2} style={{ ...td, textAlign: 'left' }}><strong>TEACHER:</strong> {adviser?.toUpperCase()}</td>
+              <td colSpan={2} style={{ ...td, textAlign: 'left' }}>
+                <strong>WEIGHTS:</strong> WW {(weights.ww * 100).toFixed(0)}% | PT {(weights.pt * 100).toFixed(0)}%
+                {hasTA ? ` | TA ${((weights.ta ?? 0) * 100).toFixed(0)}%` : ''}
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
-      {/* ══ PAGE 2: Summary of Grades ══ */}
-      <div className="eclass-print bg-white text-black p-4 print-page"
-        style={{ minWidth: '1100px', fontFamily: 'Arial, sans-serif', marginTop: '32px' }}>
-        {renderHeader('SUMMARY OF GRADES')}
+        {/* TERM 1 */}
+        <div style={{ fontWeight: 'bold', fontSize: '9px', background: '#1e3a5f', color: 'white', padding: '3px 6px', marginBottom: '2px', marginTop: '6px' }}>
+          TERM 1
+        </div>
+        {renderTermTable(1)}
 
-        <div style={{ fontWeight: 'bold', fontSize: '9px', background: '#14532d', color: 'white', padding: '3px 8px', marginBottom: '3px' }}>
-          SUMMARY OF GRADES (All Terms)
+        {/* TERM 2 */}
+        <div style={{ fontWeight: 'bold', fontSize: '9px', background: '#1e3a5f', color: 'white', padding: '3px 6px', marginBottom: '2px', marginTop: '8px' }}>
+          TERM 2
+        </div>
+        {renderTermTable(2)}
+
+        {/* TERM 3 */}
+        <div style={{ fontWeight: 'bold', fontSize: '9px', background: '#1e3a5f', color: 'white', padding: '3px 6px', marginBottom: '2px', marginTop: '8px' }}>
+          TERM 3
+        </div>
+        {renderTermTable(3)}
+
+        {/* SUMMARY OF GRADES */}
+        <div style={{ fontWeight: 'bold', fontSize: '9px', background: '#14532d', color: 'white', padding: '3px 6px', marginBottom: '2px', marginTop: '8px' }}>
+          SUMMARY OF GRADES
         </div>
         {renderSummaryTable()}
-        {renderSignatures()}
+
+        {/* Signature area */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', fontSize: '8px' }}>
+          <div style={{ textAlign: 'center', minWidth: '200px' }}>
+            <div style={{ fontWeight: 'bold', borderTop: '1px solid black', paddingTop: '2px', marginTop: '20px' }}>
+              {adviser?.toUpperCase()}
+            </div>
+            <div>Subject Teacher</div>
+          </div>
+          <div style={{ textAlign: 'center', minWidth: '200px' }}>
+            <div style={{ borderTop: '1px solid black', paddingTop: '2px', marginTop: '20px' }}>
+              ________________________________
+            </div>
+            <div>School Head</div>
+          </div>
+          <div style={{ textAlign: 'center', minWidth: '200px' }}>
+            <div style={{ borderTop: '1px solid black', paddingTop: '2px', marginTop: '20px' }}>
+              ________________________________
+            </div>
+            <div>Date</div>
+          </div>
+        </div>
       </div>
 
       <style>{`
         @media print {
           .no-print { display: none !important; }
-          body { background: white !important; margin: 0 !important; }
-          .eclass-print { padding: 4mm !important; min-width: 100% !important; margin: 0 !important; }
-          .print-page { page-break-after: always; }
-          .print-page:last-child { page-break-after: avoid; }
+          body { background: white !important; }
+          .eclass-print { padding: 4mm; min-width: 100% !important; }
           @page { size: landscape; margin: 6mm; }
         }
       `}</style>
@@ -556,15 +488,22 @@ export default function ClassRecord() {
   const [showEClass,setShowEClass] = useState(false);
   const [allTermData,setAllTermData] = useState<Record<number, TermData>>({});
   const [loadingEClass,setLoadingEClass] = useState(false);
+  const [statusStudent,setStatusStudent] = useState<Student|null>(null);
 
-  const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear = '2026-2027', division, region, adviser } = useActiveSection();
+  const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear, division, region, adviser } = useActiveSection();
   const weights = SUBJECT_WEIGHTS[subject] ?? { ww:0.25, pt:0.50, ta:0.25 };
 
   useEffect(()=>{
     (async()=>{
       setLoading(true);
       const {data,error}=await supabase.from('students').select('*').eq('section_id',sectionId).order('full_name');
-      if(!error&&data?.length) setStudents(data);
+      const sortByGenderThenName = (arr: Student[]) =>
+        [...arr].sort((a,b)=>{
+          const sexA=a.sex==='M'?0:1, sexB=b.sex==='M'?0:1;
+          if(sexA!==sexB) return sexA-sexB;
+          return a.full_name.localeCompare(b.full_name);
+        });
+      if(!error&&data?.length) setStudents(sortByGenderThenName(data));
       else setStudents([
         {id:'1',lrn:'129694170087',full_name:'ALVAREZ, ZEV C.',sex:'M'},
         {id:'2',lrn:'129702120162',full_name:'ARNADO, ERWIN N.',sex:'M'},
@@ -613,8 +552,9 @@ export default function ClassRecord() {
     return {ww,pt,st,te,avgWW,avgPT,avgTA,initial,transmuted:transmute(initial)};
   };
 
-  const classAvg=students.length>0
-    ?students.reduce((s,st)=>s+compute(st.id).transmuted,0)/students.length:0;
+  const activeStudents = students.filter(s => !s.status || s.status === 'active');
+  const classAvg = activeStudents.length > 0
+    ? activeStudents.reduce((s,st)=>s+compute(st.id).transmuted,0)/activeStudents.length : 0;
 
   const hasTA=(weights.ta??0)>0;
 
@@ -752,55 +692,89 @@ export default function ClassRecord() {
                 </tr>
               </thead>
               <tbody>
-                {students.map((student,idx)=>{
-                  const {ww,pt,st,te,avgWW,avgPT,avgTA,initial,transmuted}=compute(student.id);
-                  const desc=descriptor(transmuted);
-                  const isSaving=saving===student.id;
+                {(()=>{
                   const inp=(color:string)=>`w-14 text-center bg-transparent border border-gray-700 hover:border-${color}-600 focus:border-${color}-500 rounded py-2 text-white text-sm outline-none focus:bg-gray-900`;
-                  return (
-                    <tr key={student.id} className={`border-t border-gray-800 hover:bg-gray-900/50 transition-colors ${transmuted<75?'bg-red-950/10':''}`}>
-                      <td className="px-3 py-2 text-center text-gray-500 text-xs">{idx+1}</td>
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          {isSaving&&<RefreshCw size={12} className="animate-spin text-blue-400"/>}
-                          <span className="text-sm font-medium">{student.full_name}</span>
-                          {student.sex&&<span className="text-xs text-gray-600">{student.sex}</span>}
-                        </div>
-                        <div className="text-xs text-gray-600">{student.lrn}</div>
-                      </td>
-                      {ww.map((v,i)=>(
-                        <td key={i} className="px-1 py-1 border-l border-gray-800">
-                          <input type="number" min={0} max={highest.ww[i]} value={v||''}
-                            onChange={e=>updateScore(student.id,'ww',i,+e.target.value)} className={inp('blue')}/>
+                  const totalCols = 2 + 5 + 1 + 3 + 1 + (hasTA ? 4 : 0) + 3;
+                  const renderGroup = (group: Student[], label: string, bgClass: string) => (
+                    <>
+                      <tr>
+                        <td colSpan={totalCols} className={`px-4 py-1.5 text-xs font-bold tracking-widest uppercase border-t border-gray-700 ${bgClass}`}>
+                          {label} ({group.length})
                         </td>
-                      ))}
-                      <td className="px-2 py-2 text-center text-blue-300 text-xs border-l border-gray-800 font-mono">{avgWW.toFixed(1)}</td>
-                      {pt.map((v,i)=>(
-                        <td key={i} className="px-1 py-1 border-l border-gray-800">
-                          <input type="number" min={0} max={highest.pt[i]} value={v||''}
-                            onChange={e=>updateScore(student.id,'pt',i,+e.target.value)} className={inp('purple')}/>
-                        </td>
-                      ))}
-                      <td className="px-2 py-2 text-center text-purple-300 text-xs border-l border-gray-800 font-mono">{avgPT.toFixed(1)}</td>
-                      {hasTA&&<>
-                        {st.map((v,i)=>(
-                          <td key={i} className="px-1 py-1 border-l border-gray-800">
-                            <input type="number" min={0} max={highest.st[i]} value={v||''}
-                              onChange={e=>updateScore(student.id,'st',i,+e.target.value)} className={inp('amber')}/>
-                          </td>
-                        ))}
-                        <td className="px-1 py-1 border-l border-gray-800">
-                          <input type="number" min={0} max={highest.te} value={te||''}
-                            onChange={e=>updateScore(student.id,'te',null,+e.target.value)} className={inp('orange')}/>
-                        </td>
-                        <td className="px-2 py-2 text-center text-amber-300 text-xs border-l border-gray-800 font-mono">{avgTA.toFixed(1)}</td>
-                      </>}
-                      <td className="px-3 py-2 text-center text-gray-400 text-xs border-l border-gray-800 font-mono">{initial.toFixed(2)}</td>
-                      <td className={`px-3 py-2 text-center font-bold text-2xl border-l border-gray-800 ${transmuted>=75?'text-white':'text-red-400'}`}>{transmuted}</td>
-                      <td className={`px-3 py-2 text-center text-xs font-medium border-l border-gray-800 ${desc.color}`}>{desc.label}</td>
-                    </tr>
+                      </tr>
+                      {group.map((student,idx)=>{
+                        const {ww,pt,st,te,avgWW,avgPT,avgTA,initial,transmuted}=compute(student.id);
+                        const desc=descriptor(transmuted);
+                        const isSaving=saving===student.id;
+                        const isInactive = student.status === 'dropped' || student.status === 'transferred';
+                        const statusTag = student.status === 'dropped'
+                          ? <span className="text-[10px] bg-red-900/60 text-red-300 border border-red-700 px-1.5 py-0.5 rounded font-semibold">DROPPED</span>
+                          : student.status === 'transferred'
+                          ? <span className="text-[10px] bg-amber-900/60 text-amber-300 border border-amber-700 px-1.5 py-0.5 rounded font-semibold">TRANSFERRED</span>
+                          : null;
+                        return (
+                          <tr key={student.id} className={`border-t border-gray-800 transition-colors ${isInactive ? 'opacity-50 bg-gray-900/60' : transmuted<75 ? 'bg-red-950/10 hover:bg-gray-900/50' : 'hover:bg-gray-900/50'}`}>
+                            <td className="px-3 py-2 text-center text-gray-500 text-xs">{idx+1}</td>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {isSaving&&<RefreshCw size={12} className="animate-spin text-blue-400"/>}
+                                <button
+                                  onClick={()=>setStatusStudent(student)}
+                                  className="text-sm font-medium hover:text-blue-300 hover:underline transition text-left">
+                                  {student.full_name}
+                                </button>
+                                {student.sex&&<span className="text-xs text-gray-600">{student.sex}</span>}
+                                {statusTag}
+                              </div>
+                              <div className="text-xs text-gray-600">{student.lrn}</div>
+                              {isInactive && student.status_date && (
+                                <div className="text-[10px] text-gray-600 mt-0.5">Since {student.status_date}{student.status_reason ? ` · ${student.status_reason}` : ''}</div>
+                              )}
+                            </td>
+                            {ww.map((v,i)=>(
+                              <td key={i} className="px-1 py-1 border-l border-gray-800">
+                                <input type="number" min={0} max={highest.ww[i]} value={v||''} disabled={isInactive}
+                                  onChange={e=>updateScore(student.id,'ww',i,+e.target.value)} className={inp('blue')}/>
+                              </td>
+                            ))}
+                            <td className="px-2 py-2 text-center text-blue-300 text-xs border-l border-gray-800 font-mono">{avgWW.toFixed(1)}</td>
+                            {pt.map((v,i)=>(
+                              <td key={i} className="px-1 py-1 border-l border-gray-800">
+                                <input type="number" min={0} max={highest.pt[i]} value={v||''} disabled={isInactive}
+                                  onChange={e=>updateScore(student.id,'pt',i,+e.target.value)} className={inp('purple')}/>
+                              </td>
+                            ))}
+                            <td className="px-2 py-2 text-center text-purple-300 text-xs border-l border-gray-800 font-mono">{avgPT.toFixed(1)}</td>
+                            {hasTA&&<>
+                              {st.map((v,i)=>(
+                                <td key={i} className="px-1 py-1 border-l border-gray-800">
+                                  <input type="number" min={0} max={highest.st[i]} value={v||''} disabled={isInactive}
+                                    onChange={e=>updateScore(student.id,'st',i,+e.target.value)} className={inp('amber')}/>
+                                </td>
+                              ))}
+                              <td className="px-1 py-1 border-l border-gray-800">
+                                <input type="number" min={0} max={highest.te} value={te||''} disabled={isInactive}
+                                  onChange={e=>updateScore(student.id,'te',null,+e.target.value)} className={inp('orange')}/>
+                              </td>
+                              <td className="px-2 py-2 text-center text-amber-300 text-xs border-l border-gray-800 font-mono">{avgTA.toFixed(1)}</td>
+                            </>}
+                            <td className="px-3 py-2 text-center text-gray-400 text-xs border-l border-gray-800 font-mono">{isInactive ? '—' : initial.toFixed(2)}</td>
+                            <td className={`px-3 py-2 text-center font-bold text-2xl border-l border-gray-800 ${isInactive ? 'text-gray-600' : transmuted>=75?'text-white':'text-red-400'}`}>{isInactive ? '—' : transmuted}</td>
+                            <td className={`px-3 py-2 text-center text-xs font-medium border-l border-gray-800 ${isInactive ? 'text-gray-600' : desc.color}`}>{isInactive ? student.status : desc.label}</td>
+                          </tr>
+                        );
+                      })}
+                    </>
                   );
-                })}
+                  const males   = students.filter(s=>s.sex==='M');
+                  const females = students.filter(s=>s.sex==='F');
+                  const others  = students.filter(s=>s.sex!=='M'&&s.sex!=='F');
+                  return <>
+                    {males.length>0   && renderGroup(males,   'Male',   'bg-blue-950/40 text-blue-300')}
+                    {females.length>0 && renderGroup(females, 'Female', 'bg-pink-950/40 text-pink-300')}
+                    {others.length>0  && renderGroup(others,  'Other',  'bg-gray-800/60 text-gray-400')}
+                  </>;
+                })()}
                 {students.length>0&&(
                   <tr className="border-t-2 border-gray-700 bg-gray-900">
                     <td></td>
@@ -824,7 +798,22 @@ export default function ClassRecord() {
       </div>
 
       {showAdd && <AddStudentModal sectionId={sectionId} onClose={()=>setShowAdd(false)}
-        onAdd={s=>setStudents(prev=>[...prev,s].sort((a,b)=>a.full_name.localeCompare(b.full_name)))}/>}
+        onAdd={s=>setStudents(prev=>[...prev,s].sort((a,b)=>{
+          const sexA=a.sex==='M'?0:1, sexB=b.sex==='M'?0:1;
+          if(sexA!==sexB) return sexA-sexB;
+          return a.full_name.localeCompare(b.full_name);
+        }))}/>}
+
+      {statusStudent && (
+        <StudentStatusModal
+          student={statusStudent}
+          onClose={() => setStatusStudent(null)}
+          onUpdate={updated => {
+            setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
+            setStatusStudent(null);
+          }}
+        />
+      )}
 
       {showEClass && (
         <EClassRecordView
@@ -839,7 +828,6 @@ export default function ClassRecord() {
           region={region}
           adviser={adviser}
           allTermData={allTermData}
-          currentTerm={term}
           onClose={() => setShowEClass(false)}
         />
       )}
