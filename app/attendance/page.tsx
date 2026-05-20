@@ -1,981 +1,960 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Plus, Printer, Users, RefreshCw, FileText, X } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import {
+  ArrowLeft, Printer, Users, RefreshCw, ChevronLeft,
+  ChevronRight, AlertTriangle, CheckCircle, Calendar,
+} from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useActiveSection } from '../../lib/useActiveSection';
 
-const SUBJECTS_JHS = [
-  'Filipino', 'English', 'Mathematics', 'Science',
-  'Araling Panlipunan (AP)', 'Edukasyon sa Pagpapakatao (EsP)',
-  'Edukasyong Pantahanan at Pangkabuhayan (EPP)',
-  'MAPEH - Music', 'MAPEH - Arts', 'MAPEH - Physical Education', 'MAPEH - Health',
-];
-const SUBJECTS_SHS = [
-  'SHS Core Subject', 'SHS Applied Track', 'SHS Specialized Subject',
-  'SHS Work Immersion', 'SHS Research / Capstone',
-];
+// ─────────────────────────────────────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────────────────────────────────────
 
-const SUBJECT_WEIGHTS: Record<string, { ww: number; pt: number; ta: number }> = {
-  'Filipino':                                       { ww: 0.25, pt: 0.50, ta: 0.25 },
-  'English':                                        { ww: 0.25, pt: 0.50, ta: 0.25 },
-  'Mathematics':                                    { ww: 0.25, pt: 0.50, ta: 0.25 },
-  'Science':                                        { ww: 0.25, pt: 0.50, ta: 0.25 },
-  'Araling Panlipunan (AP)':                        { ww: 0.25, pt: 0.50, ta: 0.25 },
-  'Edukasyon sa Pagpapakatao (EsP)':                { ww: 0.25, pt: 0.50, ta: 0.25 },
-  'Edukasyong Pantahanan at Pangkabuhayan (EPP)':   { ww: 0.20, pt: 0.60, ta: 0.20 },
-  'MAPEH - Music':                                  { ww: 0.20, pt: 0.60, ta: 0.20 },
-  'MAPEH - Arts':                                   { ww: 0.20, pt: 0.60, ta: 0.20 },
-  'MAPEH - Physical Education':                     { ww: 0.20, pt: 0.60, ta: 0.20 },
-  'MAPEH - Health':                                 { ww: 0.20, pt: 0.60, ta: 0.20 },
-  'SHS Core Subject':                               { ww: 0.25, pt: 0.50, ta: 0.25 },
-  'SHS Applied Track':                              { ww: 0.20, pt: 0.60, ta: 0.20 },
-  'SHS Specialized Subject':                        { ww: 0.20, pt: 0.60, ta: 0.20 },
-  'SHS Work Immersion':                             { ww: 0.20, pt: 0.80, ta: 0.00 },
-  'SHS Research / Capstone':                        { ww: 0.40, pt: 0.60, ta: 0.00 },
+// Section constants now come from useActiveSection() hook inside the component
+
+// DepEd School Year 2026-2027 (June 2026 – March 2027)
+const MONTHS = [
+  'June','July','August','September','October','November',
+  'December','January','February','March',
+];
+// Actual JS Date month (0-indexed)
+const MONTH_JS: Record<string, number> = {
+  June:5, July:6, August:7, September:8, October:9, November:10,
+  December:11, January:0, February:1, March:2,
+};
+// School year for cross-year months (SY 2026-2027)
+const MONTH_YEAR: Record<string, number> = {
+  June:2026, July:2026, August:2026, September:2026, October:2026, November:2026,
+  December:2026, January:2027, February:2027, March:2027,
 };
 
-const TRANSMUTATION = [
-  { min: 99.50, max: 100,   trans: 100 }, { min: 97.50, max: 99.49, trans: 99 },
-  { min: 96.00, max: 97.49, trans: 98  }, { min: 95.00, max: 95.99, trans: 97 },
-  { min: 94.00, max: 94.99, trans: 96  }, { min: 93.00, max: 93.99, trans: 95 },
-  { min: 92.00, max: 92.99, trans: 94  }, { min: 91.00, max: 91.99, trans: 93 },
-  { min: 90.00, max: 90.99, trans: 92  }, { min: 89.00, max: 89.99, trans: 91 },
-  { min: 88.00, max: 88.99, trans: 90  }, { min: 87.00, max: 87.99, trans: 89 },
-  { min: 86.00, max: 86.99, trans: 88  }, { min: 85.00, max: 85.99, trans: 87 },
-  { min: 84.00, max: 84.99, trans: 86  }, { min: 83.00, max: 83.99, trans: 85 },
-  { min: 82.00, max: 82.99, trans: 84  }, { min: 81.00, max: 81.99, trans: 83 },
-  { min: 80.00, max: 80.99, trans: 82  }, { min: 79.00, max: 79.99, trans: 81 },
-  { min: 78.00, max: 78.99, trans: 80  }, { min: 77.00, max: 77.99, trans: 79 },
-  { min: 76.00, max: 76.99, trans: 78  }, { min: 75.00, max: 75.75, trans: 77 },
-  { min: 73.00, max: 74.99, trans: 76  }, { min: 70.00, max: 72.99, trans: 75 },
-  { min: 68.00, max: 69.99, trans: 74  }, { min: 66.00, max: 67.99, trans: 73 },
-  { min: 64.00, max: 65.99, trans: 72  }, { min: 62.00, max: 63.99, trans: 71 },
-  { min: 60.00, max: 61.99, trans: 70  }, { min: 58.00, max: 59.99, trans: 69 },
-  { min: 56.00, max: 57.99, trans: 68  }, { min: 54.00, max: 55.99, trans: 67 },
-  { min: 52.00, max: 53.99, trans: 66  }, { min: 50.00, max: 51.99, trans: 65 },
-  { min: 48.00, max: 49.99, trans: 64  }, { min: 46.00, max: 47.99, trans: 63 },
-  { min: 43.00, max: 45.99, trans: 62  }, { min: 40.00, max: 42.99, trans: 61 },
-  { min: 0,     max: 39.99, trans: 60  },
-];
+type Status = 'P' | 'A' | 'L';  // Present, Absent, Late/Tardy
 
-const transmute = (v: number) => TRANSMUTATION.find(t => v >= t.min && v <= t.max)?.trans ?? 60;
-const descriptor = (g: number) => {
-  if (g >= 90) return { label: 'Advancing (Namumukod-tangi)', short: 'Advancing',   color: 'text-emerald-400' };
-  if (g >= 80) return { label: 'Benchmarking (Napamamalas)',  short: 'Benchmarking', color: 'text-green-400'   };
-  if (g >= 75) return { label: 'Connecting (Natutungo)',      short: 'Connecting',   color: 'text-blue-400'    };
-  if (g <= 74) return { label: 'Developing (Napauunlad)',     short: 'Developing',   color: 'text-yellow-400'  };
-  return              { label: 'Emerging (Nasisimula)',       short: 'Emerging',     color: 'text-red-400'     };
-};
-const calcAvg = (scores: number[], highs: number[]) => {
-  let tot = 0, cnt = 0;
-  scores.forEach((s, i) => { if (highs[i] > 0) { tot += (s / highs[i]) * 100; cnt++; } });
-  return cnt > 0 ? tot / cnt : 0;
-};
+interface Student { id: string; lrn: string; full_name: string; sex: string; }
+interface AttRecord { [date: string]: Status }  // date = 'YYYY-MM-DD'
 
-type StudentStatus = 'active' | 'dropped' | 'transferred';
-interface Student { id: string; lrn: string; full_name: string; sex?: string; status?: StudentStatus; status_date?: string; status_reason?: string; }
-interface Highest { ww: number[]; pt: number[]; st: number[]; te: number; }
-interface Scores  { ww: Record<number,number>; pt: Record<number,number>; st: Record<number,number>; te: number; }
-interface TermData { scores: Record<string, Scores>; highest: Highest; }
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
 
-// ── STUDENT STATUS MODAL ──────────────────────────────────────────────────────
-function StudentStatusModal({ student, onClose, onUpdate }: {
-  student: Student;
-  onClose: () => void;
-  onUpdate: (updated: Student) => void;
-}) {
-  const current = student.status || 'active';
-  const [status, setStatus] = useState<StudentStatus>(current);
-  const [date, setDate] = useState(student.status_date || new Date().toISOString().slice(0,10));
-  const [reason, setReason] = useState(student.status_reason || '');
-  const [saving, setSaving] = useState(false);
-
-  const statusConfig = {
-    active:      { label: 'Active',      bg: 'bg-emerald-600', icon: '✓', desc: 'Student is currently enrolled and attending.' },
-    dropped:     { label: 'Dropped',     bg: 'bg-red-600',     icon: '✕', desc: 'Student stopped schooling / out-of-school youth.' },
-    transferred: { label: 'Transferred', bg: 'bg-amber-500',   icon: '→', desc: 'Student transferred to another school.' },
-  };
-
-  const save = async () => {
-    setSaving(true);
-    const updates = { status, status_date: status === 'active' ? undefined : date, status_reason: status === 'active' ? undefined : reason.trim() || undefined };
-    const { error } = await supabase.from('students').update(updates).eq('id', student.id);
-    if (error) { alert('Error: ' + error.message); setSaving(false); return; }
-    onUpdate({ ...student, ...updates });
-    onClose();
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-md border border-gray-700 shadow-2xl" onClick={e=>e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h3 className="text-lg font-bold text-white">{student.full_name}</h3>
-            <p className="text-xs text-gray-400 mt-0.5">LRN: {student.lrn} · {student.sex === 'M' ? 'Male' : 'Female'}</p>
-          </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition"><X size={20}/></button>
-        </div>
-
-        <p className="text-xs text-gray-400 uppercase tracking-widest mb-3 font-semibold">Learner Status</p>
-        <div className="grid grid-cols-3 gap-2 mb-5">
-          {(['active','dropped','transferred'] as StudentStatus[]).map(s => {
-            const c = statusConfig[s];
-            const isActive = status === s;
-            return (
-              <button key={s} onClick={() => setStatus(s)}
-                className={`flex flex-col items-center gap-1.5 py-4 px-2 rounded-xl border-2 transition-all ${isActive ? `${c.bg} border-transparent text-white` : 'border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white'}`}>
-                <span className="text-xl font-bold">{c.icon}</span>
-                <span className="text-xs font-semibold">{c.label}</span>
-              </button>
-            );
-          })}
-        </div>
-        <p className="text-xs text-gray-500 mb-4">{statusConfig[status].desc}</p>
-
-        {status !== 'active' && (
-          <div className="space-y-3 mb-5">
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Effectivity Date</label>
-              <input type="date" value={date} onChange={e=>setDate(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white text-sm"/>
-            </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Reason <span className="text-gray-600">(optional)</span></label>
-              <input value={reason} onChange={e=>setReason(e.target.value)}
-                placeholder={status==='dropped'?'e.g. Health reasons, work, etc.':'e.g. Transferred to ABC School'}
-                className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white text-sm"/>
-            </div>
-          </div>
-        )}
-
-        <div className="flex gap-3">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-600 hover:bg-gray-800 transition text-sm">Cancel</button>
-          <button onClick={save} disabled={saving}
-            className={`flex-1 py-2.5 rounded-xl font-semibold transition text-sm disabled:opacity-60 ${statusConfig[status].bg} text-white hover:opacity-90`}>
-            {saving ? 'Saving...' : 'Save Status'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+function getSchoolDays(month: string, holidays: string[] = []): Date[] {
+  const year = MONTH_YEAR[month];
+  const m    = MONTH_JS[month];
+  const days: Date[] = [];
+  const d = new Date(year, m, 1);
+  while (d.getMonth() === m) {
+    const dow     = d.getDay();
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    // Weekday AND not a declared holiday
+    if (dow !== 0 && dow !== 6 && !holidays.includes(dateStr)) {
+      days.push(new Date(d));
+    }
+    d.setDate(d.getDate() + 1);
+  }
+  return days;
 }
 
-function AddStudentModal({ onClose, onAdd, sectionId }:
-  { onClose:()=>void; onAdd:(s:Student)=>void; sectionId:string }) {
-  const [lrn,setLrn]=useState(''); const [name,setName]=useState('');
-  const [sex,setSex]=useState('M'); const [saving,setSaving]=useState(false);
-  const save = async () => {
-    if (!name.trim()) return; setSaving(true);
-    const s={id:crypto.randomUUID(),lrn:lrn.trim(),full_name:name.trim().toUpperCase(),sex,section_id:sectionId};
-    const {error}=await supabase.from('students').insert(s);
-    if (!error){onAdd(s);onClose();}else alert('Error: '+error.message);
-    setSaving(false);
-  };
-  return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-2xl p-8 w-full max-w-md border border-gray-700">
-        <h3 className="text-xl font-bold mb-6">Add New Learner</h3>
-        <div className="space-y-4">
-          <div><label className="block text-sm text-gray-400 mb-1">LRN (12 digits)</label>
-            <input value={lrn} onChange={e=>setLrn(e.target.value)} maxLength={12}
-              className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 text-white" placeholder="129694170087"/></div>
-          <div><label className="block text-sm text-gray-400 mb-1">Full Name (Last, First MI.)</label>
-            <input value={name} onChange={e=>setName(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 text-white" placeholder="ALVAREZ, ZEV C."/></div>
-          <div><label className="block text-sm text-gray-400 mb-1">Sex</label>
-            <select value={sex} onChange={e=>setSex(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 text-white">
-              <option value="M">Male</option><option value="F">Female</option></select></div>
-        </div>
-        <div className="flex gap-3 mt-6">
-          <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-600 hover:bg-gray-800 transition">Cancel</button>
-          <button onClick={save} disabled={saving}
-            className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 font-semibold transition disabled:opacity-60">
-            {saving ? 'Saving...' : 'Add Learner'}</button>
-        </div>
-      </div>
-    </div>
-  );
+function fmt(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-// ── E-CLASS RECORD PRINT VIEW ─────────────────────────────────────────────────
-function EClassRecordView({
-  students, subject, sectionName, gradeLevel, schoolName, schoolId,
-  schoolYear, division, region, adviser, allTermData, currentTerm, onClose,
-}: {
-  students: Student[];
-  subject: string;
-  sectionName: string; gradeLevel: string; schoolName: string;
-  schoolId: string; schoolYear: string; division: string;
-  region: string; adviser: string;
-  allTermData: Record<number, TermData>;
-  currentTerm: number;
-  onClose: () => void;
-}) {
-  const weights = SUBJECT_WEIGHTS[subject] ?? { ww: 0.25, pt: 0.50, ta: 0.25 };
-  const hasTA = (weights.ta ?? 0) > 0;
-
-  const computeTerm = (sid: string, termNum: number) => {
-    const td = allTermData[termNum];
-    if (!td) return { transmuted: 0, initial: 0 };
-    const s = td.scores[sid] || { ww: {}, pt: {}, st: {}, te: 0 };
-    const ww = Array.from({ length: 5 }, (_, i) => s.ww?.[i] ?? 0);
-    const pt = Array.from({ length: 3 }, (_, i) => s.pt?.[i] ?? 0);
-    const st = Array.from({ length: 2 }, (_, i) => s.st?.[i] ?? 0);
-    const te = s.te ?? 0;
-    const avgWW = calcAvg(ww, td.highest.ww);
-    const avgPT = calcAvg(pt, td.highest.pt);
-    const avgTA = calcAvg([...st, te], [...td.highest.st, td.highest.te]);
-    const initial = avgWW * weights.ww + avgPT * weights.pt + avgTA * (weights.ta ?? 0.25);
-    return { transmuted: transmute(initial), initial, ww, pt, st, te, avgWW, avgPT, avgTA };
-  };
-
-  const td = { border: '1px solid #666', padding: '2px 4px', fontSize: '8px', textAlign: 'center' as const };
-  const th = { ...td, background: '#e8e8e8', fontWeight: 'bold' as const };
-  const males   = students.filter(s => s.sex === 'M');
-  const females = students.filter(s => s.sex === 'F');
-
-  // ── helpers ────────────────────────────────────────────────────────────────
-  const renderTermTable = (termNum: number) => {
-    const termData = allTermData[termNum];
-    if (!termData) return <div style={{ fontSize: '9px', color: '#999', padding: '4px' }}>No data for Term {termNum}</div>;
-    const { highest } = termData;
-
-    const renderGroup = (group: Student[], label: string) => (
-      <>
-        <tr>
-          <td colSpan={hasTA ? 20 : 16} style={{ ...td, background: label === 'MALE' ? '#dbeafe' : '#fce7f3', fontWeight: 'bold', textAlign: 'left' }}>
-            {label}
-          </td>
-        </tr>
-        {group.map((student, idx) => {
-          const c = computeTerm(student.id, termNum) as any;
-          const desc = descriptor(c.transmuted);
-          return (
-            <tr key={student.id} style={{ background: idx % 2 === 0 ? 'white' : '#f9fafb' }}>
-              <td style={td}>{idx + 1}</td>
-              <td style={{ ...td, textAlign: 'left', minWidth: '140px' }}>{student.full_name}</td>
-              {(c.ww || [0,0,0,0,0]).map((v: number, i: number) => <td key={i} style={td}>{v || ''}</td>)}
-              <td style={{ ...td, background: '#dbeafe' }}>{c.avgWW?.toFixed(1) || ''}</td>
-              {(c.pt || [0,0,0]).map((v: number, i: number) => <td key={i} style={td}>{v || ''}</td>)}
-              <td style={{ ...td, background: '#ede9fe' }}>{c.avgPT?.toFixed(1) || ''}</td>
-              {hasTA && <>
-                {(c.st || [0,0]).map((v: number, i: number) => <td key={i} style={td}>{v || ''}</td>)}
-                <td style={td}>{c.te || ''}</td>
-                <td style={{ ...td, background: '#fef3c7' }}>{c.avgTA?.toFixed(1) || ''}</td>
-              </>}
-              <td style={{ ...td, background: '#f0fdf4' }}>{c.initial?.toFixed(2) || ''}</td>
-              <td style={{ ...td, fontWeight: 'bold', fontSize: '9px', color: c.transmuted >= 75 ? '#166534' : '#991b1b' }}>{c.transmuted || ''}</td>
-              <td style={{ ...td, fontSize: '7px' }}>{desc.short}</td>
-            </tr>
-          );
-        })}
-      </>
-    );
-
-    return (
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8px', marginBottom: '4px' }}>
-        <thead>
-          <tr>
-            <th style={th} rowSpan={2}>#</th>
-            <th style={{ ...th, textAlign: 'left' }} rowSpan={2}>LEARNERS' NAMES</th>
-            <th style={th} colSpan={5}>WRITTEN / ORAL WORKS ({(weights.ww * 100).toFixed(0)}%)</th>
-            <th style={{ ...th, background: '#dbeafe' }} rowSpan={2}>PS</th>
-            <th style={th} colSpan={3}>PRODUCT / PERFORMANCE TASKS ({(weights.pt * 100).toFixed(0)}%)</th>
-            <th style={{ ...th, background: '#ede9fe' }} rowSpan={2}>PS</th>
-            {hasTA && <>
-              <th style={th} colSpan={2}>SUMMATIVE TESTS</th>
-              <th style={th}>TERM EXAM</th>
-              <th style={{ ...th, background: '#fef3c7' }} rowSpan={2}>TA PS</th>
-            </>}
-            <th style={{ ...th, background: '#f0fdf4' }} rowSpan={2}>Initial</th>
-            <th style={{ ...th, fontWeight: 'bold' }} rowSpan={2}>TG</th>
-            <th style={th} rowSpan={2}>Descriptor</th>
-          </tr>
-          <tr>
-            {highest.ww.map((v, i) => <th key={i} style={th}>{v || i + 1}</th>)}
-            {highest.pt.map((v, i) => <th key={i} style={th}>{v || i + 1}</th>)}
-            {hasTA && <>
-              {highest.st.map((v, i) => <th key={i} style={th}>{v || i + 1}</th>)}
-              <th style={th}>{highest.te || 100}</th>
-            </>}
-          </tr>
-        </thead>
-        <tbody>
-          {renderGroup(males, 'MALE')}
-          {renderGroup(females, 'FEMALE')}
-        </tbody>
-      </table>
-    );
-  };
-
-  // ── Test/Exam Result Analysis table ────────────────────────────────────────
-  const renderAnalysisTable = (termNum: number) => {
-    const termData = allTermData[termNum];
-    if (!termData || !hasTA) return null;
-    const { highest, scores: termScores } = termData;
-
-    const allStudents = [...males, ...females];
-    const n = allStudents.length;
-    if (n === 0) return null;
-
-    // Collect raw scores per column: st[0]=ST1, st[1]=ST2, te=TE
-    const st1Scores = allStudents.map(s => termScores[s.id]?.st?.[0] ?? 0);
-    const st2Scores = allStudents.map(s => termScores[s.id]?.st?.[1] ?? 0);
-    const teScores  = allStudents.map(s => termScores[s.id]?.te ?? 0);
-
-    const hST1 = highest.st[0] || 50;
-    const hST2 = highest.st[1] || 50;
-    const hTE  = highest.te || 100;
-
-    const calcStats = (arr: number[], hps: number) => {
-      const valid = arr.filter((_, i) => arr[i] !== undefined);
-      const count = valid.length;
-      const mean   = count > 0 ? valid.reduce((a, b) => a + b, 0) / count : 0;
-      const sorted = [...valid].sort((a, b) => a - b);
-      const median = count > 0
-        ? count % 2 === 0
-          ? (sorted[count/2-1] + sorted[count/2]) / 2
-          : sorted[Math.floor(count/2)]
-        : 0;
-      const variance = count > 0 ? valid.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / count : 0;
-      const sd = Math.sqrt(variance);
-      const mps = hps > 0 ? (mean / hps) * 100 : 0;
-      const above75 = valid.filter(v => hps > 0 && (v / hps) * 100 >= 75).length;
-      const below75 = count - above75;
-      return { count, mean, median, sd, mps, above75, below75 };
-    };
-
-    const s1 = calcStats(st1Scores, hST1);
-    const s2 = calcStats(st2Scores, hST2);
-    const se = calcStats(teScores,  hTE);
-
-    const anTd: React.CSSProperties = { border: '1px solid #aaa', padding: '2px 5px', fontSize: '8px', textAlign: 'center' };
-    const anTh: React.CSSProperties = { ...anTd, background: '#e8e8e8', fontWeight: 'bold' };
-    const anTdL: React.CSSProperties = { ...anTd, textAlign: 'left' };
-
-    return (
-      <div style={{ marginTop: '8px' }}>
-        <div style={{ fontWeight: 'bold', fontSize: '9px', background: '#374151', color: 'white', padding: '3px 6px', marginBottom: '2px' }}>
-          TEST / EXAM RESULT ANALYSIS — TERM {termNum}
-        </div>
-        <table style={{ borderCollapse: 'collapse', fontSize: '8px', marginBottom: '4px' }}>
-          <thead>
-            <tr>
-              <th style={{ ...anTh, minWidth: '180px' }}></th>
-              <th style={anTh}>ST1</th>
-              <th style={anTh}>ST2</th>
-              <th style={anTh}>TE</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style={anTdL}>Number of Examinees</td>
-              <td style={anTd}>{s1.count}</td>
-              <td style={anTd}>{s2.count}</td>
-              <td style={anTd}>{se.count}</td>
-            </tr>
-            <tr>
-              <td style={anTdL}>Highest Possible Score (HPS)</td>
-              <td style={anTd}>{hST1}</td>
-              <td style={anTd}>{hST2}</td>
-              <td style={anTd}>{hTE}</td>
-            </tr>
-            <tr>
-              <td colSpan={4} style={{ ...anTdL, background: '#f3f4f6', fontWeight: 'bold' }}>CRITERION-REFERENCED</td>
-            </tr>
-            <tr>
-              <td style={anTdL}>Got 75% &amp; above</td>
-              <td style={anTd}>{s1.above75}</td>
-              <td style={anTd}>{s2.above75}</td>
-              <td style={anTd}>{se.above75}</td>
-            </tr>
-            <tr>
-              <td style={anTdL}>Percentage</td>
-              <td style={anTd}>{s1.count > 0 ? ((s1.above75/s1.count)*100).toFixed(2) : '0.00'}%</td>
-              <td style={anTd}>{s2.count > 0 ? ((s2.above75/s2.count)*100).toFixed(2) : '0.00'}%</td>
-              <td style={anTd}>{se.count > 0 ? ((se.above75/se.count)*100).toFixed(2) : '0.00'}%</td>
-            </tr>
-            <tr>
-              <td style={anTdL}>Got below 75%</td>
-              <td style={anTd}>{s1.below75}</td>
-              <td style={anTd}>{s2.below75}</td>
-              <td style={anTd}>{se.below75}</td>
-            </tr>
-            <tr>
-              <td style={anTdL}>Percentage</td>
-              <td style={anTd}>{s1.count > 0 ? ((s1.below75/s1.count)*100).toFixed(2) : '0.00'}%</td>
-              <td style={anTd}>{s2.count > 0 ? ((s2.below75/s2.count)*100).toFixed(2) : '0.00'}%</td>
-              <td style={anTd}>{se.count > 0 ? ((se.below75/se.count)*100).toFixed(2) : '0.00'}%</td>
-            </tr>
-            <tr>
-              <td colSpan={4} style={{ ...anTdL, background: '#f3f4f6', fontWeight: 'bold' }}>NORM-REFERENCED</td>
-            </tr>
-            <tr>
-              <td style={anTdL}>Mean</td>
-              <td style={anTd}>{s1.mean.toFixed(2)}</td>
-              <td style={anTd}>{s2.mean.toFixed(2)}</td>
-              <td style={anTd}>{se.mean.toFixed(2)}</td>
-            </tr>
-            <tr>
-              <td style={anTdL}>Median</td>
-              <td style={anTd}>{s1.median.toFixed(2)}</td>
-              <td style={anTd}>{s2.median.toFixed(2)}</td>
-              <td style={anTd}>{se.median.toFixed(2)}</td>
-            </tr>
-            <tr>
-              <td style={anTdL}>SD (Standard Deviation)</td>
-              <td style={anTd}>{s1.sd.toFixed(2)}</td>
-              <td style={anTd}>{s2.sd.toFixed(2)}</td>
-              <td style={anTd}>{se.sd.toFixed(2)}</td>
-            </tr>
-            <tr>
-              <td style={anTdL}>MPS / PL (Mean Percentage Score)</td>
-              <td style={anTd}>{s1.mps.toFixed(2)}%</td>
-              <td style={anTd}>{s2.mps.toFixed(2)}%</td>
-              <td style={anTd}>{se.mps.toFixed(2)}%</td>
-            </tr>
-            <tr>
-              <td colSpan={4} style={{ ...anTdL, background: '#f3f4f6', fontWeight: 'bold' }}>OTHER INFO</td>
-            </tr>
-            <tr>
-              <td style={anTdL}>Highest Score</td>
-              <td style={anTd}>{st1Scores.length ? Math.max(...st1Scores) : ''}</td>
-              <td style={anTd}>{st2Scores.length ? Math.max(...st2Scores) : ''}</td>
-              <td style={anTd}>{teScores.length  ? Math.max(...teScores)  : ''}</td>
-            </tr>
-            <tr>
-              <td style={anTdL}>Lowest Score</td>
-              <td style={anTd}>{st1Scores.length ? Math.min(...st1Scores) : ''}</td>
-              <td style={anTd}>{st2Scores.length ? Math.min(...st2Scores) : ''}</td>
-              <td style={anTd}>{teScores.length  ? Math.min(...teScores)  : ''}</td>
-            </tr>
-            <tr>
-              <td style={anTdL}>Total Score</td>
-              <td style={anTd}>{st1Scores.reduce((a,b)=>a+b,0)}</td>
-              <td style={anTd}>{st2Scores.reduce((a,b)=>a+b,0)}</td>
-              <td style={anTd}>{teScores.reduce((a,b)=>a+b,0)}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    );
-  };
-
-  // ── Summary of Grades table ────────────────────────────────────────────────
-  const renderSummaryTable = () => {
-    const renderGroup = (group: Student[], label: string) => (
-      <>
-        <tr>
-          <td colSpan={8} style={{ ...td, background: label === 'MALE' ? '#dbeafe' : '#fce7f3', fontWeight: 'bold', textAlign: 'left' }}>
-            {label}
-          </td>
-        </tr>
-        {group.map((student, idx) => {
-          const t1 = computeTerm(student.id, 1);
-          const t2 = computeTerm(student.id, 2);
-          const t3 = computeTerm(student.id, 3);
-          const validTerms = [t1, t2, t3].filter(t => t.transmuted > 0);
-          const finalGrade = validTerms.length > 0
-            ? Math.round(validTerms.reduce((s, t) => s + t.transmuted, 0) / validTerms.length)
-            : 0;
-          const desc = descriptor(finalGrade);
-          const remarks = finalGrade >= 75 ? 'PASSED' : 'FAILED';
-          return (
-            <tr key={student.id} style={{ background: idx % 2 === 0 ? 'white' : '#f9fafb' }}>
-              <td style={td}>{idx + 1}</td>
-              <td style={{ ...td, textAlign: 'left', minWidth: '140px' }}>{student.full_name}</td>
-              <td style={td}>{t1.transmuted || ''}</td>
-              <td style={td}>{t2.transmuted || ''}</td>
-              <td style={td}>{t3.transmuted || ''}</td>
-              <td style={{ ...td, fontWeight: 'bold', fontSize: '10px', color: finalGrade >= 75 ? '#166534' : '#991b1b' }}>
-                {finalGrade || ''}
-              </td>
-              <td style={{ ...td, fontSize: '7px' }}>{finalGrade ? desc.short : ''}</td>
-              <td style={{ ...td, fontWeight: 'bold', color: remarks === 'PASSED' ? '#166534' : '#991b1b' }}>
-                {finalGrade ? remarks : ''}
-              </td>
-            </tr>
-          );
-        })}
-      </>
-    );
-
-    return (
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8px' }}>
-        <thead>
-          <tr>
-            <th style={th}>#</th>
-            <th style={{ ...th, textAlign: 'left' }}>LEARNERS' NAMES</th>
-            <th style={th}>TERM 1</th>
-            <th style={th}>TERM 2</th>
-            <th style={th}>TERM 3</th>
-            <th style={{ ...th, background: '#d1fae5' }}>FINAL GRADE</th>
-            <th style={th}>DESCRIPTOR</th>
-            <th style={th}>REMARKS</th>
-          </tr>
-        </thead>
-        <tbody>
-          {renderGroup(males, 'MALE')}
-          {renderGroup(females, 'FEMALE')}
-        </tbody>
-      </table>
-    );
-  };
-
-  // ── Shared header block ────────────────────────────────────────────────────
-  const renderHeader = (termLabel: string) => (
-    <>
-      <div style={{ textAlign: 'center', marginBottom: '6px' }}>
-        <div style={{ fontWeight: 'bold', fontSize: '12px' }}>CLASS RECORD</div>
-        <div style={{ fontSize: '8px', color: '#555' }}>(Waiting for the Official DepEd Order)</div>
-      </div>
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '4px', fontSize: '8px' }}>
-        <tbody>
-          <tr>
-            <td style={{ ...td, textAlign: 'left' }}><strong>REGION:</strong> {region}</td>
-            <td style={{ ...td, textAlign: 'left' }}><strong>DIVISION:</strong> {division}</td>
-            <td style={{ ...td, textAlign: 'left' }}><strong>SCHOOL ID:</strong> {schoolId}</td>
-            <td style={{ ...td, textAlign: 'left' }}><strong>SCHOOL YEAR:</strong> {schoolYear || '2026-2027'}</td>
-          </tr>
-          <tr>
-            <td colSpan={2} style={{ ...td, textAlign: 'left' }}><strong>SCHOOL NAME:</strong> {schoolName}</td>
-            <td style={{ ...td, textAlign: 'left' }}><strong>GRADE & SECTION:</strong> {gradeLevel} — {sectionName}</td>
-            <td style={{ ...td, textAlign: 'left' }}><strong>SUBJECT:</strong> {subject}</td>
-          </tr>
-          <tr>
-            <td colSpan={2} style={{ ...td, textAlign: 'left' }}><strong>TEACHER:</strong> {adviser?.toUpperCase()}</td>
-            <td style={{ ...td, textAlign: 'left' }}>
-              <strong>WEIGHTS:</strong> WW {(weights.ww*100).toFixed(0)}% | PT {(weights.pt*100).toFixed(0)}%
-              {hasTA ? ` | TA ${((weights.ta??0)*100).toFixed(0)}%` : ''}
-            </td>
-            <td style={{ ...td, textAlign: 'left' }}><strong>TERM:</strong> {termLabel}</td>
-          </tr>
-        </tbody>
-      </table>
-    </>
-  );
-
-  // ── Signature block ────────────────────────────────────────────────────────
-  const renderSignatures = () => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', fontSize: '8px' }}>
-      <div style={{ textAlign: 'center', minWidth: '200px' }}>
-        <div style={{ fontWeight: 'bold', borderTop: '1px solid black', paddingTop: '2px', marginTop: '20px' }}>
-          {adviser?.toUpperCase()}
-        </div>
-        <div>Subject Teacher</div>
-      </div>
-      <div style={{ textAlign: 'center', minWidth: '200px' }}>
-        <div style={{ borderTop: '1px solid black', paddingTop: '2px', marginTop: '20px' }}>
-          ________________________________
-        </div>
-        <div>School Head</div>
-      </div>
-      <div style={{ textAlign: 'center', minWidth: '200px' }}>
-        <div style={{ borderTop: '1px solid black', paddingTop: '2px', marginTop: '20px' }}>
-          ________________________________
-        </div>
-        <div>Date</div>
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="fixed inset-0 bg-black/80 z-50 overflow-auto">
-      {/* Toolbar — hidden on print */}
-      <div className="no-print sticky top-0 bg-gray-900 border-b border-gray-700 px-6 py-3 flex items-center justify-between z-10">
-        <div className="flex items-center gap-3">
-          <FileText size={18} className="text-blue-400"/>
-          <span className="font-semibold">E-Class Record — {subject}</span>
-          <span className="text-gray-400 text-sm">{sectionName} · Term {currentTerm} · {schoolYear || '2026-2027'}</span>
-        </div>
-        <div className="flex gap-3">
-          <button onClick={() => window.print()}
-            className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
-            <Printer size={16}/> Print
-          </button>
-          <button onClick={onClose}
-            className="flex items-center gap-2 bg-red-900/50 hover:bg-red-800 px-4 py-2 rounded-xl text-sm font-semibold transition">
-            <X size={16}/> Close
-          </button>
-        </div>
-      </div>
-
-      {/* ── PAGE 1: Current Term Class Record ── */}
-      <div className="eclass-print bg-white text-black p-4 page-break" style={{ minWidth: '1100px', fontFamily: 'Arial, sans-serif' }}>
-        {renderHeader(`TERM ${currentTerm}`)}
-
-        <div style={{ fontWeight: 'bold', fontSize: '9px', background: '#1e3a5f', color: 'white', padding: '3px 6px', marginBottom: '2px', marginTop: '6px' }}>
-          TERM {currentTerm} — CLASS RECORD
-        </div>
-        {renderTermTable(currentTerm)}
-
-        {/* Test/Exam Result Analysis for current term */}
-        {renderAnalysisTable(currentTerm)}
-
-        {renderSignatures()}
-      </div>
-
-      {/* ── PAGE 2: Summary of Grades ── */}
-      <div className="eclass-print bg-white text-black p-4" style={{ minWidth: '1100px', fontFamily: 'Arial, sans-serif', pageBreakBefore: 'always' }}>
-        {renderHeader('SUMMARY')}
-
-        <div style={{ fontWeight: 'bold', fontSize: '9px', background: '#14532d', color: 'white', padding: '3px 6px', marginBottom: '2px', marginTop: '6px' }}>
-          SUMMARY OF GRADES (All Terms)
-        </div>
-        {renderSummaryTable()}
-
-        {renderSignatures()}
-      </div>
-
-      <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          body { background: white !important; }
-          .eclass-print { padding: 4mm; min-width: 100% !important; }
-          @page { size: landscape; margin: 6mm; }
-          .eclass-print + .eclass-print { page-break-before: always; }
-        }
-      `}</style>
-    </div>
-  );
+function dayLabel(d: Date): string {
+  return ['SU','M','T','W','TH','F','S'][d.getDay()];
 }
 
-// ── MAIN PAGE ─────────────────────────────────────────────────────────────────
-export default function ClassRecord() {
-  const [subject,setSubject] = useState('Filipino');
-  const [term,setTerm]       = useState(1);
-  const [students,setStudents] = useState<Student[]>([]);
-  const [scores,setScores]   = useState<Record<string,Scores>>({});
-  const [highest,setHighest] = useState<Highest>({ ww:[100,100,100,100,100], pt:[100,100,100], st:[50,50], te:100 });
-  const [loading,setLoading] = useState(true);
-  const [saving,setSaving]   = useState<string|null>(null);
-  const [showAdd,setShowAdd] = useState(false);
-  const [showEClass,setShowEClass] = useState(false);
-  const [allTermData,setAllTermData] = useState<Record<number, TermData>>({});
-  const [loadingEClass,setLoadingEClass] = useState(false);
-  const [statusStudent,setStatusStudent] = useState<Student|null>(null);
+function cycleStatus(cur?: Status): Status {
+  if (!cur || cur === 'P') return 'A';
+  if (cur === 'A') return 'L';
+  return 'P';
+}
 
-  const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear = '2026-2027', division, region, adviser } = useActiveSection();
-  const weights = SUBJECT_WEIGHTS[subject] ?? { ww:0.25, pt:0.50, ta:0.25 };
+function statusColor(s?: Status) {
+  if (s === 'A') return 'bg-red-600 text-white';
+  if (s === 'L') return 'bg-yellow-500 text-black';
+  if (s === 'P') return 'bg-emerald-600 text-white';
+  return 'bg-gray-800 text-gray-400';
+}
 
-  useEffect(()=>{
-    (async()=>{
+function statusPrintChar(s?: Status) {
+  if (s === 'A') return 'X';
+  if (s === 'L') return '/';
+  return '';   // Present = blank per DepEd
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN PAGE
+// ─────────────────────────────────────────────────────────────────────────────
+
+export default function AttendancePage() {
+  const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear, adviser, schoolHead, district } = useActiveSection();
+  const [month, setMonth]         = useState('June');
+  const [view, setView]           = useState<'tracker' | 'sf2'>('tracker');
+  const [students, setStudents]   = useState<Student[]>([]);
+  const [records, setRecords]     = useState<Record<string, AttRecord>>({});
+  const [loading, setLoading]     = useState(true);
+  const [saving, setSaving]       = useState<string | null>(null);
+  const [holidays, setHolidays]   = useState<string[]>([]);
+  const [showHolModal, setShowHolModal] = useState(false);
+  const [holInput,  setHolInput]  = useState('');
+  const [holReason, setHolReason] = useState('');
+
+  const schoolDays = useMemo(() => getSchoolDays(month, holidays), [month, holidays]);
+
+  // ── Load students ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    (async () => {
       setLoading(true);
-      const {data,error}=await supabase.from('students').select('*').eq('section_id',sectionId).order('full_name');
-      if(!error&&data?.length) setStudents(data);
+      const { data, error } = await supabase
+        .from('students').select('*').eq('section_id', sectionId).order('full_name');
+      if (!error && data?.length) setStudents(data);
       else setStudents([
-        {id:'1',lrn:'129694170087',full_name:'ALVAREZ, ZEV C.',sex:'M'},
-        {id:'2',lrn:'129702120162',full_name:'ARNADO, ERWIN N.',sex:'M'},
-        {id:'3',lrn:'129643170074',full_name:'BASTATAS, JERECK A.',sex:'M'},
+        { id:'1', lrn:'129694170087', full_name:'ALVAREZ, ZEV C.',           sex:'M' },
+        { id:'2', lrn:'129702120162', full_name:'ARNADO, ERWIN N.',           sex:'M' },
+        { id:'3', lrn:'129643170074', full_name:'BASTATAS, JERECK A.',        sex:'M' },
+        { id:'4', lrn:'129697180062', full_name:'BERUAN, KHIAN JAY A.',       sex:'M' },
+        { id:'5', lrn:'129515160019', full_name:'CAMAONGAY, ROBERT JR. D.',   sex:'M' },
+        { id:'6', lrn:'129643150229', full_name:'ABAYAN, KESIAH FAITH B.',    sex:'F' },
+        { id:'7', lrn:'129697170011', full_name:'CARSON, SEAN JANSSEN C.',    sex:'M' },
       ]);
       setLoading(false);
     })();
-  },[sectionId]);
+  }, []);
 
-  useEffect(()=>{
-    (async()=>{
-      const {data}=await supabase.from('grades').select('*').eq('subject',subject).eq('term',term);
-      if(data){
-        const m:Record<string,Scores>={};
-        data.forEach((r:any)=>{ m[r.student_id]={ww:r.written_scores||{},pt:r.pt_scores||{},st:r.st_scores||{},te:r.te_score||0}; });
-        setScores(m);
-        if(data[0]?.highest_ww) setHighest({ww:data[0].highest_ww,pt:data[0].highest_pt,st:data[0].highest_st||[50,50],te:data[0].highest_te||100});
-      }
+  // ── Load holidays for this section ───────────────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('holidays')
+        .select('date')
+        .eq('section_id', sectionId);
+      setHolidays((data ?? []).map((r: any) => r.date));
     })();
-  },[subject,term]);
+  }, [sectionId]);
 
-  const updateScore = useCallback(async(sid:string, cat:'ww'|'pt'|'st'|'te', idx:number|null, val:number)=>{
-    setScores(prev=>{
-      const cur=prev[sid]||{ww:{},pt:{},st:{},te:0};
-      const next={...prev,[sid]:{...cur,...(cat==='te'?{te:val}:{[cat]:{...(cur[cat as 'ww'|'pt'|'st']),[idx!]:val}})}};
-      const s=next[sid]; setSaving(sid);
-      supabase.from('grades').upsert({
-        student_id:sid,term,subject,
-        written_scores:s.ww,pt_scores:s.pt,st_scores:s.st,te_score:s.te,
-        highest_ww:highest.ww,highest_pt:highest.pt,highest_st:highest.st,highest_te:highest.te,
-      },{onConflict:'student_id,term,subject'}).then(()=>setSaving(null));
+  // ── Load attendance for this month ─────────────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      if (!students.length) return;
+      const dates = schoolDays.map(fmt);
+      if (!dates.length) return;
+      const { data } = await supabase
+        .from('attendance')
+        .select('*')
+        .eq('section_id', sectionId)
+        .in('date', dates);
+
+      const map: Record<string, AttRecord> = {};
+      students.forEach(s => { map[s.id] = {}; });
+      data?.forEach((r: any) => {
+        if (map[r.student_id]) map[r.student_id][r.date] = r.status;
+      });
+      setRecords(map);
+    })();
+  }, [students, schoolDays]);
+
+  // ── Add holiday ────────────────────────────────────────────────────────────
+  const addHoliday = async () => {
+    if (!holInput) return;
+    const exists = holidays.includes(holInput);
+    if (exists) return;
+    const next = [...holidays, holInput].sort();
+    setHolidays(next);
+    setHolInput(''); setHolReason('');
+    await supabase.from('holidays').upsert(
+      { section_id: sectionId, date: holInput, reason: holReason || 'Holiday' },
+      { onConflict: 'section_id,date' }
+    );
+  };
+
+  const removeHoliday = async (date: string) => {
+    setHolidays(prev => prev.filter(h => h !== date));
+    await supabase.from('holidays').delete()
+      .eq('section_id', sectionId).eq('date', date);
+  };
+
+  // ── Toggle attendance ──────────────────────────────────────────────────────
+  const toggle = async (sid: string, date: string) => {
+    const cur = records[sid]?.[date];
+    const next = cycleStatus(cur);
+    setRecords(prev => ({ ...prev, [sid]: { ...prev[sid], [date]: next } }));
+    setSaving(sid + date);
+    await supabase.from('attendance').upsert(
+      { student_id: sid, section_id: sectionId, date, status: next },
+      { onConflict: 'student_id,date' }
+    );
+    setSaving(null);
+  };
+
+  // ── Mark all present for a day ─────────────────────────────────────────────
+  const markAllPresent = async (date: string) => {
+    const updates = students.map(s => ({
+      student_id: s.id, section_id: sectionId, date, status: 'P' as Status,
+    }));
+    setRecords(prev => {
+      const next = { ...prev };
+      students.forEach(s => { next[s.id] = { ...next[s.id], [date]: 'P' }; });
       return next;
     });
-  },[term,subject,highest]);
-
-  const compute = (sid:string)=>{
-    const s=scores[sid]||{ww:{},pt:{},st:{},te:0};
-    const ww=Array.from({length:5},(_,i)=>s.ww?.[i]??0);
-    const pt=Array.from({length:3},(_,i)=>s.pt?.[i]??0);
-    const st=Array.from({length:2},(_,i)=>s.st?.[i]??0);
-    const te=s.te??0;
-    const avgWW=calcAvg(ww,highest.ww);
-    const avgPT=calcAvg(pt,highest.pt);
-    const avgTA=calcAvg([...st,te],[...highest.st,highest.te]);
-    const initial=avgWW*weights.ww+avgPT*weights.pt+avgTA*(weights.ta??0.25);
-    return {ww,pt,st,te,avgWW,avgPT,avgTA,initial,transmuted:transmute(initial)};
+    await supabase.from('attendance').upsert(updates, { onConflict: 'student_id,date' });
   };
 
-  const classAvg=students.length>0
-    ?students.reduce((s,st)=>s+compute(st.id).transmuted,0)/students.length:0;
+  // ── Stats helpers ──────────────────────────────────────────────────────────
+  const getAbsents  = (sid: string) => schoolDays.filter(d => records[sid]?.[fmt(d)] === 'A').length;
+  const getTardies  = (sid: string) => schoolDays.filter(d => records[sid]?.[fmt(d)] === 'L').length;
+  const getPresents = (sid: string) => schoolDays.filter(d => {
+    const s = records[sid]?.[fmt(d)];
+    return s === 'P' || s === 'L' || s === undefined;
+  }).length;
 
-  const hasTA=(weights.ta??0)>0;
-
-  // Load all 3 terms data for E-Class Record view
-  const openEClassRecord = async () => {
-    setLoadingEClass(true);
-    const termMap: Record<number, TermData> = {};
-    for (const t of [1, 2, 3]) {
-      const { data } = await supabase.from('grades').select('*').eq('subject', subject).eq('term', t);
-      const m: Record<string, Scores> = {};
-      let h: Highest = { ww: [100,100,100,100,100], pt: [100,100,100], st: [50,50], te: 100 };
-      if (data && data.length > 0) {
-        data.forEach((r: any) => {
-          m[r.student_id] = { ww: r.written_scores||{}, pt: r.pt_scores||{}, st: r.st_scores||{}, te: r.te_score||0 };
-        });
-        if (data[0]?.highest_ww) {
-          h = { ww: data[0].highest_ww, pt: data[0].highest_pt, st: data[0].highest_st||[50,50], te: data[0].highest_te||100 };
-        }
-      }
-      termMap[t] = { scores: m, highest: h };
+  const hasConsecAbsences = (sid: string) => {
+    let count = 0;
+    for (const d of schoolDays) {
+      if (records[sid]?.[fmt(d)] === 'A') { count++; if (count >= 5) return true; }
+      else count = 0;
     }
-    setAllTermData(termMap);
-    setLoadingEClass(false);
-    setShowEClass(true);
+    return false;
   };
 
-  return (
-    <>
-      <style>{`@media print{body{background:white!important;color:black!important}.no-print{display:none!important}input{border:none!important;background:transparent!important;color:black!important}table{font-size:8px}}`}</style>
-      <div className="min-h-screen bg-gray-950 text-white">
+  const males   = students.filter(s => s.sex === 'M');
+  const females = students.filter(s => s.sex === 'F');
 
-        {/* Header */}
-        <div className="no-print bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
-          <div className="flex items-center gap-4">
-            <button onClick={()=>window.history.back()} className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-800 transition text-blue-400"><ArrowLeft size={22}/></button>
-            <div><h1 className="text-2xl font-bold">Class Record</h1><p className="text-gray-400 text-sm">Term {term} · {subject}</p></div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="bg-gray-800 rounded-xl px-4 py-2 text-sm flex items-center gap-2">
-              <Users size={16} className="text-blue-400"/>
-              <span className="text-gray-400">{students.length} learners</span>
-              <span className="text-gray-600">·</span>
-              <span className="font-semibold text-blue-300">Avg: {classAvg.toFixed(0)}</span>
-            </div>
-            <button onClick={()=>setShowAdd(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl text-sm font-semibold transition"><Plus size={16}/>Add Learner</button>
-            <button
-              onClick={openEClassRecord}
-              disabled={loadingEClass}
-              className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-600 px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-60">
-              {loadingEClass ? <RefreshCw size={16} className="animate-spin"/> : <FileText size={16}/>}
-              E-Class Record
-            </button>
-            <button onClick={()=>window.print()} className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-sm font-semibold transition"><Printer size={16}/>Print</button>
-          </div>
-        </div>
+  const dayAbsents = (date: string) => students.filter(s => records[s.id]?.[date] === 'A').length;
+  const dayPresents = (date: string) => students.filter(s => {
+    const st = records[s.id]?.[date];
+    return st === 'P' || st === 'L' || st === undefined;
+  }).length;
 
-        {/* Controls */}
-        <div className="no-print px-6 py-4 flex flex-wrap gap-3 items-center">
-          <select value={subject} onChange={e=>setSubject(e.target.value)}
-            className="bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500">
-            <optgroup label="Junior High School">{SUBJECTS_JHS.map(s=><option key={s}>{s}</option>)}</optgroup>
-            <optgroup label="Senior High School">{SUBJECTS_SHS.map(s=><option key={s}>{s}</option>)}</optgroup>
-          </select>
+  const totalSchoolDays = schoolDays.length;
+  const mAbsents  = males.reduce((s,st)=>s+getAbsents(st.id),0);
+  const fAbsents  = females.reduce((s,st)=>s+getAbsents(st.id),0);
+  const mTardies  = males.reduce((s,st)=>s+getTardies(st.id),0);
+  const fTardies  = females.reduce((s,st)=>s+getTardies(st.id),0);
+  const totalEnrollment = students.length;
+  const mEnroll   = males.length;
+  const fEnroll   = females.length;
 
-          <div className="flex rounded-xl overflow-hidden border border-gray-700">
-            {[1,2,3].map(t=>(
-              <button key={t} onClick={()=>setTerm(t)}
-                className={`px-7 py-2.5 text-sm font-medium transition ${term===t?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>
-                Term {t}
-              </button>
+  // ─────────────────────────────────────────────────────────────────────────
+  // RENDER — DIGITAL TRACKER VIEW
+  // ─────────────────────────────────────────────────────────────────────────
+  const TrackerView = () => (
+    <div className="px-4 pb-10 overflow-x-auto">
+      {/* Legend */}
+      <div className="no-print flex items-center gap-4 mb-4 text-xs">
+        <span className="text-gray-400 font-medium">Click cell to cycle:</span>
+        <span className="flex items-center gap-1"><span className="w-6 h-6 rounded bg-gray-800 border border-gray-700 inline-block"></span> blank = Present</span>
+        <span className="flex items-center gap-1"><span className="w-6 h-6 rounded bg-red-600 inline-block"></span> X = Absent</span>
+        <span className="flex items-center gap-1"><span className="w-6 h-6 rounded bg-yellow-500 inline-block"></span> / = Tardy/Late</span>
+      </div>
+
+      <table className="w-full text-xs border-separate border-spacing-0 min-w-[900px]">
+        <thead>
+          <tr>
+            <th className="bg-gray-800 text-left px-3 py-2 rounded-tl-xl sticky left-0 z-10 min-w-[220px]">Learner's Name</th>
+            {schoolDays.map(d => (
+              <th key={fmt(d)} className="bg-gray-800 text-center px-0.5 py-1 min-w-[32px] group">
+                <div className="text-gray-300">{d.getDate()}</div>
+                <div style={{fontSize:'9px'}} className="text-gray-500">{dayLabel(d)}</div>
+                <button onClick={() => markAllPresent(fmt(d))} title="Mark all Present"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 w-5 h-4 rounded bg-emerald-700 hover:bg-emerald-500 text-white mx-auto flex items-center justify-center leading-none"
+                  style={{fontSize:'9px'}}>✓</button>
+              </th>
             ))}
-          </div>
+            <th className="bg-blue-900 text-center px-2 py-2 text-blue-300">Days Present</th>
+            <th className="bg-red-900 text-center px-2 py-2 text-red-300">Absences</th>
+            <th className="bg-yellow-900 text-center px-2 py-2 text-yellow-300">Tardies</th>
+            <th className="bg-gray-800 text-center px-2 py-2 rounded-tr-xl">⚠️</th>
+          </tr>
+        </thead>
+        <tbody>
+          {/* MALE section */}
+          <tr><td colSpan={schoolDays.length + 5} className="bg-blue-950/50 px-3 py-1.5 text-blue-400 font-semibold text-xs">MALE ({males.length})</td></tr>
+          {males.map((student, idx) => {
+            const absents = getAbsents(student.id);
+            const alert   = hasConsecAbsences(student.id);
+            return (
+              <tr key={student.id} className={`border-t border-gray-800 hover:bg-gray-900/40 ${alert ? 'bg-red-950/20' : ''}`}>
+                <td className="px-3 py-1.5 sticky left-0 bg-gray-950 z-10 border-r border-gray-800">
+                  <div className="font-medium text-white text-xs">{student.full_name}</div>
+                  <div className="text-gray-600 text-xs">{student.lrn}</div>
+                </td>
+                {schoolDays.map(d => {
+                  const dateStr = fmt(d);
+                  const status  = records[student.id]?.[dateStr];
+                  const isSav   = saving === student.id + dateStr;
+                  return (
+                    <td key={dateStr} className="p-0.5 text-center border-l border-gray-800">
+                      <button
+                        onClick={() => toggle(student.id, dateStr)}
+                        className={`w-7 h-7 rounded text-xs font-bold transition-all hover:scale-110 active:scale-95
+                          ${isSav ? 'animate-pulse bg-gray-600' : statusColor(status)}`}
+                        title={status || 'Present'}
+                      >
+                        {status === 'A' ? 'X' : status === 'L' ? '/' : ''}
+                      </button>
+                    </td>
+                  );
+                })}
+                <td className="px-2 py-1 text-center text-emerald-400 font-bold border-l border-gray-800">{getPresents(student.id)}</td>
+                <td className={`px-2 py-1 text-center font-bold border-l border-gray-800 ${absents > 0 ? 'text-red-400' : 'text-gray-600'}`}>{absents}</td>
+                <td className="px-2 py-1 text-center text-yellow-400 border-l border-gray-800">{getTardies(student.id)}</td>
+                <td className="px-2 py-1 text-center border-l border-gray-800">
+                  {alert && <span title="5+ consecutive absences!"><AlertTriangle size={14} className="text-red-400 mx-auto"/></span>}
+                </td>
+              </tr>
+            );
+          })}
 
-          <div className="flex items-center gap-2 text-sm ml-auto">
-            <span className="bg-blue-900/40 text-blue-300 px-3 py-1.5 rounded-lg">WW {(weights.ww*100).toFixed(0)}%</span>
-            <span className="bg-purple-900/40 text-purple-300 px-3 py-1.5 rounded-lg">PT {(weights.pt*100).toFixed(0)}%</span>
-            {hasTA&&<span className="bg-amber-900/40 text-amber-300 px-3 py-1.5 rounded-lg">TA {((weights.ta??0)*100).toFixed(0)}%</span>}
+          {/* FEMALE section */}
+          <tr><td colSpan={schoolDays.length + 5} className="bg-pink-950/50 px-3 py-1.5 text-pink-400 font-semibold text-xs">FEMALE ({females.length})</td></tr>
+          {females.map((student) => {
+            const absents = getAbsents(student.id);
+            const alert   = hasConsecAbsences(student.id);
+            return (
+              <tr key={student.id} className={`border-t border-gray-800 hover:bg-gray-900/40 ${alert ? 'bg-red-950/20' : ''}`}>
+                <td className="px-3 py-1.5 sticky left-0 bg-gray-950 z-10 border-r border-gray-800">
+                  <div className="font-medium text-white text-xs">{student.full_name}</div>
+                  <div className="text-gray-600 text-xs">{student.lrn}</div>
+                </td>
+                {schoolDays.map(d => {
+                  const dateStr = fmt(d);
+                  const status  = records[student.id]?.[dateStr];
+                  const isSav   = saving === student.id + dateStr;
+                  return (
+                    <td key={dateStr} className="p-0.5 text-center border-l border-gray-800">
+                      <button
+                        onClick={() => toggle(student.id, dateStr)}
+                        className={`w-7 h-7 rounded text-xs font-bold transition-all hover:scale-110 active:scale-95
+                          ${isSav ? 'animate-pulse bg-gray-600' : statusColor(status)}`}
+                      >
+                        {status === 'A' ? 'X' : status === 'L' ? '/' : ''}
+                      </button>
+                    </td>
+                  );
+                })}
+                <td className="px-2 py-1 text-center text-emerald-400 font-bold border-l border-gray-800">{getPresents(student.id)}</td>
+                <td className={`px-2 py-1 text-center font-bold border-l border-gray-800 ${absents > 0 ? 'text-red-400' : 'text-gray-600'}`}>{absents}</td>
+                <td className="px-2 py-1 text-center text-yellow-400 border-l border-gray-800">{getTardies(student.id)}</td>
+                <td className="px-2 py-1 text-center border-l border-gray-800">
+                  {alert && <span title="5+ consecutive absences!"><AlertTriangle size={14} className="text-red-400 mx-auto"/></span>}
+                </td>
+              </tr>
+            );
+          })}
+
+          {/* Daily totals */}
+          <tr className="border-t-2 border-gray-600 bg-gray-900">
+            <td className="px-3 py-2 font-bold text-gray-300 text-xs sticky left-0 bg-gray-900">TOTAL Present / Day</td>
+            {schoolDays.map(d => {
+              const dateStr = fmt(d);
+              const p = dayPresents(dateStr);
+              return (
+                <td key={dateStr} className="text-center py-2 border-l border-gray-700 text-xs font-bold text-emerald-400">
+                  {p}
+                </td>
+              );
+            })}
+            <td colSpan={4} className="border-l border-gray-700 px-2 text-xs text-gray-500">
+              Total school days: {totalSchoolDays}
+            </td>
+          </tr>
+          <tr className="bg-gray-900">
+            <td className="px-3 py-2 font-bold text-gray-300 text-xs sticky left-0 bg-gray-900">TOTAL Absent / Day</td>
+            {schoolDays.map(d => {
+              const dateStr = fmt(d);
+              const a = dayAbsents(dateStr);
+              return (
+                <td key={dateStr} className="text-center py-2 border-l border-gray-700 text-xs font-bold text-red-400">
+                  {a > 0 ? a : '-'}
+                </td>
+              );
+            })}
+            <td colSpan={4} className="border-l border-gray-700"></td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* Summary cards */}
+      <div className="no-print mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-gray-900 border border-gray-700 rounded-2xl p-4">
+          <p className="text-gray-400 text-xs">Total Enrollment</p>
+          <p className="text-3xl font-bold text-white">{totalEnrollment}</p>
+          <p className="text-xs text-gray-500">{mEnroll}M · {fEnroll}F</p>
+        </div>
+        <div className="bg-gray-900 border border-gray-700 rounded-2xl p-4">
+          <p className="text-gray-400 text-xs">School Days</p>
+          <p className="text-3xl font-bold text-blue-400">{totalSchoolDays}</p>
+          <p className="text-xs text-gray-500">in {month}</p>
+        </div>
+        <div className="bg-gray-900 border border-red-900/50 rounded-2xl p-4">
+          <p className="text-gray-400 text-xs">Total Absences</p>
+          <p className="text-3xl font-bold text-red-400">{mAbsents + fAbsents}</p>
+          <p className="text-xs text-gray-500">{mAbsents}M · {fAbsents}F</p>
+        </div>
+        <div className="bg-gray-900 border border-yellow-900/50 rounded-2xl p-4">
+          <p className="text-gray-400 text-xs">Total Tardies</p>
+          <p className="text-3xl font-bold text-yellow-400">{mTardies + fTardies}</p>
+          <p className="text-xs text-gray-500">{mTardies}M · {fTardies}F</p>
+        </div>
+      </div>
+
+      {/* Alerts */}
+      {students.some(s => hasConsecAbsences(s.id)) && (
+        <div className="no-print mt-4 bg-red-950/40 border border-red-800 rounded-2xl p-4">
+          <div className="flex items-center gap-2 text-red-400 font-semibold mb-2">
+            <AlertTriangle size={16}/> Learners with 5+ Consecutive Absences (Requires Home Visit)
           </div>
+          {students.filter(s => hasConsecAbsences(s.id)).map(s => (
+            <div key={s.id} className="text-sm text-red-300 ml-6">• {s.full_name}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RENDER — SF2 PRINT VIEW (matches official DepEd format)
+  // ─────────────────────────────────────────────────────────────────────────
+  const SF2View = () => {
+    const totalDailyAttendance = schoolDays.reduce((sum, d) => sum + dayPresents(fmt(d)), 0);
+    const ada  = totalSchoolDays > 0 ? (totalDailyAttendance / totalSchoolDays) : 0;
+    const poa  = totalEnrollment > 0 ? (ada / totalEnrollment) * 100 : 0;
+    const consecutiveCount = students.filter(s => hasConsecAbsences(s.id)).length;
+    const tdStyle = {border:'1px solid black', padding:'1px 3px', fontSize:'8px'} as React.CSSProperties;
+    const thStyle = {border:'1px solid black', padding:'1px 3px', fontSize:'8px', background:'#f3f4f6'} as React.CSSProperties;
+
+    return (
+      <div className="sf2-print bg-white text-black font-sans" style={{fontSize:'9px', minWidth:'1100px', padding:'4mm'}}>
+
+        {/* ── TITLE ── */}
+        <div style={{textAlign:'center', marginBottom:'3px'}}>
+          <div style={{fontWeight:'bold', fontSize:'11px'}}>School Form 2 (SF2) Daily Attendance Report of Learners</div>
+          <div style={{fontSize:'8px'}}>(This replaces Form 1, Form 2 &amp; STS Form 4 - Absenteeism and Dropout Profile)</div>
         </div>
 
-        {/* Table */}
-        {loading?(
-          <div className="flex items-center justify-center py-20 gap-3 text-gray-400"><RefreshCw size={20} className="animate-spin"/>Loading learners...</div>
-        ):(
-          <div className="px-6 pb-10 overflow-x-auto">
-            <table className="w-full min-w-[1600px] text-sm border-separate border-spacing-0">
+        {/* ── HEADER ── */}
+        <table style={{width:'100%', borderCollapse:'collapse', marginBottom:'2px', fontSize:'8px'}}>
+          <tbody>
+            <tr>
+              <td style={tdStyle}><strong>School ID:</strong> {schoolId}</td>
+              <td style={tdStyle}><strong>School Year:</strong> {schoolYear}</td>
+              <td style={{...tdStyle, textAlign:'center', fontWeight:'bold'}}>
+                Report for the Month of: {month} {MONTH_YEAR[month]}
+              </td>
+            </tr>
+            <tr>
+              <td colSpan={2} style={tdStyle}><strong>Name of School:</strong> {schoolName}</td>
+              <td style={tdStyle}>
+                <strong>Grade Level:</strong> {gradeLevel} &nbsp;&nbsp;
+                <strong>Section:</strong> {sectionName}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* ── MAIN ATTENDANCE TABLE ── */}
+        <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8px'}}>
+          <thead>
+            <tr>
+              <th style={{...thStyle, textAlign:'left', minWidth:'150px'}} rowSpan={2}>
+                LEARNER'S NAME<br/>(Last Name, First Name, Middle Name)
+              </th>
+              {schoolDays.map(d => (
+                <th key={fmt(d)} style={{...thStyle, width:'20px', minWidth:'20px', textAlign:'center', padding:'0'}}>
+                  <div>{d.getDate()}</div>
+                  <div style={{fontSize:'6px'}}>{dayLabel(d)}</div>
+                </th>
+              ))}
+              <th style={{...thStyle, textAlign:'center', minWidth:'55px'}} colSpan={2}>
+                Total for the Month
+              </th>
+              <th style={{...thStyle, textAlign:'center', minWidth:'80px'}}>
+                REMARKS (If DROPPED OUT, state reason, please refer to legend number 2.
+                If TRANSFERRED IN/OUT, write the name of School.)
+              </th>
+            </tr>
+            <tr>
+              {schoolDays.map(d => (
+                <th key={fmt(d)} style={{...thStyle, width:'20px', padding:'0'}}></th>
+              ))}
+              <th style={{...thStyle, textAlign:'center'}}>ABSENT</th>
+              <th style={{...thStyle, textAlign:'center'}}>PRESENT</th>
+              <th style={{...thStyle}}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {/* MALE section */}
+            <tr>
+              <td colSpan={schoolDays.length + 4}
+                style={{...tdStyle, fontWeight:'bold', background:'#dbeafe'}}>
+                MALE
+              </td>
+            </tr>
+            {males.map((student, idx) => (
+              <tr key={student.id}>
+                <td style={{...tdStyle, minWidth:'150px'}}>
+                  {idx + 1}. {student.full_name}
+                </td>
+                {schoolDays.map(d => {
+                  const dateStr = fmt(d);
+                  const status  = records[student.id]?.[dateStr];
+                  return (
+                    <td key={dateStr} style={{
+                      ...tdStyle, width:'20px', textAlign:'center', fontWeight:'bold', padding:'0',
+                      background: status === 'A' ? '#fee2e2' : status === 'L' ? '#fef9c3' : 'white',
+                    }}>
+                      {statusPrintChar(status)}
+                    </td>
+                  );
+                })}
+                <td style={{...tdStyle, textAlign:'center', fontWeight:'bold'}}>
+                  {getAbsents(student.id) || ''}
+                </td>
+                <td style={{...tdStyle, textAlign:'center', fontWeight:'bold'}}>
+                  {getPresents(student.id) || ''}
+                </td>
+                <td style={{...tdStyle, fontSize:'7px'}}>
+                  {hasConsecAbsences(student.id) ? '5+ consecutive absences' : ''}
+                </td>
+              </tr>
+            ))}
+
+            {/* MALE total */}
+            <tr>
+              <td style={{...tdStyle, fontWeight:'bold', textAlign:'right', fontStyle:'italic'}}>
+                &lt;=== MALE | TOTAL Per Day ===&gt;
+              </td>
+              {schoolDays.map(d => {
+                const dateStr = fmt(d);
+                const p = males.filter(s => {
+                  const st = records[s.id]?.[dateStr];
+                  return st === 'P' || st === 'L' || st === undefined;
+                }).length;
+                return (
+                  <td key={dateStr} style={{...tdStyle, textAlign:'center', fontWeight:'bold'}}>
+                    {p}
+                  </td>
+                );
+              })}
+              <td style={{...tdStyle, textAlign:'center', fontWeight:'bold'}}>{mAbsents}</td>
+              <td style={{...tdStyle, textAlign:'center', fontWeight:'bold'}}>
+                {males.reduce((sum,s)=>sum+getPresents(s.id),0)}
+              </td>
+              <td style={{...tdStyle}}></td>
+            </tr>
+
+            {/* FEMALE section */}
+            <tr>
+              <td colSpan={schoolDays.length + 4}
+                style={{...tdStyle, fontWeight:'bold', background:'#fce7f3'}}>
+                FEMALE
+              </td>
+            </tr>
+            {females.map((student, idx) => (
+              <tr key={student.id}>
+                <td style={{...tdStyle, minWidth:'150px'}}>
+                  {idx + 1}. {student.full_name}
+                </td>
+                {schoolDays.map(d => {
+                  const dateStr = fmt(d);
+                  const status  = records[student.id]?.[dateStr];
+                  return (
+                    <td key={dateStr} style={{
+                      ...tdStyle, width:'20px', textAlign:'center', fontWeight:'bold', padding:'0',
+                      background: status === 'A' ? '#fee2e2' : status === 'L' ? '#fef9c3' : 'white',
+                    }}>
+                      {statusPrintChar(status)}
+                    </td>
+                  );
+                })}
+                <td style={{...tdStyle, textAlign:'center', fontWeight:'bold'}}>
+                  {getAbsents(student.id) || ''}
+                </td>
+                <td style={{...tdStyle, textAlign:'center', fontWeight:'bold'}}>
+                  {getPresents(student.id) || ''}
+                </td>
+                <td style={{...tdStyle, fontSize:'7px'}}>
+                  {hasConsecAbsences(student.id) ? '5+ consecutive absences' : ''}
+                </td>
+              </tr>
+            ))}
+
+            {/* FEMALE total */}
+            <tr>
+              <td style={{...tdStyle, fontWeight:'bold', textAlign:'right', fontStyle:'italic'}}>
+                &lt;=== FEMALE | TOTAL Per Day ===&gt;
+              </td>
+              {schoolDays.map(d => {
+                const dateStr = fmt(d);
+                const p = females.filter(s => {
+                  const st = records[s.id]?.[dateStr];
+                  return st === 'P' || st === 'L' || st === undefined;
+                }).length;
+                return (
+                  <td key={dateStr} style={{...tdStyle, textAlign:'center', fontWeight:'bold'}}>
+                    {p}
+                  </td>
+                );
+              })}
+              <td style={{...tdStyle, textAlign:'center', fontWeight:'bold'}}>{fAbsents}</td>
+              <td style={{...tdStyle, textAlign:'center', fontWeight:'bold'}}>
+                {females.reduce((sum,s)=>sum+getPresents(s.id),0)}
+              </td>
+              <td style={{...tdStyle}}></td>
+            </tr>
+
+            {/* Combined total */}
+            <tr style={{background:'#f3f4f6'}}>
+              <td style={{...tdStyle, fontWeight:'bold', textAlign:'right', fontStyle:'italic'}}>
+                Combined TOTAL Per Day
+              </td>
+              {schoolDays.map(d => {
+                const dateStr = fmt(d);
+                return (
+                  <td key={dateStr} style={{...tdStyle, textAlign:'center', fontWeight:'bold'}}>
+                    {dayPresents(dateStr)}
+                  </td>
+                );
+              })}
+              <td style={{...tdStyle, textAlign:'center', fontWeight:'bold'}}>{mAbsents + fAbsents}</td>
+              <td style={{...tdStyle, textAlign:'center', fontWeight:'bold'}}>
+                {students.reduce((sum,s)=>sum+getPresents(s.id),0)}
+              </td>
+              <td style={{...tdStyle}}></td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* ── BOTTOM SECTION: GUIDELINES + CODES + SUMMARY ── */}
+        <div style={{display:'flex', gap:'4px', marginTop:'4px', fontSize:'8px'}}>
+
+          {/* GUIDELINES */}
+          <div style={{flex:2, border:'1px solid black', padding:'3px', fontSize:'7.5px'}}>
+            <div style={{fontWeight:'bold', marginBottom:'2px'}}>GUIDELINES:</div>
+            <div style={{lineHeight:'1.4'}}>
+              1. The attendance shall be accomplished daily. Refer to the codes for checking learners' attendance.<br/>
+              2. Dates shall be written in the columns after Learner's Name.<br/>
+              3. To compute the following:
+            </div>
+            <div style={{marginLeft:'8px', lineHeight:'1.6', marginTop:'2px'}}>
+              <div style={{display:'flex', alignItems:'center', gap:'4px'}}>
+                <span>a. Percentage of Enrolment =</span>
+                <div style={{textAlign:'center', flex:1}}>
+                  <div style={{borderBottom:'1px solid black', paddingBottom:'1px'}}>Registered Learners as of end of the month</div>
+                  <div>Enrolment as of 1st Friday of the school year</div>
+                </div>
+                <span>× 100</span>
+              </div>
+              <div style={{display:'flex', alignItems:'center', gap:'4px', marginTop:'4px'}}>
+                <span>b. Average Daily Attendance =</span>
+                <div style={{textAlign:'center', flex:1}}>
+                  <div style={{borderBottom:'1px solid black', paddingBottom:'1px'}}>Total Daily Attendance</div>
+                  <div>Number of School Days in reporting month</div>
+                </div>
+              </div>
+              <div style={{display:'flex', alignItems:'center', gap:'4px', marginTop:'4px'}}>
+                <span>c. Percentage of Attendance for the month =</span>
+                <div style={{textAlign:'center', flex:1}}>
+                  <div style={{borderBottom:'1px solid black', paddingBottom:'1px'}}>Average daily attendance</div>
+                  <div>Registered Learners as of end of the month</div>
+                </div>
+                <span>× 100</span>
+              </div>
+            </div>
+            <div style={{lineHeight:'1.4', marginTop:'4px'}}>
+              4. Every end of the month, the class adviser will submit this form to the office of the principal for recording
+              of summary table into School Form 4. Once signed by the principal, this form should be returned to the adviser.<br/>
+              5. The adviser will provide neccessary interventions including but not limited to home visitation to learner/s
+              who were absent for 5 consecutive days and/or those at risk of dropping out.<br/>
+              6. Attendance performance of learners will be reflected in Form 137 and Form 138 every grading period.
+            </div>
+            <div style={{marginTop:'4px', fontStyle:'italic', fontSize:'7px'}}>
+              *Beginning of School Year cut-off report is every 1st Friday of the School Year
+            </div>
+          </div>
+
+          {/* CODES + REASONS */}
+          <div style={{flex:2, border:'1px solid black', padding:'3px', fontSize:'7.5px'}}>
+            <div style={{fontWeight:'bold', marginBottom:'2px'}}>1. CODES FOR CHECKING ATTENDANCE</div>
+            <div style={{marginBottom:'4px', lineHeight:'1.4'}}>
+              (blank) - Present; (x) - Absent; Tardy (half shaded = Upper for Late Commer, Lower for Cutting Classes)
+            </div>
+
+            <div style={{fontWeight:'bold', marginBottom:'1px'}}>2. REASONS/CAUSES FOR NLS</div>
+            <div style={{columns:2, columnGap:'8px', lineHeight:'1.5'}}>
+              <div style={{fontWeight:'bold'}}>a. Domestic-Related Factors</div>
+              <div>a.1. Had to take care of siblings</div>
+              <div>a.2. Early marriage/pregnancy</div>
+              <div>a.3. Parents' attitude toward schooling</div>
+              <div>a.4. Family problems</div>
+              <div style={{fontWeight:'bold', marginTop:'2px'}}>b. Individual-Related Factors</div>
+              <div>b.1. Illness</div>
+              <div>b.2. Overage</div>
+              <div>b.3. Death</div>
+              <div>b.4. Drug Abuse</div>
+              <div>b.5. Poor academic performance</div>
+              <div>b.6. Lack of interest/Distractions</div>
+              <div>b.7. Hunger/Malnutrition</div>
+              <div style={{fontWeight:'bold', marginTop:'2px'}}>c. School-Related Factors</div>
+              <div>c.1. Teacher Factor</div>
+              <div>c.2. Physical condition of classroom</div>
+              <div>c.3. Peer influence</div>
+              <div style={{fontWeight:'bold', marginTop:'2px'}}>d. Geographic/Environmental</div>
+              <div>d.1. Distance between home and school</div>
+              <div>d.2. Armed conflict (incl. Tribal wars &amp; clanfeuds)</div>
+              <div>d.3. Calamities/Disasters</div>
+              <div style={{fontWeight:'bold', marginTop:'2px'}}>e. Financial-Related</div>
+              <div>e.1. Child labor, work</div>
+              <div style={{fontWeight:'bold', marginTop:'2px'}}>f. Others (Specify)</div>
+            </div>
+          </div>
+
+          {/* SUMMARY TABLE + SIGNATURES */}
+          <div style={{flex:2, border:'1px solid black', padding:'3px', fontSize:'7.5px'}}>
+            <div style={{display:'flex', justifyContent:'space-between', marginBottom:'2px'}}>
+              <span><strong>Month:</strong> {month} {MONTH_YEAR[month]}</span>
+              <span><strong>No. of Days of Classes:</strong> {totalSchoolDays}</span>
+            </div>
+
+            <table style={{width:'100%', borderCollapse:'collapse', fontSize:'7px', marginBottom:'4px'}}>
               <thead>
                 <tr>
-                  <th className="bg-gray-800 text-left px-3 py-3 rounded-tl-xl w-8">#</th>
-                  <th className="bg-gray-800 text-left px-3 py-3 min-w-[210px]">Learner's Name</th>
-                  <th colSpan={5} className="bg-blue-900 text-center px-3 py-3 border-l border-gray-700">Written Works ({(weights.ww*100).toFixed(0)}%)</th>
-                  <th className="bg-blue-900 text-center px-2 py-3 border-l border-gray-700 text-xs text-blue-300">PS</th>
-                  <th colSpan={3} className="bg-purple-900 text-center px-3 py-3 border-l border-gray-700">Performance Tasks ({(weights.pt*100).toFixed(0)}%)</th>
-                  <th className="bg-purple-900 text-center px-2 py-3 border-l border-gray-700 text-xs text-purple-300">PS</th>
-                  {hasTA&&<>
-                    <th colSpan={2} className="bg-amber-800 text-center px-3 py-3 border-l border-gray-700 text-xs">Summative Tests</th>
-                    <th className="bg-orange-800 text-center px-3 py-3 border-l border-gray-700 text-xs">Term Exam</th>
-                    <th className="bg-amber-900 text-center px-2 py-3 border-l border-gray-700 text-xs text-amber-300">TA ({((weights.ta??0)*100).toFixed(0)}%) PS</th>
-                  </>}
-                  <th className="bg-gray-800 text-center px-3 py-3 border-l border-gray-700">Initial</th>
-                  <th className="bg-gray-800 text-center px-3 py-3 border-l border-gray-700">TG</th>
-                  <th className="bg-gray-800 text-center px-3 py-3 border-l border-gray-700 rounded-tr-xl min-w-[180px]">Descriptor</th>
-                </tr>
-                <tr className="text-xs">
-                  <td className="bg-gray-900 px-3 py-1 text-gray-600"></td>
-                  <td className="bg-gray-900 px-3 py-1 italic text-gray-600 text-xs">Highest Possible Score</td>
-                  {highest.ww.map((v,i)=>(
-                    <td key={i} className="bg-gray-900 px-1 py-1 border-l border-gray-800">
-                      <input type="number" value={v||''} onChange={e=>setHighest(p=>({...p,ww:p.ww.map((x,j)=>j===i?+e.target.value:x)}))}
-                        className="w-14 text-center bg-gray-800 border border-gray-700 rounded py-1 text-white text-xs"/>
-                    </td>
-                  ))}
-                  <td className="bg-gray-900 border-l border-gray-800 text-center text-gray-600 text-xs py-1">WW PS</td>
-                  {highest.pt.map((v,i)=>(
-                    <td key={i} className="bg-gray-900 px-1 py-1 border-l border-gray-800">
-                      <input type="number" value={v||''} onChange={e=>setHighest(p=>({...p,pt:p.pt.map((x,j)=>j===i?+e.target.value:x)}))}
-                        className="w-14 text-center bg-gray-800 border border-gray-700 rounded py-1 text-white text-xs"/>
-                    </td>
-                  ))}
-                  <td className="bg-gray-900 border-l border-gray-800 text-center text-gray-600 text-xs py-1">PT PS</td>
-                  {hasTA&&<>
-                    {highest.st.map((v,i)=>(
-                      <td key={i} className="bg-gray-900 px-1 py-1 border-l border-gray-800">
-                        <input type="number" value={v||''} onChange={e=>setHighest(p=>({...p,st:p.st.map((x,j)=>j===i?+e.target.value:x)}))}
-                          className="w-14 text-center bg-gray-800 border border-gray-700 rounded py-1 text-white text-xs"/>
-                      </td>
-                    ))}
-                    <td className="bg-gray-900 px-1 py-1 border-l border-gray-800">
-                      <input type="number" value={highest.te||''} onChange={e=>setHighest(p=>({...p,te:+e.target.value}))}
-                        className="w-14 text-center bg-gray-800 border border-gray-700 rounded py-1 text-white text-xs"/>
-                    </td>
-                    <td className="bg-gray-900 border-l border-gray-800 text-center text-gray-600 text-xs py-1">TA PS</td>
-                  </>}
-                  <td colSpan={3} className="bg-gray-900 border-l border-gray-800"></td>
+                  <th style={thStyle}>Summary for the Month</th>
+                  <th style={{...thStyle, textAlign:'center'}}>M</th>
+                  <th style={{...thStyle, textAlign:'center'}}>F</th>
+                  <th style={{...thStyle, textAlign:'center'}}>TOTAL</th>
                 </tr>
               </thead>
               <tbody>
-                {students.map((student,idx)=>{
-                  const {ww,pt,st,te,avgWW,avgPT,avgTA,initial,transmuted}=compute(student.id);
-                  const desc=descriptor(transmuted);
-                  const isSaving=saving===student.id;
-                  const isInactive = student.status === 'dropped' || student.status === 'transferred';
-                  const inp=(color:string)=>`w-14 text-center bg-transparent border border-gray-700 hover:border-${color}-600 focus:border-${color}-500 rounded py-2 text-white text-sm outline-none focus:bg-gray-900`;
-                  const statusTag = student.status === 'dropped'
-                    ? <span className="text-[10px] bg-red-900/60 text-red-300 border border-red-700 px-1.5 py-0.5 rounded font-semibold">DROPPED</span>
-                    : student.status === 'transferred'
-                    ? <span className="text-[10px] bg-amber-900/60 text-amber-300 border border-amber-700 px-1.5 py-0.5 rounded font-semibold">TRANSFERRED</span>
-                    : null;
-                  return (
-                    <tr key={student.id} className={`border-t border-gray-800 transition-colors ${isInactive ? 'opacity-50 bg-gray-900/60' : transmuted<75 ? 'bg-red-950/10 hover:bg-gray-900/50' : 'hover:bg-gray-900/50'}`}>
-                      <td className="px-3 py-2 text-center text-gray-500 text-xs">{idx+1}</td>
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {isSaving&&<RefreshCw size={12} className="animate-spin text-blue-400"/>}
-                          <button
-                            onClick={()=>setStatusStudent(student)}
-                            className="text-sm font-medium hover:text-blue-300 hover:underline transition text-left">
-                            {student.full_name}
-                          </button>
-                          {student.sex&&<span className="text-xs text-gray-600">{student.sex}</span>}
-                          {statusTag}
-                        </div>
-                        <div className="text-xs text-gray-600">{student.lrn}</div>
-                        {isInactive && student.status_date && (
-                          <div className="text-[10px] text-gray-600 mt-0.5">Since {student.status_date}{student.status_reason ? ` · ${student.status_reason}` : ''}</div>
-                        )}
-                      </td>
-                      {ww.map((v,i)=>(
-                        <td key={i} className="px-1 py-1 border-l border-gray-800">
-                          <input type="number" min={0} max={highest.ww[i]} value={v||''} disabled={isInactive}
-                            onChange={e=>updateScore(student.id,'ww',i,+e.target.value)} className={inp('blue')}/>
-                        </td>
-                      ))}
-                      <td className="px-2 py-2 text-center text-blue-300 text-xs border-l border-gray-800 font-mono">{avgWW.toFixed(1)}</td>
-                      {pt.map((v,i)=>(
-                        <td key={i} className="px-1 py-1 border-l border-gray-800">
-                          <input type="number" min={0} max={highest.pt[i]} value={v||''} disabled={isInactive}
-                            onChange={e=>updateScore(student.id,'pt',i,+e.target.value)} className={inp('purple')}/>
-                        </td>
-                      ))}
-                      <td className="px-2 py-2 text-center text-purple-300 text-xs border-l border-gray-800 font-mono">{avgPT.toFixed(1)}</td>
-                      {hasTA&&<>
-                        {st.map((v,i)=>(
-                          <td key={i} className="px-1 py-1 border-l border-gray-800">
-                            <input type="number" min={0} max={highest.st[i]} value={v||''} disabled={isInactive}
-                              onChange={e=>updateScore(student.id,'st',i,+e.target.value)} className={inp('amber')}/>
-                          </td>
-                        ))}
-                        <td className="px-1 py-1 border-l border-gray-800">
-                          <input type="number" min={0} max={highest.te} value={te||''} disabled={isInactive}
-                            onChange={e=>updateScore(student.id,'te',null,+e.target.value)} className={inp('orange')}/>
-                        </td>
-                        <td className="px-2 py-2 text-center text-amber-300 text-xs border-l border-gray-800 font-mono">{avgTA.toFixed(1)}</td>
-                      </>}
-                      <td className="px-3 py-2 text-center text-gray-400 text-xs border-l border-gray-800 font-mono">{isInactive ? '—' : initial.toFixed(2)}</td>
-                      <td className={`px-3 py-2 text-center font-bold text-2xl border-l border-gray-800 ${isInactive ? 'text-gray-600' : transmuted>=75?'text-white':'text-red-400'}`}>{isInactive ? '—' : transmuted}</td>
-                      <td className={`px-3 py-2 text-center text-xs font-medium border-l border-gray-800 ${isInactive ? 'text-gray-600 italic' : desc.color}`}>{isInactive ? student.status : desc.label}</td>
-                    </tr>
-                  );
-                })}
-                {students.length>0&&(()=>{
-                  const activeStudents = students.filter(s => !s.status || s.status === 'active');
-                  const classAvg = activeStudents.length > 0
-                    ? activeStudents.reduce((s,st)=>s+compute(st.id).transmuted,0)/activeStudents.length : 0;
-                  return (
-                    <tr className="border-t-2 border-gray-700 bg-gray-900">
-                      <td></td>
-                      <td className="px-3 py-3 font-semibold text-gray-400 text-sm italic">Class Average</td>
-                      {Array(5+1+3+1+(hasTA?4:0)+2).fill(null).map((_,i)=><td key={i} className="border-l border-gray-800"></td>)}
-                      <td className="px-3 py-3 text-center font-bold text-xl text-yellow-300 border-l border-gray-800">{classAvg.toFixed(0)}</td>
-                      <td className="border-l border-gray-800"></td>
-                    </tr>
-                  );
-                })()}
+                <tr>
+                  <td style={tdStyle}>* Enrolment as of (1st Friday of June)</td>
+                  <td style={{...tdStyle, textAlign:'center'}}>{mEnroll}</td>
+                  <td style={{...tdStyle, textAlign:'center'}}>{fEnroll}</td>
+                  <td style={{...tdStyle, textAlign:'center', fontWeight:'bold'}}>{totalEnrollment}</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>Late enrolment during the month (beyond cut-off)</td>
+                  <td style={{...tdStyle, textAlign:'center'}}>0</td>
+                  <td style={{...tdStyle, textAlign:'center'}}>0</td>
+                  <td style={{...tdStyle, textAlign:'center', fontWeight:'bold'}}>0</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>Registered Learners as of end of month</td>
+                  <td style={{...tdStyle, textAlign:'center'}}>{mEnroll}</td>
+                  <td style={{...tdStyle, textAlign:'center'}}>{fEnroll}</td>
+                  <td style={{...tdStyle, textAlign:'center', fontWeight:'bold'}}>{totalEnrollment}</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>Percentage of Enrolment as of end of month</td>
+                  <td style={{...tdStyle}} colSpan={2}></td>
+                  <td style={{...tdStyle, textAlign:'center', fontWeight:'bold'}}>100%</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>Average Daily Attendance</td>
+                  <td style={{...tdStyle}} colSpan={2}></td>
+                  <td style={{...tdStyle, textAlign:'center', fontWeight:'bold'}}>{ada.toFixed(2)}</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>Percentage of Attendance for the month</td>
+                  <td style={{...tdStyle}} colSpan={2}></td>
+                  <td style={{...tdStyle, textAlign:'center', fontWeight:'bold'}}>{poa.toFixed(2)}%</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>Number of students absent for 5 consecutive days</td>
+                  <td style={{...tdStyle}} colSpan={2}></td>
+                  <td style={{...tdStyle, textAlign:'center', fontWeight:'bold', color:'red'}}>{consecutiveCount || ''}</td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>Dropped out</td>
+                  <td style={{...tdStyle, textAlign:'center'}}></td>
+                  <td style={{...tdStyle, textAlign:'center'}}></td>
+                  <td style={{...tdStyle, textAlign:'center'}}></td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>Transferred out</td>
+                  <td style={{...tdStyle, textAlign:'center'}}></td>
+                  <td style={{...tdStyle, textAlign:'center'}}></td>
+                  <td style={{...tdStyle, textAlign:'center'}}></td>
+                </tr>
+                <tr>
+                  <td style={tdStyle}>Transferred in</td>
+                  <td style={{...tdStyle, textAlign:'center'}}></td>
+                  <td style={{...tdStyle, textAlign:'center'}}></td>
+                  <td style={{...tdStyle, textAlign:'center'}}></td>
+                </tr>
               </tbody>
             </table>
-            {students.length===0&&(
-              <div className="text-center py-20 text-gray-500">
-                <Users size={48} className="mx-auto mb-4 opacity-30"/>
-                <p className="text-lg">No learners yet</p>
-                <p className="text-sm mt-1">Click "Add Learner" to get started</p>
+
+            {/* Certification + Signatures */}
+            <div style={{fontStyle:'italic', marginBottom:'6mm', fontSize:'7.5px'}}>
+              I certify that this is a true and correct report.
+            </div>
+            <div style={{textAlign:'center', marginBottom:'6mm'}}>
+              <div style={{fontWeight:'bold', borderTop:'1px solid black', paddingTop:'1px', display:'inline-block', minWidth:'140px'}}>
+                {adviser.toUpperCase()}
               </div>
-            )}
+              <div style={{fontSize:'7px'}}>(Signature of Adviser over Printed Name)</div>
+            </div>
+            <div style={{marginBottom:'2px', fontSize:'7px'}}>Attested by:</div>
+            <div style={{textAlign:'center'}}>
+              <div style={{fontWeight:'bold', borderTop:'1px solid black', paddingTop:'1px', display:'inline-block', minWidth:'140px'}}>
+                &nbsp;
+              </div>
+              <div style={{fontWeight:'bold'}}>{schoolHead || '________________________________'}</div>
+              <div style={{fontSize:'7px'}}>(Signature of School Head over Printed Name)</div>
+            </div>
+            <div style={{textAlign:'center', marginTop:'4px', fontSize:'7px', color:'#666'}}>
+              Generated thru TeacherHub PH
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // MAIN RETURN
+  // ─────────────────────────────────────────────────────────────────────────
+  return (
+    <>
+      <style>{`
+        @media print {
+          body { background: white !important; }
+          .no-print { display: none !important; }
+          .sf2-print { padding: 4mm; }
+          @page { size: landscape; margin: 8mm; }
+        }
+      `}</style>
+
+      <div className="min-h-screen bg-gray-950 text-white">
+
+        {/* Header */}
+        <div className="no-print bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
+          <div className="flex items-center gap-4">
+            <button onClick={() => window.history.back()}
+              className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-800 transition text-blue-400">
+              <ArrowLeft size={22}/>
+            </button>
+            <div>
+              <h1 className="text-2xl font-bold">SF2 Daily Attendance</h1>
+              <p className="text-gray-400 text-sm">{sectionName} · {gradeLevel} · {schoolYear}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Month navigation */}
+            <div className="flex items-center gap-1 bg-gray-800 rounded-xl px-2 py-1">
+              <button onClick={() => {
+                const i = MONTHS.indexOf(month);
+                if (i > 0) setMonth(MONTHS[i-1]);
+              }} className="p-1 hover:bg-gray-700 rounded-lg transition"><ChevronLeft size={16}/></button>
+              <select value={month} onChange={e => setMonth(e.target.value)}
+                className="bg-transparent text-white text-sm font-semibold px-2 focus:outline-none">
+                {MONTHS.map(m => <option key={m} value={m} className="bg-gray-800">{m} {MONTH_YEAR[m]}</option>)}
+              </select>
+              <button onClick={() => {
+                const i = MONTHS.indexOf(month);
+                if (i < MONTHS.length-1) setMonth(MONTHS[i+1]);
+              }} className="p-1 hover:bg-gray-700 rounded-lg transition"><ChevronRight size={16}/></button>
+            </div>
+
+            {/* View toggle */}
+            <div className="flex rounded-xl overflow-hidden border border-gray-700">
+              <button onClick={() => setView('tracker')}
+                className={`px-4 py-2 text-sm font-medium transition ${view==='tracker'?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>
+                📋 Tracker
+              </button>
+              <button onClick={() => setView('sf2')}
+                className={`px-4 py-2 text-sm font-medium transition ${view==='sf2'?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>
+                📄 SF2 Form
+              </button>
+            </div>
+
+            <button onClick={() => setShowHolModal(true)}
+              className="flex items-center gap-2 bg-amber-700 hover:bg-amber-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
+              🏖️ Holidays {holidays.length > 0 && <span className="bg-amber-900 px-1.5 py-0.5 rounded-full text-xs">{holidays.length}</span>}
+            </button>
+            <button onClick={() => window.print()}
+              className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
+              <Printer size={16}/> Print SF2
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20 gap-3 text-gray-400">
+            <RefreshCw size={20} className="animate-spin"/> Loading attendance data…
+          </div>
+        ) : (
+          <div className={view === 'sf2' ? 'bg-white p-4' : 'p-4'}>
+            {view === 'tracker' ? <TrackerView /> : <SF2View />}
           </div>
         )}
       </div>
 
-      {showAdd && <AddStudentModal sectionId={sectionId} onClose={()=>setShowAdd(false)}
-        onAdd={s=>setStudents(prev=>[...prev,s].sort((a,b)=>{
-          const sexA=a.sex==='M'?0:1, sexB=b.sex==='M'?0:1;
-          if(sexA!==sexB) return sexA-sexB;
-          return a.full_name.localeCompare(b.full_name);
-        }))}/>}
+      {/* ── Holiday Modal ── */}
+      {showHolModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-md border border-gray-700 shadow-2xl">
+            <h3 className="text-xl font-bold mb-3 flex items-center gap-2">
+              🏖️ Holidays / Non-School Days
+            </h3>
+            <p className="text-gray-400 text-sm mb-4">
+              Declare weekdays that are NOT school days — holidays, typhoon suspensions,
+              special non-working days. These will be <strong className="text-white">removed
+              from the attendance grid</strong> and won't count in the SF2 school day total.
+            </p>
 
-      {statusStudent && (
-        <StudentStatusModal
-          student={statusStudent}
-          onClose={() => setStatusStudent(null)}
-          onUpdate={updated => {
-            setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
-            setStatusStudent(null);
-          }}
-        />
-      )}
+            {/* Add holiday form */}
+            <div className="space-y-2 mb-4">
+              <label className="block text-sm text-gray-400">Date (weekday only)</label>
+              <input type="date" value={holInput} onChange={e => setHolInput(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500"/>
+              <label className="block text-sm text-gray-400">Reason / Description</label>
+              <input value={holReason} onChange={e => setHolReason(e.target.value)}
+                placeholder="e.g. Rizal Day, Typhoon Suspension, Foundation Day"
+                className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500"/>
+              <button onClick={addHoliday} disabled={!holInput}
+                className="w-full py-2.5 bg-amber-600 hover:bg-amber-500 rounded-xl font-semibold text-sm transition disabled:opacity-50">
+                + Declare as Non-School Day
+              </button>
+            </div>
 
-      {showEClass && (
-        <EClassRecordView
-          students={students}
-          subject={subject}
-          sectionName={sectionName}
-          gradeLevel={gradeLevel}
-          schoolName={schoolName}
-          schoolId={schoolId}
-          schoolYear={schoolYear}
-          division={division}
-          region={region}
-          adviser={adviser}
-          allTermData={allTermData}
-          currentTerm={term}
-          onClose={() => setShowEClass(false)}
-        />
+            {/* Holiday list */}
+            <div className="mb-4">
+              <p className="text-xs text-gray-500 mb-2 font-semibold uppercase tracking-wide">
+                Declared — {holidays.length} non-school day{holidays.length !== 1 ? 's' : ''}
+              </p>
+              {holidays.length === 0 ? (
+                <div className="text-center text-gray-600 text-sm py-3">None declared yet.</div>
+              ) : (
+                <div className="space-y-1.5 max-h-44 overflow-y-auto">
+                  {holidays.sort().map(h => (
+                    <div key={h} className="flex items-center justify-between bg-gray-800 border border-gray-700 rounded-xl px-3 py-2">
+                      <div>
+                        <span className="text-white text-sm font-mono">{h}</span>
+                        <span className="text-gray-500 text-xs ml-2">
+                          {new Date(h + 'T00:00:00').toLocaleDateString('en-PH', { weekday:'short', month:'short', day:'numeric' })}
+                        </span>
+                      </div>
+                      <button onClick={() => removeHoliday(h)}
+                        className="text-red-400 hover:text-red-300 text-xs font-semibold transition ml-2">
+                        ✕ Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button onClick={() => setShowHolModal(false)}
+              className="w-full py-3 rounded-xl border border-gray-600 hover:bg-gray-800 transition text-sm font-medium">
+              Done
+            </button>
+          </div>
+        </div>
       )}
     </>
   );
