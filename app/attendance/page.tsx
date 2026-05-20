@@ -99,7 +99,7 @@ function StudentStatusModal({ student, onClose, onUpdate }: {
 
   const save = async () => {
     setSaving(true);
-    const updates = { status, status_date: status === 'active' ? null : date, status_reason: status === 'active' ? null : reason.trim() || null };
+    const updates = { status, status_date: status === 'active' ? undefined : date, status_reason: status === 'active' ? undefined : reason.trim() || undefined };
     const { error } = await supabase.from('students').update(updates).eq('id', student.id);
     if (error) { alert('Error: ' + error.message); setSaving(false); return; }
     onUpdate({ ...student, ...updates });
