@@ -73,10 +73,93 @@ const calcAvg = (scores: number[], highs: number[]) => {
   return cnt > 0 ? tot / cnt : 0;
 };
 
-interface Student { id: string; lrn: string; full_name: string; sex?: string; }
+type StudentStatus = 'active' | 'dropped' | 'transferred';
+interface Student { id: string; lrn: string; full_name: string; sex?: string; status?: StudentStatus; status_date?: string; status_reason?: string; }
 interface Highest { ww: number[]; pt: number[]; st: number[]; te: number; }
 interface Scores  { ww: Record<number,number>; pt: Record<number,number>; st: Record<number,number>; te: number; }
 interface TermData { scores: Record<string, Scores>; highest: Highest; }
+
+// ── STUDENT STATUS MODAL ──────────────────────────────────────────────────────
+function StudentStatusModal({ student, onClose, onUpdate }: {
+  student: Student;
+  onClose: () => void;
+  onUpdate: (updated: Student) => void;
+}) {
+  const current = student.status || 'active';
+  const [status, setStatus] = useState<StudentStatus>(current);
+  const [date, setDate] = useState(student.status_date || new Date().toISOString().slice(0,10));
+  const [reason, setReason] = useState(student.status_reason || '');
+  const [saving, setSaving] = useState(false);
+
+  const statusConfig = {
+    active:      { label: 'Active',      bg: 'bg-emerald-600', icon: '✓', desc: 'Student is currently enrolled and attending.' },
+    dropped:     { label: 'Dropped',     bg: 'bg-red-600',     icon: '✕', desc: 'Student stopped schooling / out-of-school youth.' },
+    transferred: { label: 'Transferred', bg: 'bg-amber-500',   icon: '→', desc: 'Student transferred to another school.' },
+  };
+
+  const save = async () => {
+    setSaving(true);
+    const updates = { status, status_date: status === 'active' ? null : date, status_reason: status === 'active' ? null : reason.trim() || null };
+    const { error } = await supabase.from('students').update(updates).eq('id', student.id);
+    if (error) { alert('Error: ' + error.message); setSaving(false); return; }
+    onUpdate({ ...student, ...updates });
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-md border border-gray-700 shadow-2xl" onClick={e=>e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-lg font-bold text-white">{student.full_name}</h3>
+            <p className="text-xs text-gray-400 mt-0.5">LRN: {student.lrn} · {student.sex === 'M' ? 'Male' : 'Female'}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition"><X size={20}/></button>
+        </div>
+
+        <p className="text-xs text-gray-400 uppercase tracking-widest mb-3 font-semibold">Learner Status</p>
+        <div className="grid grid-cols-3 gap-2 mb-5">
+          {(['active','dropped','transferred'] as StudentStatus[]).map(s => {
+            const c = statusConfig[s];
+            const isActive = status === s;
+            return (
+              <button key={s} onClick={() => setStatus(s)}
+                className={`flex flex-col items-center gap-1.5 py-4 px-2 rounded-xl border-2 transition-all ${isActive ? `${c.bg} border-transparent text-white` : 'border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white'}`}>
+                <span className="text-xl font-bold">{c.icon}</span>
+                <span className="text-xs font-semibold">{c.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-gray-500 mb-4">{statusConfig[status].desc}</p>
+
+        {status !== 'active' && (
+          <div className="space-y-3 mb-5">
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Effectivity Date</label>
+              <input type="date" value={date} onChange={e=>setDate(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white text-sm"/>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Reason <span className="text-gray-600">(optional)</span></label>
+              <input value={reason} onChange={e=>setReason(e.target.value)}
+                placeholder={status==='dropped'?'e.g. Health reasons, work, etc.':'e.g. Transferred to ABC School'}
+                className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white text-sm"/>
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-600 hover:bg-gray-800 transition text-sm">Cancel</button>
+          <button onClick={save} disabled={saving}
+            className={`flex-1 py-2.5 rounded-xl font-semibold transition text-sm disabled:opacity-60 ${statusConfig[status].bg} text-white hover:opacity-90`}>
+            {saving ? 'Saving...' : 'Save Status'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function AddStudentModal({ onClose, onAdd, sectionId }:
   { onClose:()=>void; onAdd:(s:Student)=>void; sectionId:string }) {
@@ -572,6 +655,7 @@ export default function ClassRecord() {
   const [showEClass,setShowEClass] = useState(false);
   const [allTermData,setAllTermData] = useState<Record<number, TermData>>({});
   const [loadingEClass,setLoadingEClass] = useState(false);
+  const [statusStudent,setStatusStudent] = useState<Student|null>(null);
 
   const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear = '2026-2027', division, region, adviser } = useActiveSection();
   const weights = SUBJECT_WEIGHTS[subject] ?? { ww:0.25, pt:0.50, ta:0.25 };
@@ -772,28 +856,42 @@ export default function ClassRecord() {
                   const {ww,pt,st,te,avgWW,avgPT,avgTA,initial,transmuted}=compute(student.id);
                   const desc=descriptor(transmuted);
                   const isSaving=saving===student.id;
+                  const isInactive = student.status === 'dropped' || student.status === 'transferred';
                   const inp=(color:string)=>`w-14 text-center bg-transparent border border-gray-700 hover:border-${color}-600 focus:border-${color}-500 rounded py-2 text-white text-sm outline-none focus:bg-gray-900`;
+                  const statusTag = student.status === 'dropped'
+                    ? <span className="text-[10px] bg-red-900/60 text-red-300 border border-red-700 px-1.5 py-0.5 rounded font-semibold">DROPPED</span>
+                    : student.status === 'transferred'
+                    ? <span className="text-[10px] bg-amber-900/60 text-amber-300 border border-amber-700 px-1.5 py-0.5 rounded font-semibold">TRANSFERRED</span>
+                    : null;
                   return (
-                    <tr key={student.id} className={`border-t border-gray-800 hover:bg-gray-900/50 transition-colors ${transmuted<75?'bg-red-950/10':''}`}>
+                    <tr key={student.id} className={`border-t border-gray-800 transition-colors ${isInactive ? 'opacity-50 bg-gray-900/60' : transmuted<75 ? 'bg-red-950/10 hover:bg-gray-900/50' : 'hover:bg-gray-900/50'}`}>
                       <td className="px-3 py-2 text-center text-gray-500 text-xs">{idx+1}</td>
                       <td className="px-3 py-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           {isSaving&&<RefreshCw size={12} className="animate-spin text-blue-400"/>}
-                          <span className="text-sm font-medium">{student.full_name}</span>
+                          <button
+                            onClick={()=>setStatusStudent(student)}
+                            className="text-sm font-medium hover:text-blue-300 hover:underline transition text-left">
+                            {student.full_name}
+                          </button>
                           {student.sex&&<span className="text-xs text-gray-600">{student.sex}</span>}
+                          {statusTag}
                         </div>
                         <div className="text-xs text-gray-600">{student.lrn}</div>
+                        {isInactive && student.status_date && (
+                          <div className="text-[10px] text-gray-600 mt-0.5">Since {student.status_date}{student.status_reason ? ` · ${student.status_reason}` : ''}</div>
+                        )}
                       </td>
                       {ww.map((v,i)=>(
                         <td key={i} className="px-1 py-1 border-l border-gray-800">
-                          <input type="number" min={0} max={highest.ww[i]} value={v||''}
+                          <input type="number" min={0} max={highest.ww[i]} value={v||''} disabled={isInactive}
                             onChange={e=>updateScore(student.id,'ww',i,+e.target.value)} className={inp('blue')}/>
                         </td>
                       ))}
                       <td className="px-2 py-2 text-center text-blue-300 text-xs border-l border-gray-800 font-mono">{avgWW.toFixed(1)}</td>
                       {pt.map((v,i)=>(
                         <td key={i} className="px-1 py-1 border-l border-gray-800">
-                          <input type="number" min={0} max={highest.pt[i]} value={v||''}
+                          <input type="number" min={0} max={highest.pt[i]} value={v||''} disabled={isInactive}
                             onChange={e=>updateScore(student.id,'pt',i,+e.target.value)} className={inp('purple')}/>
                         </td>
                       ))}
@@ -801,31 +899,36 @@ export default function ClassRecord() {
                       {hasTA&&<>
                         {st.map((v,i)=>(
                           <td key={i} className="px-1 py-1 border-l border-gray-800">
-                            <input type="number" min={0} max={highest.st[i]} value={v||''}
+                            <input type="number" min={0} max={highest.st[i]} value={v||''} disabled={isInactive}
                               onChange={e=>updateScore(student.id,'st',i,+e.target.value)} className={inp('amber')}/>
                           </td>
                         ))}
                         <td className="px-1 py-1 border-l border-gray-800">
-                          <input type="number" min={0} max={highest.te} value={te||''}
+                          <input type="number" min={0} max={highest.te} value={te||''} disabled={isInactive}
                             onChange={e=>updateScore(student.id,'te',null,+e.target.value)} className={inp('orange')}/>
                         </td>
                         <td className="px-2 py-2 text-center text-amber-300 text-xs border-l border-gray-800 font-mono">{avgTA.toFixed(1)}</td>
                       </>}
-                      <td className="px-3 py-2 text-center text-gray-400 text-xs border-l border-gray-800 font-mono">{initial.toFixed(2)}</td>
-                      <td className={`px-3 py-2 text-center font-bold text-2xl border-l border-gray-800 ${transmuted>=75?'text-white':'text-red-400'}`}>{transmuted}</td>
-                      <td className={`px-3 py-2 text-center text-xs font-medium border-l border-gray-800 ${desc.color}`}>{desc.label}</td>
+                      <td className="px-3 py-2 text-center text-gray-400 text-xs border-l border-gray-800 font-mono">{isInactive ? '—' : initial.toFixed(2)}</td>
+                      <td className={`px-3 py-2 text-center font-bold text-2xl border-l border-gray-800 ${isInactive ? 'text-gray-600' : transmuted>=75?'text-white':'text-red-400'}`}>{isInactive ? '—' : transmuted}</td>
+                      <td className={`px-3 py-2 text-center text-xs font-medium border-l border-gray-800 ${isInactive ? 'text-gray-600 italic' : desc.color}`}>{isInactive ? student.status : desc.label}</td>
                     </tr>
                   );
                 })}
-                {students.length>0&&(
-                  <tr className="border-t-2 border-gray-700 bg-gray-900">
-                    <td></td>
-                    <td className="px-3 py-3 font-semibold text-gray-400 text-sm italic">Class Average</td>
-                    {Array(5+1+3+1+(hasTA?4:0)+2).fill(null).map((_,i)=><td key={i} className="border-l border-gray-800"></td>)}
-                    <td className="px-3 py-3 text-center font-bold text-xl text-yellow-300 border-l border-gray-800">{classAvg.toFixed(0)}</td>
-                    <td className="border-l border-gray-800"></td>
-                  </tr>
-                )}
+                {students.length>0&&(()=>{
+                  const activeStudents = students.filter(s => !s.status || s.status === 'active');
+                  const classAvg = activeStudents.length > 0
+                    ? activeStudents.reduce((s,st)=>s+compute(st.id).transmuted,0)/activeStudents.length : 0;
+                  return (
+                    <tr className="border-t-2 border-gray-700 bg-gray-900">
+                      <td></td>
+                      <td className="px-3 py-3 font-semibold text-gray-400 text-sm italic">Class Average</td>
+                      {Array(5+1+3+1+(hasTA?4:0)+2).fill(null).map((_,i)=><td key={i} className="border-l border-gray-800"></td>)}
+                      <td className="px-3 py-3 text-center font-bold text-xl text-yellow-300 border-l border-gray-800">{classAvg.toFixed(0)}</td>
+                      <td className="border-l border-gray-800"></td>
+                    </tr>
+                  );
+                })()}
               </tbody>
             </table>
             {students.length===0&&(
@@ -840,7 +943,22 @@ export default function ClassRecord() {
       </div>
 
       {showAdd && <AddStudentModal sectionId={sectionId} onClose={()=>setShowAdd(false)}
-        onAdd={s=>setStudents(prev=>[...prev,s].sort((a,b)=>a.full_name.localeCompare(b.full_name)))}/>}
+        onAdd={s=>setStudents(prev=>[...prev,s].sort((a,b)=>{
+          const sexA=a.sex==='M'?0:1, sexB=b.sex==='M'?0:1;
+          if(sexA!==sexB) return sexA-sexB;
+          return a.full_name.localeCompare(b.full_name);
+        }))}/>}
+
+      {statusStudent && (
+        <StudentStatusModal
+          student={statusStudent}
+          onClose={() => setStatusStudent(null)}
+          onUpdate={updated => {
+            setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
+            setStatusStudent(null);
+          }}
+        />
+      )}
 
       {showEClass && (
         <EClassRecordView
