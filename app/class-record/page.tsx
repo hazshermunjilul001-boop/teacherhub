@@ -682,13 +682,9 @@ export default function ClassRecord() {
     </>
   );
 
-  const males = sf5Data
-    .filter(d => d.student.sex === 'M')
-    .sort((a, b) => a.student.full_name.localeCompare(b.student.full_name));
-
-  const females = sf5Data
-    .filter(d => d.student.sex === 'F')
-    .sort((a, b) => a.student.full_name.localeCompare(b.student.full_name));
+  const males   = students.filter(s=>s.sex==='M');
+  const females = students.filter(s=>s.sex==='F');
+  const others  = students.filter(s=>s.sex!=='M'&&s.sex!=='F');
 
   return (
     <>
