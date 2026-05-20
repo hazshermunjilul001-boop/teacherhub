@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   ArrowLeft, Printer, Users, RefreshCw, ChevronLeft,
-  ChevronRight, AlertTriangle, CheckCircle, Calendar,
+  ChevronRight, AlertTriangle, CheckCircle, Calendar, X,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useActiveSection } from '../../lib/useActiveSection';
@@ -31,8 +31,8 @@ const MONTH_YEAR: Record<string, number> = {
 };
 
 type Status = 'P' | 'A' | 'L';  // Present, Absent, Late/Tardy
-
-interface Student { id: string; lrn: string; full_name: string; sex: string; }
+type StudentStatus = 'active' | 'dropped' | 'transferred';
+interface Student { id: string; lrn: string; full_name: string; sex: string; status?: StudentStatus; status_date?: string; status_reason?: string; }
 interface AttRecord { [date: string]: Status }  // date = 'YYYY-MM-DD'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -84,6 +84,95 @@ function statusPrintChar(s?: Status) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// STUDENT STATUS MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+
+function StudentStatusModal({ student, onClose, onUpdate }: {
+  student: Student;
+  onClose: () => void;
+  onUpdate: (updated: Student) => void;
+}) {
+  const [status, setStatus] = useState<StudentStatus>(student.status || 'active');
+  const [date, setDate]     = useState(student.status_date || new Date().toISOString().slice(0,10));
+  const [reason, setReason] = useState(student.status_reason || '');
+  const [saving, setSaving] = useState(false);
+
+  const cfg = {
+    active:      { label: 'Active',      bg: 'bg-emerald-600', icon: '✓', desc: 'Student is currently enrolled and attending.' },
+    dropped:     { label: 'Dropped',     bg: 'bg-red-600',     icon: '✕', desc: 'Student stopped schooling / out-of-school youth.' },
+    transferred: { label: 'Transferred', bg: 'bg-amber-500',   icon: '→', desc: 'Student transferred to another school.' },
+  };
+
+  const save = async () => {
+    setSaving(true);
+    const updates = {
+      status,
+      status_date:   status === 'active' ? undefined : date,
+      status_reason: status === 'active' ? undefined : reason.trim() || undefined,
+    };
+    const { error } = await supabase.from('students').update(updates).eq('id', student.id);
+    if (error) { alert('Error: ' + error.message); setSaving(false); return; }
+    onUpdate({ ...student, ...updates });
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-md border border-gray-700 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-lg font-bold text-white">{student.full_name}</h3>
+            <p className="text-xs text-gray-400 mt-0.5">LRN: {student.lrn} · {student.sex === 'M' ? 'Male' : 'Female'}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition"><X size={20}/></button>
+        </div>
+
+        <p className="text-xs text-gray-400 uppercase tracking-widest mb-3 font-semibold">Learner Status</p>
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {(['active','dropped','transferred'] as StudentStatus[]).map(s => {
+            const c = cfg[s];
+            const isActive = status === s;
+            return (
+              <button key={s} onClick={() => setStatus(s)}
+                className={`flex flex-col items-center gap-1.5 py-4 px-2 rounded-xl border-2 transition-all
+                  ${isActive ? `${c.bg} border-transparent text-white` : 'border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white'}`}>
+                <span className="text-xl font-bold">{c.icon}</span>
+                <span className="text-xs font-semibold">{c.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-gray-500 mb-4">{cfg[status].desc}</p>
+
+        {status !== 'active' && (
+          <div className="space-y-3 mb-5">
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Effectivity Date</label>
+              <input type="date" value={date} onChange={e => setDate(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white text-sm"/>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Reason <span className="text-gray-600">(optional)</span></label>
+              <input value={reason} onChange={e => setReason(e.target.value)}
+                placeholder={status === 'dropped' ? 'e.g. Health reasons, work, etc.' : 'e.g. Transferred to ABC School'}
+                className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white text-sm"/>
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-gray-600 hover:bg-gray-800 transition text-sm">Cancel</button>
+          <button onClick={save} disabled={saving}
+            className={`flex-1 py-2.5 rounded-xl font-semibold transition text-sm disabled:opacity-60 ${cfg[status].bg} text-white hover:opacity-90`}>
+            {saving ? 'Saving...' : 'Save Status'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MAIN PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -99,7 +188,7 @@ export default function AttendancePage() {
   const [showHolModal, setShowHolModal] = useState(false);
   const [holInput,  setHolInput]  = useState('');
   const [holReason, setHolReason] = useState('');
-
+  const [statusStudent, setStatusStudent] = useState<Student | null>(null);
   const schoolDays = useMemo(() => getSchoolDays(month, holidays), [month, holidays]);
 
   // ── Load students ──────────────────────────────────────────────────────────
@@ -108,7 +197,13 @@ export default function AttendancePage() {
       setLoading(true);
       const { data, error } = await supabase
         .from('students').select('*').eq('section_id', sectionId).order('full_name');
-      if (!error && data?.length) setStudents(data);
+      const sortByGenderThenName = (arr: Student[]) =>
+        [...arr].sort((a, b) => {
+          const sexA = a.sex === 'M' ? 0 : 1, sexB = b.sex === 'M' ? 0 : 1;
+          if (sexA !== sexB) return sexA - sexB;
+          return a.full_name.localeCompare(b.full_name);
+        });
+      if (!error && data?.length) setStudents(sortByGenderThenName(data));
       else setStudents([
         { id:'1', lrn:'129694170087', full_name:'ALVAREZ, ZEV C.',           sex:'M' },
         { id:'2', lrn:'129702120162', full_name:'ARNADO, ERWIN N.',           sex:'M' },
@@ -120,7 +215,7 @@ export default function AttendancePage() {
       ]);
       setLoading(false);
     })();
-  }, []);
+  }, [sectionId]);
 
   // ── Load holidays for this section ───────────────────────────────────────────
   useEffect(() => {
@@ -217,11 +312,18 @@ export default function AttendancePage() {
     return false;
   };
 
-  const males   = students.filter(s => s.sex === 'M');
-  const females = students.filter(s => s.sex === 'F');
+  const activeStudents     = students.filter(s => !s.status || s.status === 'active');
+  const droppedStudents    = students.filter(s => s.status === 'dropped');
+  const transferredStudents = students.filter(s => s.status === 'transferred');
 
-  const dayAbsents = (date: string) => students.filter(s => records[s.id]?.[date] === 'A').length;
-  const dayPresents = (date: string) => students.filter(s => {
+  const males   = activeStudents.filter(s => s.sex === 'M');
+  const females = activeStudents.filter(s => s.sex === 'F');
+  // For SF2 inactive rows (shown grayed, with remarks)
+  const inactiveMales   = students.filter(s => s.sex === 'M' && (s.status === 'dropped' || s.status === 'transferred'));
+  const inactiveFemales = students.filter(s => s.sex === 'F' && (s.status === 'dropped' || s.status === 'transferred'));
+
+  const dayAbsents  = (date: string) => activeStudents.filter(s => records[s.id]?.[date] === 'A').length;
+  const dayPresents = (date: string) => activeStudents.filter(s => {
     const st = records[s.id]?.[date];
     return st === 'P' || st === 'L' || st === undefined;
   }).length;
@@ -231,9 +333,13 @@ export default function AttendancePage() {
   const fAbsents  = females.reduce((s,st)=>s+getAbsents(st.id),0);
   const mTardies  = males.reduce((s,st)=>s+getTardies(st.id),0);
   const fTardies  = females.reduce((s,st)=>s+getTardies(st.id),0);
-  const totalEnrollment = students.length;
+  const totalEnrollment = activeStudents.length;
   const mEnroll   = males.length;
   const fEnroll   = females.length;
+  const mDropped  = droppedStudents.filter(s => s.sex === 'M').length;
+  const fDropped  = droppedStudents.filter(s => s.sex === 'F').length;
+  const mTransferred = transferredStudents.filter(s => s.sex === 'M').length;
+  const fTransferred = transferredStudents.filter(s => s.sex === 'F').length;
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER — DIGITAL TRACKER VIEW
@@ -269,14 +375,17 @@ export default function AttendancePage() {
         </thead>
         <tbody>
           {/* MALE section */}
-          <tr><td colSpan={schoolDays.length + 5} className="bg-blue-950/50 px-3 py-1.5 text-blue-400 font-semibold text-xs">MALE ({males.length})</td></tr>
+          <tr><td colSpan={schoolDays.length + 5} className="bg-blue-950/50 px-3 py-1.5 text-blue-400 font-semibold text-xs">MALE ({males.length}{inactiveMales.length > 0 ? ` active · ${inactiveMales.length} inactive` : ''})</td></tr>
           {males.map((student, idx) => {
             const absents = getAbsents(student.id);
             const alert   = hasConsecAbsences(student.id);
             return (
               <tr key={student.id} className={`border-t border-gray-800 hover:bg-gray-900/40 ${alert ? 'bg-red-950/20' : ''}`}>
                 <td className="px-3 py-1.5 sticky left-0 bg-gray-950 z-10 border-r border-gray-800">
-                  <div className="font-medium text-white text-xs">{student.full_name}</div>
+                  <button onClick={() => setStatusStudent(student)}
+                    className="font-medium text-white text-xs hover:text-blue-300 hover:underline transition text-left">
+                    {student.full_name}
+                  </button>
                   <div className="text-gray-600 text-xs">{student.lrn}</div>
                 </td>
                 {schoolDays.map(d => {
@@ -305,16 +414,39 @@ export default function AttendancePage() {
               </tr>
             );
           })}
+          {inactiveMales.map(student => (
+            <tr key={student.id} className="border-t border-gray-800 opacity-40 bg-gray-900/60">
+              <td className="px-3 py-1.5 sticky left-0 bg-gray-900 z-10 border-r border-gray-800">
+                <button onClick={() => setStatusStudent(student)}
+                  className="font-medium text-gray-500 text-xs hover:text-blue-300 hover:underline transition text-left">
+                  {student.full_name}
+                </button>
+                <div className="flex items-center gap-1 mt-0.5">
+                  {student.status === 'dropped'
+                    ? <span className="text-[9px] bg-red-900/60 text-red-300 border border-red-700 px-1 rounded">DROPPED</span>
+                    : <span className="text-[9px] bg-amber-900/60 text-amber-300 border border-amber-700 px-1 rounded">TRANSFERRED</span>}
+                  {student.status_date && <span className="text-[9px] text-gray-600">{student.status_date}</span>}
+                </div>
+              </td>
+              {schoolDays.map(d => <td key={fmt(d)} className="p-0.5 border-l border-gray-800 bg-gray-900/40"></td>)}
+              <td colSpan={4} className="px-2 text-[10px] text-gray-600 border-l border-gray-800 italic">
+                {student.status === 'dropped' ? 'Dropped' : 'Transferred'}{student.status_reason ? ` — ${student.status_reason}` : ''}
+              </td>
+            </tr>
+          ))}
 
           {/* FEMALE section */}
-          <tr><td colSpan={schoolDays.length + 5} className="bg-pink-950/50 px-3 py-1.5 text-pink-400 font-semibold text-xs">FEMALE ({females.length})</td></tr>
+          <tr><td colSpan={schoolDays.length + 5} className="bg-pink-950/50 px-3 py-1.5 text-pink-400 font-semibold text-xs">FEMALE ({females.length}{inactiveFemales.length > 0 ? ` active · ${inactiveFemales.length} inactive` : ''})</td></tr>
           {females.map((student) => {
             const absents = getAbsents(student.id);
             const alert   = hasConsecAbsences(student.id);
             return (
               <tr key={student.id} className={`border-t border-gray-800 hover:bg-gray-900/40 ${alert ? 'bg-red-950/20' : ''}`}>
                 <td className="px-3 py-1.5 sticky left-0 bg-gray-950 z-10 border-r border-gray-800">
-                  <div className="font-medium text-white text-xs">{student.full_name}</div>
+                  <button onClick={() => setStatusStudent(student)}
+                    className="font-medium text-white text-xs hover:text-blue-300 hover:underline transition text-left">
+                    {student.full_name}
+                  </button>
                   <div className="text-gray-600 text-xs">{student.lrn}</div>
                 </td>
                 {schoolDays.map(d => {
@@ -342,6 +474,26 @@ export default function AttendancePage() {
               </tr>
             );
           })}
+          {inactiveFemales.map(student => (
+            <tr key={student.id} className="border-t border-gray-800 opacity-40 bg-gray-900/60">
+              <td className="px-3 py-1.5 sticky left-0 bg-gray-900 z-10 border-r border-gray-800">
+                <button onClick={() => setStatusStudent(student)}
+                  className="font-medium text-gray-500 text-xs hover:text-blue-300 hover:underline transition text-left">
+                  {student.full_name}
+                </button>
+                <div className="flex items-center gap-1 mt-0.5">
+                  {student.status === 'dropped'
+                    ? <span className="text-[9px] bg-red-900/60 text-red-300 border border-red-700 px-1 rounded">DROPPED</span>
+                    : <span className="text-[9px] bg-amber-900/60 text-amber-300 border border-amber-700 px-1 rounded">TRANSFERRED</span>}
+                  {student.status_date && <span className="text-[9px] text-gray-600">{student.status_date}</span>}
+                </div>
+              </td>
+              {schoolDays.map(d => <td key={fmt(d)} className="p-0.5 border-l border-gray-800 bg-gray-900/40"></td>)}
+              <td colSpan={4} className="px-2 text-[10px] text-gray-600 border-l border-gray-800 italic">
+                {student.status === 'dropped' ? 'Dropped' : 'Transferred'}{student.status_reason ? ` — ${student.status_reason}` : ''}
+              </td>
+            </tr>
+          ))}
 
           {/* Daily totals */}
           <tr className="border-t-2 border-gray-600 bg-gray-900">
@@ -519,6 +671,21 @@ export default function AttendancePage() {
                 </td>
               </tr>
             ))}
+            {inactiveMales.map((student, idx) => (
+              <tr key={student.id} style={{background:'#f3f4f6', color:'#9ca3af'}}>
+                <td style={{...tdStyle, minWidth:'150px', textDecoration:'line-through', color:'#9ca3af'}}>
+                  {males.length + idx + 1}. {student.full_name}
+                </td>
+                {schoolDays.map(d => <td key={fmt(d)} style={{...tdStyle, background:'#f3f4f6'}}></td>)}
+                <td style={{...tdStyle, textAlign:'center'}}>—</td>
+                <td style={{...tdStyle, textAlign:'center'}}>—</td>
+                <td style={{...tdStyle, fontSize:'7px', fontStyle:'italic', color:'#6b7280'}}>
+                  {student.status === 'dropped' ? 'DROPPED OUT' : 'TRANSFERRED OUT'}
+                  {student.status_date ? ` (${student.status_date})` : ''}
+                  {student.status_reason ? ` — ${student.status_reason}` : ''}
+                </td>
+              </tr>
+            ))}
 
             {/* MALE total */}
             <tr>
@@ -576,6 +743,21 @@ export default function AttendancePage() {
                 </td>
                 <td style={{...tdStyle, fontSize:'7px'}}>
                   {hasConsecAbsences(student.id) ? '5+ consecutive absences' : ''}
+                </td>
+              </tr>
+            ))}
+            {inactiveFemales.map((student, idx) => (
+              <tr key={student.id} style={{background:'#f3f4f6', color:'#9ca3af'}}>
+                <td style={{...tdStyle, minWidth:'150px', textDecoration:'line-through', color:'#9ca3af'}}>
+                  {females.length + idx + 1}. {student.full_name}
+                </td>
+                {schoolDays.map(d => <td key={fmt(d)} style={{...tdStyle, background:'#f3f4f6'}}></td>)}
+                <td style={{...tdStyle, textAlign:'center'}}>—</td>
+                <td style={{...tdStyle, textAlign:'center'}}>—</td>
+                <td style={{...tdStyle, fontSize:'7px', fontStyle:'italic', color:'#6b7280'}}>
+                  {student.status === 'dropped' ? 'DROPPED OUT' : 'TRANSFERRED OUT'}
+                  {student.status_date ? ` (${student.status_date})` : ''}
+                  {student.status_reason ? ` — ${student.status_reason}` : ''}
                 </td>
               </tr>
             ))}
@@ -767,15 +949,15 @@ export default function AttendancePage() {
                 </tr>
                 <tr>
                   <td style={tdStyle}>Dropped out</td>
-                  <td style={{...tdStyle, textAlign:'center'}}></td>
-                  <td style={{...tdStyle, textAlign:'center'}}></td>
-                  <td style={{...tdStyle, textAlign:'center'}}></td>
+                  <td style={{...tdStyle, textAlign:'center'}}>{mDropped || ''}</td>
+                  <td style={{...tdStyle, textAlign:'center'}}>{fDropped || ''}</td>
+                  <td style={{...tdStyle, textAlign:'center', fontWeight:'bold'}}>{(mDropped + fDropped) || ''}</td>
                 </tr>
                 <tr>
                   <td style={tdStyle}>Transferred out</td>
-                  <td style={{...tdStyle, textAlign:'center'}}></td>
-                  <td style={{...tdStyle, textAlign:'center'}}></td>
-                  <td style={{...tdStyle, textAlign:'center'}}></td>
+                  <td style={{...tdStyle, textAlign:'center'}}>{mTransferred || ''}</td>
+                  <td style={{...tdStyle, textAlign:'center'}}>{fTransferred || ''}</td>
+                  <td style={{...tdStyle, textAlign:'center', fontWeight:'bold'}}>{(mTransferred + fTransferred) || ''}</td>
                 </tr>
                 <tr>
                   <td style={tdStyle}>Transferred in</td>
@@ -893,6 +1075,18 @@ export default function AttendancePage() {
           </div>
         )}
       </div>
+
+      {/* ── Student Status Modal ── */}
+      {statusStudent && (
+        <StudentStatusModal
+          student={statusStudent}
+          onClose={() => setStatusStudent(null)}
+          onUpdate={updated => {
+            setStudents(prev => prev.map(s => s.id === updated.id ? updated : s));
+            setStatusStudent(null);
+          }}
+        />
+      )}
 
       {/* ── Holiday Modal ── */}
       {showHolModal && (
