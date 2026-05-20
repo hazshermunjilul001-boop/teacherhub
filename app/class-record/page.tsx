@@ -159,6 +159,9 @@ function StudentStatusModal({ student, onClose, onUpdate }: {
     </div>
   );
 }
+
+function AddStudentModal({ onClose, onAdd, sectionId }:
+  { onClose:()=>void; onAdd:(s:Student)=>void; sectionId:string }) {
   const [lrn,setLrn]=useState(''); const [name,setName]=useState('');
   const [sex,setSex]=useState('M'); const [saving,setSaving]=useState(false);
   const save = async () => {
