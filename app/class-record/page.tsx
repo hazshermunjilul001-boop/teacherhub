@@ -227,8 +227,8 @@ function StatusBadge({ status }: { status?: StudentStatus }) {
   );
 }
 
-// ── E-CLASS RECORD VIEW ───────────────────────────────────────────────────────
-function EClassRecordView({
+// ── SUMMARY OF GRADES VIEW ────────────────────────────────────────────────────
+function SummaryOfGradesView({
   students, subject, sectionName, gradeLevel, schoolName, schoolId,
   schoolYear, division, region, adviser, allTermData, onClose,
 }: {
@@ -240,10 +240,500 @@ function EClassRecordView({
   onClose: () => void;
 }) {
   const weights = SUBJECT_WEIGHTS[subject] ?? { ww:0.25, pt:0.50, ta:0.25 };
+  const activeStudents = students.filter(s => !s.status || s.status === 'active');
+  const males   = activeStudents.filter(s => s.sex === 'M').sort((a,b)=>a.full_name.localeCompare(b.full_name));
+  const females = activeStudents.filter(s => s.sex === 'F').sort((a,b)=>a.full_name.localeCompare(b.full_name));
+
+  const computeTerm = (sid: string, termNum: number) => {
+    const td = allTermData[termNum];
+    if (!td) return 0;
+    const s = td.scores[sid] || { ww:{}, pt:{}, st:{}, te:0 };
+    const ww = Array.from({length:5},(_,i)=>s.ww?.[i]??0);
+    const pt = Array.from({length:3},(_,i)=>s.pt?.[i]??0);
+    const st = Array.from({length:2},(_,i)=>s.st?.[i]??0);
+    const te = s.te ?? 0;
+    const avgWW = calcAvg(ww, td.highest.ww);
+    const avgPT = calcAvg(pt, td.highest.pt);
+    const avgTA = calcAvg([...st,te], [...td.highest.st, td.highest.te]);
+    const initial = avgWW*weights.ww + avgPT*weights.pt + avgTA*(weights.ta??0.25);
+    return transmute(initial);
+  };
+
+  const td = { border:'1px solid #999', padding:'2px 6px', fontSize:'9px', textAlign:'center' as const };
+  const th = { ...td, background:'#e8e8e8', fontWeight:'bold' as const };
+
+  const renderGroup = (group: Student[], label: string) => (
+    <>
+      <tr>
+        <td colSpan={7} style={{...td, background: label==='MALE'?'#dbeafe':'#fce7f3', fontWeight:'bold', textAlign:'left'}}>
+          {label}
+        </td>
+      </tr>
+      {group.map((student, idx) => {
+        const t1 = computeTerm(student.id, 1);
+        const t2 = computeTerm(student.id, 2);
+        const t3 = computeTerm(student.id, 3);
+        const valid = [t1,t2,t3].filter(v=>v>0);
+        const final = valid.length>0 ? Math.round(valid.reduce((a,b)=>a+b,0)/valid.length) : 0;
+        const desc  = descriptor(final);
+        const remarks = final>=75 ? 'PASSED' : final>0 ? 'FAILED' : '';
+        return (
+          <tr key={student.id} style={{background: idx%2===0?'white':'#f9fafb'}}>
+            <td style={td}>{idx+1}</td>
+            <td style={{...td, textAlign:'left', minWidth:'160px'}}>{student.full_name}</td>
+            <td style={td}>{t1||''}</td>
+            <td style={td}>{t2||''}</td>
+            <td style={td}>{t3||''}</td>
+            <td style={{...td, fontWeight:'bold', fontSize:'11px', color:final>=75?'#166534':'#991b1b'}}>{final||''}</td>
+            <td style={{...td, fontSize:'8px'}}>{final ? desc : ''}</td>
+            <td style={{...td, fontWeight:'bold', color:final>=75?'#166534':'#991b1b'}}>{remarks}</td>
+          </tr>
+        );
+      })}
+    </>
+  );
+
+  return (
+    <div className="fixed inset-0 bg-black/80 z-50 overflow-auto">
+      <div className="no-print sticky top-0 bg-gray-900 border-b border-gray-700 px-6 py-3 flex items-center justify-between z-10">
+        <div className="flex items-center gap-3">
+          <FileText size={18} className="text-emerald-400"/>
+          <span className="font-semibold">Summary of Grades &mdash; {subject}</span>
+          <span className="text-gray-400 text-sm">{sectionName} &middot; {schoolYear}</span>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={() => window.print()} className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
+            <Printer size={16}/> Print
+          </button>
+          <button onClick={onClose} className="flex items-center gap-2 bg-red-900/50 hover:bg-red-800 px-4 py-2 rounded-xl text-sm font-semibold transition">
+            <X size={16}/> Close
+          </button>
+        </div>
+      </div>
+
+      <div className="summary-print bg-white text-black p-6" style={{fontFamily:'Arial, sans-serif', maxWidth:'900px', margin:'0 auto'}}>
+        {/* Header */}
+        <div style={{textAlign:'center', marginBottom:'8px'}}>
+          <div style={{fontWeight:'bold', fontSize:'13px'}}>SUMMARY OF GRADES</div>
+          <div style={{fontSize:'9px', color:'#555'}}>{subject} &mdash; {schoolYear}</div>
+        </div>
+
+        <table style={{width:'100%', borderCollapse:'collapse', marginBottom:'6px', fontSize:'9px'}}>
+          <tbody>
+            <tr>
+              <td style={{...td, textAlign:'left'}}><strong>Region:</strong> {region}</td>
+              <td style={{...td, textAlign:'left'}}><strong>Division:</strong> {division}</td>
+              <td style={{...td, textAlign:'left'}}><strong>School ID:</strong> {schoolId}</td>
+              <td style={{...td, textAlign:'left'}}><strong>School Year:</strong> {schoolYear}</td>
+            </tr>
+            <tr>
+              <td colSpan={2} style={{...td, textAlign:'left'}}><strong>School:</strong> {schoolName}</td>
+              <td style={{...td, textAlign:'left'}}><strong>Grade &amp; Section:</strong> {gradeLevel} &mdash; {sectionName}</td>
+              <td style={{...td, textAlign:'left'}}><strong>Subject:</strong> {subject}</td>
+            </tr>
+            <tr>
+              <td colSpan={2} style={{...td, textAlign:'left'}}><strong>Teacher:</strong> {adviser?.toUpperCase()}</td>
+              <td colSpan={2} style={{...td, textAlign:'left'}}><strong>Total Active Learners:</strong> {activeStudents.length} ({males.length}M / {females.length}F)</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table style={{width:'100%', borderCollapse:'collapse', fontSize:'9px'}}>
+          <thead>
+            <tr>
+              <th style={th}>#</th>
+              <th style={{...th, textAlign:'left'}}>LEARNER'S NAME</th>
+              <th style={th}>TERM 1</th>
+              <th style={th}>TERM 2</th>
+              <th style={th}>TERM 3</th>
+              <th style={{...th, background:'#d1fae5'}}>FINAL GRADE</th>
+              <th style={th}>DESCRIPTOR</th>
+              <th style={th}>REMARKS</th>
+            </tr>
+          </thead>
+          <tbody>
+            {renderGroup(males,   'MALE')}
+            {renderGroup(females, 'FEMALE')}
+          </tbody>
+        </table>
+
+        {/* Signatures */}
+        <div style={{display:'flex', justifyContent:'space-between', marginTop:'20px', fontSize:'9px'}}>
+          <div style={{textAlign:'center', minWidth:'200px'}}>
+            <div style={{fontWeight:'bold', borderTop:'1px solid black', paddingTop:'2px', marginTop:'24px'}}>{adviser?.toUpperCase()}</div>
+            <div>Subject Teacher</div>
+          </div>
+          <div style={{textAlign:'center', minWidth:'200px'}}>
+            <div style={{borderTop:'1px solid black', paddingTop:'2px', marginTop:'24px'}}>________________________________</div>
+            <div>School Head</div>
+          </div>
+          <div style={{textAlign:'center', minWidth:'200px'}}>
+            <div style={{borderTop:'1px solid black', paddingTop:'2px', marginTop:'24px'}}>________________________________</div>
+            <div>Date</div>
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          body { background: white !important; }
+          .summary-print { padding: 8mm !important; max-width: 100% !important; }
+          @page { size: portrait; margin: 8mm; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// ── E-CLASS RECORD VIEW (current term + test analysis) ────────────────────────
+function EClassRecordView({
+  students, subject, sectionName, gradeLevel, schoolName, schoolId,
+  schoolYear, division, region, adviser, allTermData, currentTerm, onClose,
+}: {
+  students: Student[]; subject: string;
+  sectionName: string; gradeLevel: string; schoolName: string;
+  schoolId: string; schoolYear: string; division: string;
+  region: string; adviser: string;
+  allTermData: Record<number, TermData>;
+  currentTerm: number;
+  onClose: () => void;
+}) {
+  const weights = SUBJECT_WEIGHTS[subject] ?? { ww:0.25, pt:0.50, ta:0.25 };
   const hasTA = (weights.ta ?? 0) > 0;
   const activeStudents = students.filter(s => !s.status || s.status === 'active');
-  const males   = activeStudents.filter(s => s.sex === 'M');
-  const females = activeStudents.filter(s => s.sex === 'F');
+  const males   = activeStudents.filter(s => s.sex === 'M').sort((a,b)=>a.full_name.localeCompare(b.full_name));
+  const females = activeStudents.filter(s => s.sex === 'F').sort((a,b)=>a.full_name.localeCompare(b.full_name));
+  const termData = allTermData[currentTerm];
+  const highest = termData?.highest ?? { ww:[100,100,100,100,100], pt:[100,100,100], st:[50,50], te:100 };
+
+  const computeTerm = (sid: string) => {
+    if (!termData) return { transmuted:0, initial:0, ww:[0,0,0,0,0], pt:[0,0,0], st:[0,0], te:0, avgWW:0, avgPT:0, avgTA:0 };
+    const s = termData.scores[sid] || { ww:{}, pt:{}, st:{}, te:0 };
+    const ww = Array.from({length:5},(_,i)=>s.ww?.[i]??0);
+    const pt = Array.from({length:3},(_,i)=>s.pt?.[i]??0);
+    const st = Array.from({length:2},(_,i)=>s.st?.[i]??0);
+    const te = s.te ?? 0;
+    const avgWW = calcAvg(ww, highest.ww);
+    const avgPT = calcAvg(pt, highest.pt);
+    const avgTA = calcAvg([...st,te], [...highest.st, highest.te]);
+    const initial = avgWW*weights.ww + avgPT*weights.pt + avgTA*(weights.ta??0.25);
+    return { transmuted:transmute(initial), initial, ww, pt, st, te, avgWW, avgPT, avgTA };
+  };
+
+  const td  = { border:'1px solid #999', padding:'2px 4px', fontSize:'8px', textAlign:'center' as const };
+  const th  = { ...td, background:'#e8e8e8', fontWeight:'bold' as const };
+  const tdL = { ...td, textAlign:'left' as const };
+
+  // ── Test/Exam Result Analysis stats ────────────────────────────────────────
+  const allStudents = [...males, ...females];
+  const n = allStudents.length;
+
+  // ST1, ST2, TE scores across all active students
+  const st1Scores = allStudents.map(s => termData?.scores[s.id]?.st?.[0] ?? 0).filter(v=>v>0);
+  const st2Scores = allStudents.map(s => termData?.scores[s.id]?.st?.[1] ?? 0).filter(v=>v>0);
+  const teScores  = allStudents.map(s => termData?.scores[s.id]?.te ?? 0).filter(v=>v>0);
+
+  const mean  = (arr:number[]) => arr.length>0 ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+  const median= (arr:number[]) => {
+    if(!arr.length) return 0;
+    const s=[...arr].sort((a,b)=>a-b);
+    const m=Math.floor(s.length/2);
+    return s.length%2===0?(s[m-1]+s[m])/2:s[m];
+  };
+  const sd    = (arr:number[]) => {
+    if(arr.length<2) return 0;
+    const m=mean(arr);
+    return Math.sqrt(arr.reduce((s,v)=>s+(v-m)**2,0)/arr.length);
+  };
+  const mps   = (arr:number[], highs:number[]) => {
+    const h = highs.find(v=>v>0) ?? 100;
+    return arr.length>0 ? (mean(arr)/h)*100 : 0;
+  };
+
+  const st1High = highest.st[0] ?? 50;
+  const st2High = highest.st[1] ?? 50;
+  const teHigh  = highest.te ?? 100;
+
+  const above75 = (arr:number[], high:number) => arr.filter(v=>(v/high)*100>=75).length;
+  const below75 = (arr:number[], high:number) => arr.filter(v=>(v/high)*100<75).length;
+
+  const stats = [
+    { label:'ST1', scores:st1Scores, high:st1High },
+    { label:'ST2', scores:st2Scores, high:st2High },
+    { label:'TE',  scores:teScores,  high:teHigh  },
+  ];
+
+  // ── Render student group ───────────────────────────────────────────────────
+  const renderGroup = (group: Student[], label: string) => (
+    <>
+      <tr>
+        <td colSpan={hasTA?20:16} style={{...td, background:label==='MALE'?'#dbeafe':'#fce7f3', fontWeight:'bold', textAlign:'left'}}>
+          {label}
+        </td>
+      </tr>
+      {group.map((student, idx) => {
+        const c = computeTerm(student.id);
+        const desc = descriptor(c.transmuted);
+        return (
+          <tr key={student.id} style={{background:idx%2===0?'white':'#f9fafb'}}>
+            <td style={td}>{idx+1}</td>
+            <td style={{...td, textAlign:'left', minWidth:'140px'}}>{student.full_name}</td>
+            {c.ww.map((v,i) => <td key={i} style={td}>{v||''}</td>)}
+            <td style={{...td, background:'#dbeafe'}}>{c.avgWW.toFixed(1)}</td>
+            {c.pt.map((v,i) => <td key={i} style={td}>{v||''}</td>)}
+            <td style={{...td, background:'#ede9fe'}}>{c.avgPT.toFixed(1)}</td>
+            {hasTA && <>
+              {c.st.map((v,i) => <td key={i} style={td}>{v||''}</td>)}
+              <td style={td}>{c.te||''}</td>
+              <td style={{...td, background:'#fef3c7'}}>{c.avgTA.toFixed(1)}</td>
+            </>}
+            <td style={{...td, background:'#f0fdf4'}}>{c.initial.toFixed(2)}</td>
+            <td style={{...td, fontWeight:'bold', fontSize:'9px', color:c.transmuted>=75?'#166534':'#991b1b'}}>{c.transmuted||''}</td>
+            <td style={{...td, fontSize:'7px'}}>{desc.short}</td>
+          </tr>
+        );
+      })}
+    </>
+  );
+
+  const pageHeader = (
+    <table style={{width:'100%', borderCollapse:'collapse', marginBottom:'4px', fontSize:'8px'}}>
+      <tbody>
+        <tr>
+          <td style={tdL}><strong>REGION:</strong> {region}</td>
+          <td style={tdL}><strong>DIVISION:</strong> {division}</td>
+          <td style={tdL}><strong>SCHOOL ID:</strong> {schoolId}</td>
+          <td style={tdL}><strong>SCHOOL YEAR:</strong> {schoolYear}</td>
+        </tr>
+        <tr>
+          <td colSpan={2} style={tdL}><strong>SCHOOL:</strong> {schoolName}</td>
+          <td style={tdL}><strong>GRADE &amp; SECTION:</strong> {gradeLevel} &mdash; {sectionName}</td>
+          <td style={tdL}><strong>SUBJECT:</strong> {subject}</td>
+        </tr>
+        <tr>
+          <td colSpan={2} style={tdL}><strong>TEACHER:</strong> {adviser?.toUpperCase()}</td>
+          <td colSpan={2} style={tdL}>
+            <strong>WEIGHTS:</strong> WW {(weights.ww*100).toFixed(0)}% | PT {(weights.pt*100).toFixed(0)}%
+            {hasTA ? ` | TA ${((weights.ta??0)*100).toFixed(0)}%` : ''}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  );
+
+  return (
+    <div className="fixed inset-0 bg-black/80 z-50 overflow-auto">
+      <div className="no-print sticky top-0 bg-gray-900 border-b border-gray-700 px-6 py-3 flex items-center justify-between z-10">
+        <div className="flex items-center gap-3">
+          <FileText size={18} className="text-blue-400"/>
+          <span className="font-semibold">E-Class Record &mdash; Term {currentTerm} &mdash; {subject}</span>
+          <span className="text-gray-400 text-sm">{sectionName} &middot; {schoolYear}</span>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={() => window.print()} className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
+            <Printer size={16}/> Print
+          </button>
+          <button onClick={onClose} className="flex items-center gap-2 bg-red-900/50 hover:bg-red-800 px-4 py-2 rounded-xl text-sm font-semibold transition">
+            <X size={16}/> Close
+          </button>
+        </div>
+      </div>
+
+      <div className="eclass-print bg-white text-black p-4" style={{fontFamily:'Arial, sans-serif', minWidth:'1100px'}}>
+
+        {/* Title */}
+        <div style={{textAlign:'center', marginBottom:'4px'}}>
+          <div style={{fontWeight:'bold', fontSize:'12px'}}>CLASS RECORD &mdash; TERM {currentTerm}</div>
+          <div style={{fontSize:'8px', color:'#555'}}>{subject} &mdash; {schoolYear}</div>
+        </div>
+        {pageHeader}
+
+        {/* Class Record Table */}
+        <div style={{fontWeight:'bold', fontSize:'9px', background:'#1e3a5f', color:'white', padding:'3px 6px', marginBottom:'2px', marginTop:'4px'}}>
+          TERM {currentTerm} CLASS RECORD
+        </div>
+        <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8px', marginBottom:'8px'}}>
+          <thead>
+            <tr>
+              <th style={th} rowSpan={2}>#</th>
+              <th style={{...th, textAlign:'left'}} rowSpan={2}>LEARNERS' NAMES</th>
+              <th style={th} colSpan={5}>WRITTEN WORKS ({(weights.ww*100).toFixed(0)}%)</th>
+              <th style={{...th, background:'#dbeafe'}} rowSpan={2}>PS</th>
+              <th style={th} colSpan={3}>PERFORMANCE TASKS ({(weights.pt*100).toFixed(0)}%)</th>
+              <th style={{...th, background:'#ede9fe'}} rowSpan={2}>PS</th>
+              {hasTA && <>
+                <th style={th} colSpan={2}>SUMMATIVE TESTS ({((weights.ta??0)*100).toFixed(0)}%)</th>
+                <th style={th}>TERM EXAM</th>
+                <th style={{...th, background:'#fef3c7'}} rowSpan={2}>TA PS</th>
+              </>}
+              <th style={{...th, background:'#f0fdf4'}} rowSpan={2}>Initial</th>
+              <th style={{...th}} rowSpan={2}>TG</th>
+              <th style={th} rowSpan={2}>Descriptor</th>
+            </tr>
+            <tr>
+              {highest.ww.map((v,i) => <th key={i} style={th}>{v||i+1}</th>)}
+              {highest.pt.map((v,i) => <th key={i} style={th}>{v||i+1}</th>)}
+              {hasTA && <>
+                {highest.st.map((v,i) => <th key={i} style={th}>{v||i+1}</th>)}
+                <th style={th}>{highest.te||100}</th>
+              </>}
+            </tr>
+          </thead>
+          <tbody>
+            {renderGroup(males,   'MALE')}
+            {renderGroup(females, 'FEMALE')}
+          </tbody>
+        </table>
+
+        {/* Test/Exam Result Analysis */}
+        {hasTA && (
+          <>
+            <div style={{fontWeight:'bold', fontSize:'9px', background:'#1e3a5f', color:'white', padding:'3px 6px', marginBottom:'4px', marginTop:'8px'}}>
+              TEST / EXAM RESULT ANALYSIS &mdash; TERM {currentTerm}
+            </div>
+            <div style={{display:'flex', gap:'8px', flexWrap:'wrap', fontSize:'8px'}}>
+
+              {/* Examinees + Highest */}
+              <table style={{borderCollapse:'collapse', minWidth:'240px'}}>
+                <thead>
+                  <tr>
+                    <th style={th}></th>
+                    {stats.map(s=><th key={s.label} style={th}>{s.label}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={tdL}>Number of Examinees:</td>
+                    {stats.map(s=><td key={s.label} style={td}>{s.scores.length||n}</td>)}
+                  </tr>
+                  <tr>
+                    <td style={tdL}>Highest Possible Score:</td>
+                    {stats.map(s=><td key={s.label} style={td}>{s.high}</td>)}
+                  </tr>
+                </tbody>
+              </table>
+
+              {/* Criterion-Referenced */}
+              <table style={{borderCollapse:'collapse', minWidth:'280px'}}>
+                <thead>
+                  <tr>
+                    <th style={{...th, textAlign:'left'}} colSpan={4}>CRITERION-REFERENCED</th>
+                  </tr>
+                  <tr>
+                    <th style={th}></th>
+                    {stats.map(s=><th key={s.label} style={th}>{s.label}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={tdL}>Got 75% &amp; above</td>
+                    {stats.map(s=><td key={s.label} style={td}>{above75(s.scores,s.high)}</td>)}
+                  </tr>
+                  <tr>
+                    <td style={tdL}>Percentage</td>
+                    {stats.map(s=><td key={s.label} style={td}>{s.scores.length>0?((above75(s.scores,s.high)/s.scores.length)*100).toFixed(2)+'%':'0.00%'}</td>)}
+                  </tr>
+                  <tr>
+                    <td style={tdL}>Got below 75%</td>
+                    {stats.map(s=><td key={s.label} style={td}>{below75(s.scores,s.high)}</td>)}
+                  </tr>
+                  <tr>
+                    <td style={tdL}>Percentage</td>
+                    {stats.map(s=><td key={s.label} style={td}>{s.scores.length>0?((below75(s.scores,s.high)/s.scores.length)*100).toFixed(2)+'%':'0.00%'}</td>)}
+                  </tr>
+                </tbody>
+              </table>
+
+              {/* Norm-Referenced */}
+              <table style={{borderCollapse:'collapse', minWidth:'240px'}}>
+                <thead>
+                  <tr>
+                    <th style={{...th, textAlign:'left'}} colSpan={4}>NORM-REFERENCED</th>
+                  </tr>
+                  <tr>
+                    <th style={th}></th>
+                    {stats.map(s=><th key={s.label} style={th}>{s.label}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={tdL}>Mean</td>
+                    {stats.map(s=><td key={s.label} style={td}>{s.scores.length>0?mean(s.scores).toFixed(2):''}</td>)}
+                  </tr>
+                  <tr>
+                    <td style={tdL}>Median</td>
+                    {stats.map(s=><td key={s.label} style={td}>{s.scores.length>0?median(s.scores).toFixed(2):''}</td>)}
+                  </tr>
+                  <tr>
+                    <td style={tdL}>SD</td>
+                    {stats.map(s=><td key={s.label} style={td}>{s.scores.length>0?sd(s.scores).toFixed(2):''}</td>)}
+                  </tr>
+                  <tr>
+                    <td style={tdL}>MPS/PL</td>
+                    {stats.map(s=><td key={s.label} style={td}>{s.scores.length>0?mps(s.scores,[s.high]).toFixed(2)+'%':''}</td>)}
+                  </tr>
+                </tbody>
+              </table>
+
+              {/* Other Info */}
+              <table style={{borderCollapse:'collapse', minWidth:'240px'}}>
+                <thead>
+                  <tr>
+                    <th style={{...th, textAlign:'left'}} colSpan={4}>OTHER INFO</th>
+                  </tr>
+                  <tr>
+                    <th style={th}></th>
+                    {stats.map(s=><th key={s.label} style={th}>{s.label}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={tdL}>Highest Score</td>
+                    {stats.map(s=><td key={s.label} style={td}>{s.scores.length>0?Math.max(...s.scores):''}</td>)}
+                  </tr>
+                  <tr>
+                    <td style={tdL}>Lowest Score</td>
+                    {stats.map(s=><td key={s.label} style={td}>{s.scores.length>0?Math.min(...s.scores):''}</td>)}
+                  </tr>
+                  <tr>
+                    <td style={tdL}>Total Score</td>
+                    {stats.map(s=><td key={s.label} style={td}>{s.scores.length>0?s.scores.reduce((a,b)=>a+b,0):''}</td>)}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        {/* Signatures */}
+        <div style={{display:'flex', justifyContent:'space-between', marginTop:'16px', fontSize:'8px'}}>
+          <div style={{textAlign:'center', minWidth:'200px'}}>
+            <div style={{fontWeight:'bold', borderTop:'1px solid black', paddingTop:'2px', marginTop:'20px'}}>{adviser?.toUpperCase()}</div>
+            <div>Subject Teacher</div>
+          </div>
+          <div style={{textAlign:'center', minWidth:'200px'}}>
+            <div style={{borderTop:'1px solid black', paddingTop:'2px', marginTop:'20px'}}>________________________________</div>
+            <div>School Head</div>
+          </div>
+          <div style={{textAlign:'center', minWidth:'200px'}}>
+            <div style={{borderTop:'1px solid black', paddingTop:'2px', marginTop:'20px'}}>________________________________</div>
+            <div>Date</div>
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          body { background: white !important; }
+          .eclass-print { padding: 4mm !important; min-width: 100% !important; }
+          @page { size: landscape; margin: 6mm; }
+        }
+      `}</style>
+    </div>
+  );
+}
 
   const computeTerm = (sid:string, termNum:number) => {
     const td = allTermData[termNum];
@@ -528,8 +1018,10 @@ export default function ClassRecord() {
   const [saving,setSaving]     = useState<string|null>(null);
   const [showAdd,setShowAdd]   = useState(false);
   const [showEClass,setShowEClass] = useState(false);
+  const [showSummary,setShowSummary] = useState(false);
   const [allTermData,setAllTermData] = useState<Record<number,TermData>>({});
   const [loadingEClass,setLoadingEClass] = useState(false);
+  const [loadingSummary,setLoadingSummary] = useState(false);
   const [statusModal,setStatusModal] = useState<Student|null>(null);
 
   const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear, division, region, adviser } = useActiveSection();
@@ -588,22 +1080,35 @@ export default function ClassRecord() {
   const classAvg = activeStudents.length>0
     ? activeStudents.reduce((s,st)=>s+compute(st.id).transmuted,0)/activeStudents.length : 0;
 
+  const loadTermData = async (terms: number[]) => {
+    const termMap: Record<number,TermData> = {};
+    for (const t of terms) {
+      const {data} = await supabase.from('grades').select('*').eq('subject',subject).eq('term',t);
+      const m: Record<string,Scores> = {};
+      let h: Highest = {ww:[100,100,100,100,100],pt:[100,100,100],st:[50,50],te:100};
+      if (data && data.length>0) {
+        data.forEach((r:any)=>{ m[r.student_id]={ww:r.written_scores||{},pt:r.pt_scores||{},st:r.st_scores||{},te:r.te_score||0}; });
+        if (data[0]?.highest_ww) h={ww:data[0].highest_ww,pt:data[0].highest_pt,st:data[0].highest_st||[50,50],te:data[0].highest_te||100};
+      }
+      termMap[t] = {scores:m, highest:h};
+    }
+    return termMap;
+  };
+
   const openEClassRecord = async () => {
     setLoadingEClass(true);
-    const termMap:Record<number,TermData>={};
-    for (const t of [1,2,3]) {
-      const {data}=await supabase.from('grades').select('*').eq('subject',subject).eq('term',t);
-      const m:Record<string,Scores>={};
-      let h:Highest={ww:[100,100,100,100,100],pt:[100,100,100],st:[50,50],te:100};
-      if(data&&data.length>0){
-        data.forEach((r:any)=>{ m[r.student_id]={ww:r.written_scores||{},pt:r.pt_scores||{},st:r.st_scores||{},te:r.te_score||0}; });
-        if(data[0]?.highest_ww) h={ww:data[0].highest_ww,pt:data[0].highest_pt,st:data[0].highest_st||[50,50],te:data[0].highest_te||100};
-      }
-      termMap[t]={scores:m,highest:h};
-    }
-    setAllTermData(termMap);
+    const termMap = await loadTermData([term]);
+    setAllTermData(prev => ({...prev, ...termMap}));
     setLoadingEClass(false);
     setShowEClass(true);
+  };
+
+  const openSummary = async () => {
+    setLoadingSummary(true);
+    const termMap = await loadTermData([1,2,3]);
+    setAllTermData(termMap);
+    setLoadingSummary(false);
+    setShowSummary(true);
   };
 
   const inp=(color:string)=>`w-14 text-center bg-transparent border border-gray-700 hover:border-${color}-600 focus:border-${color}-500 rounded py-2 text-white text-sm outline-none focus:bg-gray-900`;
@@ -715,7 +1220,12 @@ export default function ClassRecord() {
             <button onClick={openEClassRecord} disabled={loadingEClass}
               className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-600 px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-60">
               {loadingEClass ? <RefreshCw size={16} className="animate-spin"/> : <FileText size={16}/>}
-              E-Class Record
+              E-Class Record (Term {term})
+            </button>
+            <button onClick={openSummary} disabled={loadingSummary}
+              className="flex items-center gap-2 bg-violet-700 hover:bg-violet-600 px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-60">
+              {loadingSummary ? <RefreshCw size={16} className="animate-spin"/> : <FileText size={16}/>}
+              Summary of Grades
             </button>
             <button onClick={()=>window.print()} className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
               <Printer size={16}/>Print
@@ -860,7 +1370,25 @@ export default function ClassRecord() {
           region={region}
           adviser={adviser}
           allTermData={allTermData}
+          currentTerm={term}
           onClose={() => setShowEClass(false)}
+        />
+      )}
+
+      {showSummary && (
+        <SummaryOfGradesView
+          students={students}
+          subject={subject}
+          sectionName={sectionName}
+          gradeLevel={gradeLevel}
+          schoolName={schoolName}
+          schoolId={schoolId}
+          schoolYear={schoolYear}
+          division={division}
+          region={region}
+          adviser={adviser}
+          allTermData={allTermData}
+          onClose={() => setShowSummary(false)}
         />
       )}
     </>
