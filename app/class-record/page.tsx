@@ -1006,7 +1006,6 @@ function EClassRecordView({
 }
 
 // ── MAIN PAGE ─────────────────────────────────────────────────────────────────
-import React from 'react';
 
 export default function ClassRecord() {
   const [subject,setSubject]   = useState('Filipino');
