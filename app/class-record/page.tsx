@@ -285,7 +285,7 @@ function SummaryOfGradesView({
             <td style={td}>{t2||''}</td>
             <td style={td}>{t3||''}</td>
             <td style={{...td, fontWeight:'bold', fontSize:'11px', color:final>=75?'#166534':'#991b1b'}}>{final||''}</td>
-            <td style={{...td, fontSize:'8px'}}>{final ? desc : ''}</td>
+            <td style={{...td, fontSize:'8px'}}>{final ? desc.short : ''}</td>
             <td style={{...td, fontWeight:'bold', color:final>=75?'#166534':'#991b1b'}}>{remarks}</td>
           </tr>
         );
