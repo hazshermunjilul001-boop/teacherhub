@@ -539,15 +539,27 @@ export default function BehaviorPage() {
                 </p>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs border-separate border-spacing-0" style={{minWidth:'900px'}}>
+                  <table className="w-full text-xs border-separate border-spacing-0" style={{minWidth:'1200px'}}>
                     <thead>
+                      {/* Row 1: Core Value group names */}
                       <tr>
-                        <th className="bg-gray-800 text-left px-3 py-3 rounded-tl-xl sticky left-0 z-10 min-w-[200px]">Learner</th>
+                        <th className="bg-gray-800 text-left px-3 py-3 rounded-tl-xl sticky left-0 z-10 min-w-[200px]" rowSpan={2}>Learner</th>
+                        {CORE_VALUES.map(cv => (
+                          <th key={cv.value}
+                            colSpan={cv.behaviors.length}
+                            className="bg-blue-900/60 text-center px-2 py-2 border-l-2 border-gray-600 text-blue-300 font-bold text-sm">
+                            {cv.value}
+                          </th>
+                        ))}
+                      </tr>
+                      {/* Row 2: Full behavior statements */}
+                      <tr>
                         {CORE_VALUES.map(cv => cv.behaviors.map((b, bi) => (
-                          <th key={b} className="bg-gray-800 text-center px-1 py-2 min-w-[70px] border-l border-gray-700">
-                            {bi === 0 && <div className="text-blue-400 font-bold text-xs mb-0.5">{cv.value}</div>}
-                            <div className="text-gray-400 font-normal" style={{fontSize:'8px',lineHeight:'1.2'}}
-                              title={b}>{b.substring(0,30)}…</div>
+                          <th key={b}
+                            className={`bg-gray-800/80 text-center px-2 py-2 min-w-[180px] font-normal text-gray-200
+                              ${bi === 0 ? 'border-l-2 border-gray-600' : 'border-l border-gray-700'}`}
+                            style={{fontSize:'11px', lineHeight:'1.5', verticalAlign:'top', whiteSpace:'normal', wordBreak:'break-word'}}>
+                            {b}
                           </th>
                         )))}
                       </tr>
