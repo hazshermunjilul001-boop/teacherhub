@@ -48,25 +48,24 @@ function isTotalRow(val: any): boolean {
 }
 
 function normalizeName(raw: string): string {
-  // SF1 format: "LASTNAME,FIRSTNAME, MIDDLENAME" or "LASTNAME,FIRSTNAME MI"
-  // We want: "LASTNAME, FIRSTNAME MI."
+  // SF1 format: "LASTNAME,FIRSTNAME, MIDDLENAME" or "LASTNAME,FIRSTNAME MIDDLENAME"
+  // We want: "LASTNAME, FIRSTNAME MIDDLENAME" (full middle name preserved)
   const cleaned = raw.replace(/\s+/g, ' ').trim().toUpperCase();
   const commaIdx = cleaned.indexOf(',');
   if (commaIdx === -1) return cleaned;
 
-  const lastName  = cleaned.substring(0, commaIdx).trim();
-  const rest      = cleaned.substring(commaIdx + 1).trim();
+  const lastName = cleaned.substring(0, commaIdx).trim();
+  const rest     = cleaned.substring(commaIdx + 1).trim();
 
   // rest might be "FIRSTNAME, MIDDLENAME" or "FIRSTNAME MIDDLENAME"
   const parts     = rest.split(',').map(s => s.trim()).filter(Boolean);
   const firstName = parts[0] ?? '';
-  const midName   = parts[1] ?? '';
+  const midName   = (parts[1] ?? '').trim();
 
-  // Build: LASTNAME, FIRSTNAME [MI].
+  // Build: LASTNAME, FIRSTNAME MIDDLENAME (full middle name, no truncation)
   let name = `${lastName}, ${firstName}`;
   if (midName && midName !== '-') {
-    const mi = midName.split(' ')[0];
-    if (mi && mi !== '-') name += ` ${mi.charAt(0)}.`;
+    name += ` ${midName}`;
   }
   return name;
 }
