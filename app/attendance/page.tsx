@@ -508,162 +508,452 @@ export default function AttendancePage() {
     const ada  = totalSchoolDays > 0 ? (totalDailyAttendance / totalSchoolDays) : 0;
     const poa  = totalEnrollment > 0 ? (ada / totalEnrollment) * 100 : 0;
     const consecutiveCount = activeStudents.filter(s => hasConsecAbsences(s.id)).length;
-    const tdStyle = {border:'1px solid black',padding:'1px 3px',fontSize:'8px'} as React.CSSProperties;
-    const thStyle = {border:'1px solid black',padding:'1px 3px',fontSize:'8px',background:'#f3f4f6'} as React.CSSProperties;
+
+    const droppedStudents      = inactiveStudents.filter(s => s.status === 'dropped');
+    const transferredOutStudents = inactiveStudents.filter(s => s.status === 'transferred_out');
+    const transferredInStudents  = inactiveStudents.filter(s => s.status === 'transferred_in');
+
+    const mDropped  = droppedStudents.filter(s => s.sex === 'M').length;
+    const fDropped  = droppedStudents.filter(s => s.sex === 'F').length;
+    const mTransOut = transferredOutStudents.filter(s => s.sex === 'M').length;
+    const fTransOut = transferredOutStudents.filter(s => s.sex === 'F').length;
+    const mTransIn  = transferredInStudents.filter(s => s.sex === 'M').length;
+    const fTransIn  = transferredInStudents.filter(s => s.sex === 'F').length;
+
+    // Registered learners at end of month = active + transferred in
+    const regEndM = mEnroll + mTransIn;
+    const regEndF = fEnroll + fTransIn;
+    const regEnd  = regEndM + regEndF;
+
+    // Initial enrollment (1st Friday of June baseline) = active + dropped + transferred_out
+    const initEnrollM = mEnroll + mDropped + mTransOut;
+    const initEnrollF = fEnroll + fDropped + fTransOut;
+    const initEnroll  = initEnrollM + initEnrollF;
+
+    const b = {border:'1px solid #000'} as React.CSSProperties;
+    const td = {...b, padding:'2px 4px', fontSize:'8px', verticalAlign:'top'} as React.CSSProperties;
+    const th = {...td, background:'#f3f4f6', fontWeight:'bold', textAlign:'center' as const};
+    const tdC = {...td, textAlign:'center' as const};
+    const thC = {...th, textAlign:'center' as const};
 
     return (
-      <div className="sf2-print bg-white text-black font-sans" style={{fontSize:'9px',minWidth:'1100px',padding:'4mm'}}>
-        <div style={{textAlign:'center',marginBottom:'3px'}}>
-          <div style={{fontWeight:'bold',fontSize:'11px'}}>School Form 2 (SF2) Daily Attendance Report of Learners</div>
-          <div style={{fontSize:'8px'}}>(This replaces Form 1, Form 2 &amp; STS Form 4 - Absenteeism and Dropping Out)</div>
+      <div className="sf2-print bg-white text-black" style={{fontFamily:'Arial, sans-serif', fontSize:'9px', padding:'6mm'}}>
+
+        {/* ══ PAGE 1: ATTENDANCE TABLE ══════════════════════════════════════ */}
+
+        {/* Title */}
+        <div style={{textAlign:'center', marginBottom:'4px'}}>
+          <div style={{fontWeight:'bold', fontSize:'12px'}}>School Form 2 (SF2)</div>
+          <div style={{fontWeight:'bold', fontSize:'10px'}}>Daily Attendance Report of Learners</div>
+          <div style={{fontSize:'7.5px', color:'#555'}}>(This replaces Form 1, Form 2 &amp; STS Form 4 — Absenteeism and Dropping Out)</div>
         </div>
 
-        <table style={{width:'100%',borderCollapse:'collapse',marginBottom:'2px',fontSize:'8px'}}>
+        {/* School info header */}
+        <table style={{width:'100%', borderCollapse:'collapse', marginBottom:'3px', fontSize:'8px'}}>
           <tbody>
             <tr>
-              <td style={tdStyle}><strong>School ID:</strong> {schoolId}</td>
-              <td style={{...tdStyle,textAlign:'center',fontWeight:'bold'}} rowSpan={2}>{month} {MONTH_YEAR[month]}</td>
-              <td style={tdStyle}><strong>Region:</strong> {region}</td>
+              <td style={td}><strong>School ID:</strong> {schoolId}</td>
+              <td style={{...td, textAlign:'center', fontWeight:'bold'}} rowSpan={2}>
+                Report for the Month of:<br/><span style={{fontSize:'10px'}}>{month.toUpperCase()} {MONTH_YEAR[month]}</span>
+              </td>
+              <td style={td}><strong>Region:</strong> {region}</td>
             </tr>
             <tr>
-              <td style={tdStyle}><strong>School:</strong> {schoolName}</td>
-              <td style={tdStyle}><strong>Division:</strong> {division}</td>
+              <td style={td}><strong>Name of School:</strong> {schoolName}</td>
+              <td style={td}><strong>Division:</strong> {division}</td>
             </tr>
             <tr>
-              <td style={tdStyle}><strong>Grade:</strong> {gradeLevel}</td>
-              <td style={tdStyle}><strong>Section:</strong> {sectionName}</td>
-              <td style={tdStyle}><strong>Adviser:</strong> {adviser}</td>
+              <td style={td}><strong>Grade Level:</strong> {gradeLevel}</td>
+              <td style={td}><strong>Section:</strong> {sectionName}</td>
+              <td style={td}><strong>Class Adviser:</strong> {adviser}</td>
             </tr>
           </tbody>
         </table>
 
-        <table style={{width:'100%',borderCollapse:'collapse',fontSize:'8px'}}>
+        {/* Main attendance table */}
+        <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8px'}}>
           <thead>
             <tr>
-              <th style={{...thStyle,textAlign:'left',minWidth:'150px'}} rowSpan={2}>
-                LEARNER'S NAME<br/><span style={{fontWeight:'normal',fontSize:'7px'}}>(Last Name, First Name, Middle Name)</span>
+              <th style={{...th, textAlign:'left', minWidth:'160px', width:'160px'}} rowSpan={2}>
+                LEARNER'S NAME<br/>
+                <span style={{fontWeight:'normal', fontSize:'7px'}}>(Last Name, First Name, Middle Name)</span>
               </th>
               {schoolDays.map(d => (
-                <th key={fmt(d)} style={{...thStyle,width:'20px',minWidth:'20px',textAlign:'center',padding:'1px'}}>
+                <th key={fmt(d)} style={{...thC, width:'18px', minWidth:'18px', padding:'1px 0', fontSize:'7px'}}>
                   <div>{d.getDate()}</div>
-                  <div style={{fontSize:'6px'}}>{dayLabel(d)}</div>
+                  <div style={{fontSize:'6px'}}>{['SU','M','T','W','TH','F','S'][d.getDay()]}</div>
                 </th>
               ))}
-              <th style={{...thStyle,textAlign:'center',minWidth:'55px'}} colSpan={2}>TOTAL</th>
-              <th style={{...thStyle,textAlign:'center',minWidth:'80px'}}>REMARKS</th>
+              <th style={{...thC, minWidth:'30px', fontSize:'7px'}} colSpan={2}>Total for the Month</th>
+              <th style={{...thC, minWidth:'90px', fontSize:'7px'}}>
+                REMARKS (If DROPPED OUT, state reason from legend 2. If TRANSFERRED IN/OUT, write name of School.)
+              </th>
             </tr>
             <tr>
-              {schoolDays.map(d => <th key={fmt(d)} style={{...thStyle,width:'20px',padding:'0'}}></th>)}
-              <th style={{...thStyle,textAlign:'center'}}>ABSENT</th>
-              <th style={{...thStyle,textAlign:'center'}}>PRESENT</th>
-              <th style={thStyle}></th>
+              {schoolDays.map(d => <th key={fmt(d)} style={{...thC, padding:'0', fontSize:'7px'}}></th>)}
+              <th style={{...thC, fontSize:'7px'}}>ABSENT</th>
+              <th style={{...thC, fontSize:'7px'}}>PRESENT</th>
+              <th style={th}></th>
             </tr>
           </thead>
           <tbody>
-            {/* MALE */}
-            <tr><td colSpan={schoolDays.length+4} style={{...tdStyle,fontWeight:'bold',background:'#dbeafe',textAlign:'left'}}>MALE</td></tr>
-            {males.map((student,idx) => (
+            {/* ── MALE ── */}
+            <tr>
+              <td colSpan={schoolDays.length + 4} style={{...td, fontWeight:'bold', background:'#dbeafe', textAlign:'left'}}>
+                MALE
+              </td>
+            </tr>
+            {males.map((student, idx) => (
               <tr key={student.id}>
-                <td style={{...tdStyle,minWidth:'150px'}}>{idx+1}. {student.full_name}</td>
+                <td style={{...td, textAlign:'left'}}>{idx+1}. {student.full_name}</td>
                 {schoolDays.map(d => {
-                  const dateStr = fmt(d);
-                  const status  = records[student.id]?.[dateStr];
+                  const ds = fmt(d); const st = records[student.id]?.[ds];
                   return (
-                    <td key={dateStr} style={{...tdStyle,width:'20px',textAlign:'center',fontWeight:'bold',padding:'0',
-                      background:status==='A'?'#fee2e2':status==='L'?'#fef9c3':'white'}}>
-                      {statusPrintChar(status)}
+                    <td key={ds} style={{...tdC, width:'18px', padding:'0', fontWeight:'bold', fontSize:'8px',
+                      background: st==='A'?'#fee2e2' : st==='L'?'#fef9c3' : 'white'}}>
+                      {statusPrintChar(st)}
                     </td>
                   );
                 })}
-                <td style={{...tdStyle,textAlign:'center',fontWeight:'bold'}}>{getAbsents(student.id)||''}</td>
-                <td style={{...tdStyle,textAlign:'center',fontWeight:'bold'}}>{getPresents(student.id)||''}</td>
-                <td style={{...tdStyle,fontSize:'7px'}}>{hasConsecAbsences(student.id)?'5+ consecutive absences':''}</td>
+                <td style={{...tdC, fontWeight:'bold'}}>{getAbsents(student.id)||''}</td>
+                <td style={{...tdC, fontWeight:'bold'}}>{getPresents(student.id)||''}</td>
+                <td style={{...td, fontSize:'7px', fontStyle:'italic'}}>
+                  {hasConsecAbsences(student.id) ? '5+ consecutive absences' : ''}
+                </td>
               </tr>
             ))}
-            <tr>
-              <td style={{...tdStyle,fontWeight:'bold',textAlign:'right',fontStyle:'italic'}}>Male Sub-Total</td>
+            {/* Male subtotal */}
+            <tr style={{background:'#eff6ff'}}>
+              <td style={{...td, fontStyle:'italic', textAlign:'right', fontWeight:'bold', fontSize:'7px'}}>Male Subtotal</td>
               {schoolDays.map(d => {
-                const dateStr=fmt(d);
-                const p=males.filter(s=>{const st=records[s.id]?.[dateStr];return st==='P'||st==='L'||st===undefined;}).length;
-                return <td key={dateStr} style={{...tdStyle,textAlign:'center',fontWeight:'bold'}}>{p}</td>;
+                const ds = fmt(d);
+                const p = males.filter(s => { const st=records[s.id]?.[ds]; return st==='P'||st==='L'||st===undefined; }).length;
+                return <td key={ds} style={{...tdC, fontWeight:'bold', fontSize:'7px'}}>{p}</td>;
               })}
-              <td style={{...tdStyle,textAlign:'center',fontWeight:'bold'}}>{mAbsents}</td>
-              <td style={{...tdStyle,textAlign:'center',fontWeight:'bold'}}>{males.reduce((s,st)=>s+getPresents(st.id),0)}</td>
-              <td style={tdStyle}></td>
+              <td style={{...tdC, fontWeight:'bold'}}>{mAbsents}</td>
+              <td style={{...tdC, fontWeight:'bold'}}>{males.reduce((s,st)=>s+getPresents(st.id),0)}</td>
+              <td style={td}></td>
             </tr>
 
-            {/* FEMALE */}
-            <tr><td colSpan={schoolDays.length+4} style={{...tdStyle,fontWeight:'bold',background:'#fce7f3',textAlign:'left'}}>FEMALE</td></tr>
-            {females.map((student,idx) => (
+            {/* ── FEMALE ── */}
+            <tr>
+              <td colSpan={schoolDays.length + 4} style={{...td, fontWeight:'bold', background:'#fce7f3', textAlign:'left'}}>
+                FEMALE
+              </td>
+            </tr>
+            {females.map((student, idx) => (
               <tr key={student.id}>
-                <td style={{...tdStyle,minWidth:'150px'}}>{idx+1}. {student.full_name}</td>
+                <td style={{...td, textAlign:'left'}}>{idx+1}. {student.full_name}</td>
                 {schoolDays.map(d => {
-                  const dateStr = fmt(d);
-                  const status  = records[student.id]?.[dateStr];
+                  const ds = fmt(d); const st = records[student.id]?.[ds];
                   return (
-                    <td key={dateStr} style={{...tdStyle,width:'20px',textAlign:'center',fontWeight:'bold',padding:'0',
-                      background:status==='A'?'#fee2e2':status==='L'?'#fef9c3':'white'}}>
-                      {statusPrintChar(status)}
+                    <td key={ds} style={{...tdC, width:'18px', padding:'0', fontWeight:'bold', fontSize:'8px',
+                      background: st==='A'?'#fee2e2' : st==='L'?'#fef9c3' : 'white'}}>
+                      {statusPrintChar(st)}
                     </td>
                   );
                 })}
-                <td style={{...tdStyle,textAlign:'center',fontWeight:'bold'}}>{getAbsents(student.id)||''}</td>
-                <td style={{...tdStyle,textAlign:'center',fontWeight:'bold'}}>{getPresents(student.id)||''}</td>
-                <td style={{...tdStyle,fontSize:'7px'}}>{hasConsecAbsences(student.id)?'5+ consecutive absences':''}</td>
+                <td style={{...tdC, fontWeight:'bold'}}>{getAbsents(student.id)||''}</td>
+                <td style={{...tdC, fontWeight:'bold'}}>{getPresents(student.id)||''}</td>
+                <td style={{...td, fontSize:'7px', fontStyle:'italic'}}>
+                  {hasConsecAbsences(student.id) ? '5+ consecutive absences' : ''}
+                </td>
               </tr>
             ))}
-            <tr>
-              <td style={{...tdStyle,fontWeight:'bold',textAlign:'right',fontStyle:'italic'}}>Female Sub-Total</td>
+            {/* Female subtotal */}
+            <tr style={{background:'#fdf2f8'}}>
+              <td style={{...td, fontStyle:'italic', textAlign:'right', fontWeight:'bold', fontSize:'7px'}}>Female Subtotal</td>
               {schoolDays.map(d => {
-                const dateStr=fmt(d);
-                const p=females.filter(s=>{const st=records[s.id]?.[dateStr];return st==='P'||st==='L'||st===undefined;}).length;
-                return <td key={dateStr} style={{...tdStyle,textAlign:'center',fontWeight:'bold'}}>{p}</td>;
+                const ds = fmt(d);
+                const p = females.filter(s => { const st=records[s.id]?.[ds]; return st==='P'||st==='L'||st===undefined; }).length;
+                return <td key={ds} style={{...tdC, fontWeight:'bold', fontSize:'7px'}}>{p}</td>;
               })}
-              <td style={{...tdStyle,textAlign:'center',fontWeight:'bold'}}>{fAbsents}</td>
-              <td style={{...tdStyle,textAlign:'center',fontWeight:'bold'}}>{females.reduce((s,st)=>s+getPresents(st.id),0)}</td>
-              <td style={tdStyle}></td>
+              <td style={{...tdC, fontWeight:'bold'}}>{fAbsents}</td>
+              <td style={{...tdC, fontWeight:'bold'}}>{females.reduce((s,st)=>s+getPresents(st.id),0)}</td>
+              <td style={td}></td>
             </tr>
 
             {/* Combined total */}
-            <tr>
-              <td style={{...tdStyle,fontWeight:'bold',textAlign:'right',fontStyle:'italic'}}>Combined TOTAL Per Day</td>
+            <tr style={{background:'#f3f4f6'}}>
+              <td style={{...td, fontWeight:'bold', textAlign:'right', fontSize:'7px'}}>COMBINED TOTAL Per Day</td>
               {schoolDays.map(d => {
-                const dateStr=fmt(d);
-                const p=activeStudents.filter(s=>{const st=records[s.id]?.[dateStr];return st==='P'||st==='L'||st===undefined;}).length;
-                return <td key={dateStr} style={{...tdStyle,textAlign:'center',fontWeight:'bold'}}>{p}</td>;
+                const ds = fmt(d);
+                const p = activeStudents.filter(s => { const st=records[s.id]?.[ds]; return st==='P'||st==='L'||st===undefined; }).length;
+                return <td key={ds} style={{...tdC, fontWeight:'bold', fontSize:'7px'}}>{p}</td>;
               })}
-              <td style={{...tdStyle,textAlign:'center',fontWeight:'bold'}}>{mAbsents+fAbsents}</td>
-              <td style={{...tdStyle,textAlign:'center',fontWeight:'bold'}}>{activeStudents.reduce((s,st)=>s+getPresents(st.id),0)}</td>
-              <td style={tdStyle}></td>
+              <td style={{...tdC, fontWeight:'bold'}}>{mAbsents+fAbsents}</td>
+              <td style={{...tdC, fontWeight:'bold'}}>{activeStudents.reduce((s,st)=>s+getPresents(st.id),0)}</td>
+              <td style={td}></td>
             </tr>
           </tbody>
         </table>
 
-        {/* NLS Section for dropped/transferred */}
+        {/* NLS section for dropped/transferred students */}
         {inactiveStudents.length > 0 && (
-          <div style={{marginTop:'6px',fontSize:'8px',border:'1px solid black',padding:'3px'}}>
-            <div style={{fontWeight:'bold',marginBottom:'2px'}}>NLS (No Longer in School):</div>
-            {inactiveStudents.map(s => (
-              <div key={s.id} style={{marginLeft:'8px'}}>
-                {s.full_name} ({s.status?.replace('_',' ').toUpperCase()}
-                {s.status_date ? ` - ${s.status_date}` : ''})
-                {s.status_note ? ` — ${s.status_note}` : ''}
-              </div>
-            ))}
-          </div>
+          <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8px', marginTop:'4px'}}>
+            <thead>
+              <tr>
+                <th style={{...th, textAlign:'left'}} colSpan={schoolDays.length + 4}>
+                  NLS (No Longer in School) — shown for record purposes only, excluded from attendance counts
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {inactiveStudents.map((student, idx) => (
+                <tr key={student.id} style={{background:'#f9fafb', color:'#6b7280'}}>
+                  <td style={{...td, minWidth:'160px', textDecoration:'line-through', color:'#9ca3af'}}>
+                    {idx+1}. {student.full_name}
+                  </td>
+                  {schoolDays.map(d => <td key={fmt(d)} style={{...tdC, background:'#f3f4f6', fontSize:'7px'}}></td>)}
+                  <td style={{...tdC}}>—</td>
+                  <td style={{...tdC}}>—</td>
+                  <td style={{...td, fontSize:'7px', fontStyle:'italic', color:'#6b7280'}}>
+                    {student.status === 'dropped' ? 'DROPPED OUT' : student.status === 'transferred_out' ? 'TRANSFERRED OUT' : 'TRANSFERRED IN'}
+                    {student.status_date ? ` (${student.status_date})` : ''}
+                    {student.status_note ? ` — ${student.status_note}` : ''}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
 
-        {/* Signatures */}
-        <div style={{display:'flex',justifyContent:'space-between',marginTop:'8px',fontSize:'8px'}}>
-          <div style={{textAlign:'center',minWidth:'200px'}}>
-            <div style={{fontWeight:'bold',borderTop:'1px solid black',paddingTop:'1px',marginTop:'20px'}}>{adviser?.toUpperCase()}</div>
-            <div>(Signature of Adviser over Printed Name)</div>
+        {/* ══ PAGE 2: GUIDELINES + CODES + SUMMARY ══════════════════════════ */}
+        <div style={{pageBreakBefore:'always', paddingTop:'4mm'}}>
+
+          {/* Page 2 title */}
+          <div style={{textAlign:'center', marginBottom:'4px', fontSize:'8px', color:'#555'}}>
+            School Form 2 (SF2) — Page 2 of 2 &nbsp;|&nbsp; {sectionName} &nbsp;|&nbsp; {month} {MONTH_YEAR[month]}
           </div>
-          <div style={{textAlign:'center',minWidth:'200px'}}>
-            <div style={{fontWeight:'bold',borderTop:'1px solid black',paddingTop:'1px',marginTop:'20px'}}>{schoolHead||'________________________________'}</div>
-            <div>(Signature of School Head over Printed Name)</div>
-          </div>
-        </div>
+
+          {/* Three-column bottom section */}
+          <div style={{display:'flex', gap:'4px', alignItems:'stretch', fontSize:'8px'}}>
+
+            {/* ── COLUMN 1: GUIDELINES ── */}
+            <div style={{flex:'2', border:'1px solid black', padding:'4px'}}>
+              <div style={{fontWeight:'bold', marginBottom:'3px', fontSize:'8.5px'}}>GUIDELINES:</div>
+              <div style={{lineHeight:'1.5'}}>
+                1. The attendance shall be accomplished daily. Refer to the codes for checking learners' attendance.<br/>
+                2. Dates shall be written in the columns after Learner's Name.<br/>
+                3. To compute the following:
+              </div>
+
+              {/* Formula (a) */}
+              <div style={{display:'flex', alignItems:'center', gap:'6px', margin:'6px 0 4px 8px'}}>
+                <span style={{minWidth:'150px'}}>a. <em>Percentage of Enrolment =</em></span>
+                <div style={{flex:1, textAlign:'center'}}>
+                  <div style={{borderBottom:'1px solid black', paddingBottom:'1px', lineHeight:'1.4'}}>
+                    Registered Learner as of End of the Month
+                  </div>
+                  <div style={{lineHeight:'1.4'}}>Enrolment as of 1st Friday of June</div>
+                </div>
+                <span>× 100</span>
+              </div>
+
+              {/* Formula (b) */}
+              <div style={{display:'flex', alignItems:'center', gap:'6px', margin:'4px 0 4px 8px'}}>
+                <span style={{minWidth:'150px'}}>b. <em>Average Daily Attendance =</em></span>
+                <div style={{flex:1, textAlign:'center'}}>
+                  <div style={{borderBottom:'1px solid black', paddingBottom:'1px', lineHeight:'1.4'}}>
+                    Total Daily Attendance
+                  </div>
+                  <div style={{lineHeight:'1.4'}}>Number of School Days in reporting month</div>
+                </div>
+              </div>
+
+              {/* Formula (c) */}
+              <div style={{display:'flex', alignItems:'center', gap:'6px', margin:'4px 0 6px 8px'}}>
+                <span style={{minWidth:'150px'}}>c. <em>Percentage of Attendance for the month =</em></span>
+                <div style={{flex:1, textAlign:'center'}}>
+                  <div style={{borderBottom:'1px solid black', paddingBottom:'1px', lineHeight:'1.4'}}>
+                    Average daily attendance
+                  </div>
+                  <div style={{lineHeight:'1.4'}}>Registered Learners as of End of the month</div>
+                </div>
+                <span>× 100</span>
+              </div>
+
+              <div style={{lineHeight:'1.5', marginTop:'4px'}}>
+                4. Every end of the month, the class adviser will submit this form to the office of the principal for recording
+                of summary table into School Form 4. Once signed by the principal, this form should be returned to the adviser.<br/>
+                5. The adviser will extend necessary intervention including but not limited to home visitation to learner/s
+                who were absent for 5 consecutive days and/or those at risk of dropping out.<br/>
+                6. Attendance performance of learners is expected to reflect in Form 137 and Form 138 every grading period.<br/>
+                <span style={{fontSize:'7px'}}>* Beginning of School Year cut-off report is every 1st Friday of School Calendar Days</span>
+              </div>
+            </div>
+
+            {/* ── COLUMN 2: CODES + REASONS ── */}
+            <div style={{flex:'2', border:'1px solid black', padding:'4px'}}>
+              <div style={{fontWeight:'bold', marginBottom:'3px', fontSize:'8.5px'}}>1. CODES FOR CHECKING ATTENDANCE</div>
+              <div style={{marginBottom:'5px', lineHeight:'1.5'}}>
+                <strong>blank</strong> - Present;&nbsp;&nbsp;
+                <strong>(x)</strong> - Absent;&nbsp;&nbsp;
+                Tardy (half shaded = Upper for Late Comer, Lower for Cutting Classes)
+              </div>
+
+              <div style={{fontWeight:'bold', marginBottom:'2px', fontSize:'8.5px'}}>2. REASONS/CAUSES FOR DROP-OUTS</div>
+              <div style={{columns:2, columnGap:'6px', lineHeight:'1.6'}}>
+                <div style={{fontWeight:'bold'}}>a. Domestic-Related Factors</div>
+                <div>a.1. Had to take care of siblings</div>
+                <div>a.2. Early marriage/pregnancy</div>
+                <div>a.3. Parents' attitude toward schooling</div>
+                <div>a.4. Family problems</div>
+
+                <div style={{fontWeight:'bold', marginTop:'3px'}}>b. Individual-Related Factors</div>
+                <div>b.1. Illness</div>
+                <div>b.2. Overage</div>
+                <div>b.3. Death</div>
+                <div>b.4. Drug Abuse</div>
+                <div>b.5. Poor academic performance</div>
+                <div>b.6. Lack of interest/Distractions</div>
+                <div>b.7. Hunger/Malnutrition</div>
+
+                <div style={{fontWeight:'bold', marginTop:'3px'}}>c. School-Related Factors</div>
+                <div>c.1. Teacher Factor</div>
+                <div>c.2. Physical condition of classroom</div>
+                <div>c.3. Peer influence</div>
+
+                <div style={{fontWeight:'bold', marginTop:'3px'}}>d. Geographic/Environmental</div>
+                <div>d.1. Distance between home and school</div>
+                <div>d.2. Armed conflict (incl. Tribal wars &amp; clanfeuds)</div>
+                <div>d.3. Calamities/Disasters</div>
+
+                <div style={{fontWeight:'bold', marginTop:'3px'}}>e. Financial-Related</div>
+                <div>e.1. Child labor, work</div>
+
+                <div style={{fontWeight:'bold', marginTop:'3px'}}>f. Others (Specify)</div>
+              </div>
+            </div>
+
+            {/* ── COLUMN 3: SUMMARY TABLE + SIGNATURES ── */}
+            <div style={{flex:'2', border:'1px solid black', padding:'4px'}}>
+
+              {/* Summary table */}
+              <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8px', marginBottom:'6px'}}>
+                <thead>
+                  <tr>
+                    <th style={{...th, textAlign:'left', fontSize:'8px'}}>Month: {month} {MONTH_YEAR[month]}</th>
+                    <th style={{...thC, fontSize:'7px'}}>No. of Days of Classes:</th>
+                    <th style={{...thC, fontSize:'8px', background:'#e5e7eb'}} colSpan={3}>Summary for the Month</th>
+                  </tr>
+                  <tr>
+                    <th style={{...th, textAlign:'left', fontSize:'7px'}}></th>
+                    <th style={{...thC, fontWeight:'bold', fontSize:'9px'}}>{totalSchoolDays}</th>
+                    <th style={{...thC, fontSize:'7px'}}>M</th>
+                    <th style={{...thC, fontSize:'7px'}}>F</th>
+                    <th style={{...thC, fontSize:'7px'}}>TOTAL</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={{...td, fontStyle:'italic', fontSize:'7px'}}>* Enrolment as of (1st Friday of June)</td>
+                    <td style={tdC}></td>
+                    <td style={tdC}>{initEnrollM || ''}</td>
+                    <td style={tdC}>{initEnrollF || ''}</td>
+                    <td style={{...tdC, fontWeight:'bold'}}>{initEnroll || ''}</td>
+                  </tr>
+                  <tr>
+                    <td style={{...td, fontStyle:'italic', fontSize:'7px'}}>Late Enrollment <strong>during the month</strong> (beyond cut-off)</td>
+                    <td style={tdC}></td>
+                    <td style={tdC}>{mTransIn || ''}</td>
+                    <td style={tdC}>{fTransIn || ''}</td>
+                    <td style={{...tdC, fontWeight:'bold'}}>{(mTransIn + fTransIn) || ''}</td>
+                  </tr>
+                  <tr>
+                    <td style={{...td, fontStyle:'italic', fontSize:'7px'}}>Registered Learner as of <strong>end of the month</strong></td>
+                    <td style={tdC}></td>
+                    <td style={tdC}>{regEndM || ''}</td>
+                    <td style={tdC}>{regEndF || ''}</td>
+                    <td style={{...tdC, fontWeight:'bold'}}>{regEnd || ''}</td>
+                  </tr>
+                  <tr>
+                    <td style={{...td, fontStyle:'italic', fontSize:'7px'}}>Percentage of Enrolment as of <strong>end of the month</strong></td>
+                    <td style={tdC}></td>
+                    <td style={tdC}></td>
+                    <td style={tdC}></td>
+                    <td style={{...tdC, fontWeight:'bold'}}>
+                      {initEnroll > 0 ? ((regEnd / initEnroll) * 100).toFixed(2) + '%' : ''}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{...td, fontStyle:'italic', fontSize:'7px'}}>Average Daily Attendance</td>
+                    <td style={tdC}></td>
+                    <td style={tdC}></td>
+                    <td style={tdC}></td>
+                    <td style={{...tdC, fontWeight:'bold'}}>{ada.toFixed(2)}</td>
+                  </tr>
+                  <tr>
+                    <td style={{...td, fontStyle:'italic', fontSize:'7px'}}>Percentage of Attendance for the month</td>
+                    <td style={tdC}></td>
+                    <td style={tdC}></td>
+                    <td style={tdC}></td>
+                    <td style={{...tdC, fontWeight:'bold'}}>{poa.toFixed(2)}%</td>
+                  </tr>
+                  <tr>
+                    <td style={{...td, fontStyle:'italic', fontSize:'7px'}}>Number of students with 5 consecutive days of absences:</td>
+                    <td style={tdC}></td>
+                    <td style={tdC}></td>
+                    <td style={tdC}></td>
+                    <td style={{...tdC, fontWeight:'bold', color: consecutiveCount > 0 ? 'red' : 'inherit'}}>
+                      {consecutiveCount || ''}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{...td, fontWeight:'bold', textAlign:'center', fontSize:'7.5px'}}>Drop out</td>
+                    <td style={tdC}></td>
+                    <td style={tdC}>{mDropped || ''}</td>
+                    <td style={tdC}>{fDropped || ''}</td>
+                    <td style={{...tdC, fontWeight:'bold'}}>{(mDropped + fDropped) || ''}</td>
+                  </tr>
+                  <tr>
+                    <td style={{...td, fontWeight:'bold', textAlign:'center', fontSize:'7.5px'}}>Transferred out</td>
+                    <td style={tdC}></td>
+                    <td style={tdC}>{mTransOut || ''}</td>
+                    <td style={tdC}>{fTransOut || ''}</td>
+                    <td style={{...tdC, fontWeight:'bold'}}>{(mTransOut + fTransOut) || ''}</td>
+                  </tr>
+                  <tr>
+                    <td style={{...td, fontWeight:'bold', textAlign:'center', fontSize:'7.5px'}}>Transferred in</td>
+                    <td style={tdC}></td>
+                    <td style={tdC}>{mTransIn || ''}</td>
+                    <td style={tdC}>{fTransIn || ''}</td>
+                    <td style={{...tdC, fontWeight:'bold'}}>{(mTransIn + fTransIn) || ''}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              {/* Certification */}
+              <div style={{fontStyle:'italic', marginBottom:'8px', fontSize:'7.5px', lineHeight:'1.4'}}>
+                I certify that this is a true and correct report.
+              </div>
+
+              {/* Teacher signature */}
+              <div style={{textAlign:'center', marginBottom:'12px'}}>
+                <div style={{marginTop:'20px', borderTop:'1px solid black', paddingTop:'2px', fontWeight:'bold', fontSize:'8px'}}>
+                  {adviser?.toUpperCase()}
+                </div>
+                <div style={{fontSize:'7px'}}>(Signature of Teacher over Printed Name)</div>
+              </div>
+
+              {/* School Head signature */}
+              <div style={{marginBottom:'2px', fontSize:'7.5px'}}>Attested by:</div>
+              <div style={{textAlign:'center'}}>
+                <div style={{marginTop:'20px', borderTop:'1px solid black', paddingTop:'2px', fontWeight:'bold', fontSize:'8px'}}>
+                  {schoolHead ? schoolHead.toUpperCase() : '________________________________'}
+                </div>
+                <div style={{fontSize:'7px'}}>(Signature of School Head over Printed Name)</div>
+              </div>
+
+              {/* Footer */}
+              <div style={{textAlign:'center', marginTop:'8px', fontSize:'7px', color:'#888'}}>
+                School Form 2: Page 2 of ______
+              </div>
+            </div>
+
+          </div>{/* end 3-column */}
+        </div>{/* end page 2 */}
+
       </div>
     );
   };
