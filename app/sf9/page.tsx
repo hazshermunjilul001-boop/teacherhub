@@ -542,9 +542,13 @@ function CollabPanel({
 // ─────────────────────────────────────────────────────────────────────────────
 
 function SF9Card({ data, section }: { data:LearnerSF9; section:any }) {
-  const nameParts  = data.student.full_name.split(',').map((s:string)=>s.trim());
-  const lastName   = nameParts[0] ?? '';
-  const firstName  = nameParts[1] ?? '';
+  const nameParts   = data.student.full_name.split(',').map((s:string) => s.trim());
+  const lastName    = nameParts[0] ?? '';
+  // After comma: e.g. "JUAN P." or "JUAN PEDRO M." — last token is middle initial/name
+  const afterComma  = (nameParts[1] ?? '').trim();
+  const afterTokens = afterComma.split(' ').filter(Boolean);
+  const middleName  = afterTokens.length > 1 ? afterTokens[afterTokens.length - 1] : '';
+  const firstName   = afterTokens.length > 1 ? afterTokens.slice(0, -1).join(' ') : afterComma;
   const schoolHead = (section?.school_head ?? '').toUpperCase();
   const adviserName= (section?.adviser     ?? '').toUpperCase();
 
@@ -723,7 +727,7 @@ function SF9Card({ data, section }: { data:LearnerSF9; section:any }) {
               <span style={{fontWeight:'bold', whiteSpace:'nowrap', fontSize:'8pt'}}>Name:</span>
               <div style={{flex:1, borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px', fontSize:'8pt'}}>{lastName}</div>
               <div style={{flex:1.5, borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px', fontSize:'8pt'}}>{firstName}</div>
-              <div style={{flex:0.7, borderBottom:'1px solid black', paddingBottom:'1px'}}></div>
+              <div style={{flex:0.7, borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px', fontSize:'8pt'}}>{middleName}</div>
             </div>
             <div style={{display:'flex', fontSize:'6.5pt', color:'#555', marginBottom:'2mm'}}>
               <div style={{flex:'none', width:'30px'}}></div>
