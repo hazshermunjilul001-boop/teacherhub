@@ -542,17 +542,16 @@ function CollabPanel({
 // ─────────────────────────────────────────────────────────────────────────────
 
 function SF9Card({ data, section }: { data:LearnerSF9; section:any }) {
-  // Parse from full_name: "DELA CRUZ, JUAN PEDRO" format
-  const nameParts   = data.student.full_name.split(',').map((s:string) => s.trim());
-  const lastName    = nameParts[0] ?? '';
-  const afterComma  = (nameParts[1] ?? '').trim();
-  // Use dedicated middle_name field if available, otherwise leave blank
-  const middleName  = (data.student.middle_name ?? '').trim();
-  // First name is everything after comma; if middle_name matches last word, strip it
-  const afterTokens = afterComma.split(' ').filter(Boolean);
-  const firstName   = middleName && afterTokens[afterTokens.length - 1] === middleName
-    ? afterTokens.slice(0, -1).join(' ')
-    : afterComma;
+  // Name parsing: full_name is stored as "LAST, FIRST MIDDLE"
+  // middle_name column stores the full middle name (e.g. "PEDRO" not "P.")
+  const nameParts  = data.student.full_name.split(',').map((s:string) => s.trim());
+  const lastName   = nameParts[0] ?? '';
+  const middleName = (data.student.middle_name ?? '').trim().toUpperCase();
+  // First name = everything after comma, minus the middle name suffix if present
+  const rawFirst   = (nameParts[1] ?? '').trim();
+  const firstName  = middleName && rawFirst.toUpperCase().endsWith(middleName)
+    ? rawFirst.slice(0, rawFirst.length - middleName.length).trim()
+    : rawFirst;
   const schoolHead = (section?.school_head ?? '').toUpperCase();
   const adviserName= (section?.adviser     ?? '').toUpperCase();
 
