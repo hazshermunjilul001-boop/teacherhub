@@ -31,7 +31,7 @@ const STATUS_CONFIG: Record<StudentStatus,{label:string;color:string;bg:string;i
 };
 
 interface Student {
-  id: string; lrn: string; full_name: string; sex: string;
+  id: string; lrn: string; full_name: string; sex: string; middle_name?: string;
   status?: StudentStatus; status_date?: string; status_note?: string;
 }
 interface AttRecord { [date: string]: Status }

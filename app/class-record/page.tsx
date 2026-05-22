@@ -177,43 +177,30 @@ function StudentStatusModal({ student, onClose, onUpdate }:
   );
 }
 
-// ── UPDATED AddStudentModal — replace in classrecord/page.tsx AND attendance/page.tsx ──
-// This version adds a separate Middle Name field so SF9 can display the full middle name.
-
+// ── ADD STUDENT MODAL ─────────────────────────────────────────────────────────
 function AddStudentModal({ onClose, onAdd, sectionId }:
-  { onClose:()=>void; onAdd:(s:any)=>void; sectionId:string }) {
+  { onClose:()=>void; onAdd:(s:Student)=>void; sectionId:string }) {
+  const [lrn,        setLrn]        = useState('');
   const [lastName,   setLastName]   = useState('');
   const [firstName,  setFirstName]  = useState('');
   const [middleName, setMiddleName] = useState('');
   const [sex,        setSex]        = useState('M');
-  const [lrn,        setLrn]        = useState('');
   const [saving,     setSaving]     = useState(false);
 
   const save = async () => {
     if (!lastName.trim() || !firstName.trim()) return;
     setSaving(true);
-
-    // Build full_name in "LAST, FIRST MIDDLE" format for display compatibility
     const last   = lastName.trim().toUpperCase();
     const first  = firstName.trim().toUpperCase();
     const middle = middleName.trim().toUpperCase();
-    const full_name = middle
-      ? `${last}, ${first} ${middle}`
-      : `${last}, ${first}`;
-
+    const full_name = middle ? `${last}, ${first} ${middle}` : `${last}, ${first}`;
     const s = {
-      id:          crypto.randomUUID(),
-      lrn:         lrn.trim(),
-      full_name,
-      middle_name: middle || null,
-      sex,
-      section_id:  sectionId,
-      status:      'active',
+      id: crypto.randomUUID(), lrn: lrn.trim(), full_name,
+      middle_name: middle || null, sex,
+      section_id: sectionId, status: 'active' as StudentStatus,
     };
-
-    const { error } = await supabase.from('students').insert(s);
-    if (!error) { onAdd(s); onClose(); }
-    else alert('Error: ' + error.message);
+    const {error} = await supabase.from('students').insert(s);
+    if (!error) { onAdd(s); onClose(); } else alert('Error: ' + error.message);
     setSaving(false);
   };
 
@@ -222,52 +209,43 @@ function AddStudentModal({ onClose, onAdd, sectionId }:
       <div className="bg-gray-900 rounded-2xl p-8 w-full max-w-md border border-gray-700">
         <h3 className="text-xl font-bold mb-6">Add New Learner</h3>
         <div className="space-y-4">
-
           <div>
             <label className="block text-sm text-gray-400 mb-1">LRN (12 digits)</label>
-            <input value={lrn} onChange={e => setLrn(e.target.value)} maxLength={12}
+            <input value={lrn} onChange={e=>setLrn(e.target.value)} maxLength={12}
               className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500"
               placeholder="129694170087"/>
           </div>
-
           <div>
             <label className="block text-sm text-gray-400 mb-1">Last Name</label>
-            <input value={lastName} onChange={e => setLastName(e.target.value)}
+            <input value={lastName} onChange={e=>setLastName(e.target.value)}
               className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500"
               placeholder="DELA CRUZ"/>
           </div>
-
           <div>
             <label className="block text-sm text-gray-400 mb-1">First Name</label>
-            <input value={firstName} onChange={e => setFirstName(e.target.value)}
+            <input value={firstName} onChange={e=>setFirstName(e.target.value)}
               className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500"
               placeholder="JUAN"/>
           </div>
-
           <div>
             <label className="block text-sm text-gray-400 mb-1">
-              Middle Name <span className="text-gray-600 text-xs">(full middle name, not initial)</span>
+              Middle Name <span className="text-gray-500 text-xs">(full name, not initial — leave blank if none)</span>
             </label>
-            <input value={middleName} onChange={e => setMiddleName(e.target.value)}
+            <input value={middleName} onChange={e=>setMiddleName(e.target.value)}
               className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500"
-              placeholder="PEDRO  (leave blank if none)"/>
+              placeholder="PEDRO"/>
           </div>
-
           <div>
             <label className="block text-sm text-gray-400 mb-1">Sex</label>
-            <select value={sex} onChange={e => setSex(e.target.value)}
+            <select value={sex} onChange={e=>setSex(e.target.value)}
               className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500">
               <option value="M">Male</option>
               <option value="F">Female</option>
             </select>
           </div>
-
         </div>
         <div className="flex gap-3 mt-6">
-          <button onClick={onClose}
-            className="flex-1 py-3 rounded-xl border border-gray-600 hover:bg-gray-800 transition">
-            Cancel
-          </button>
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-600 hover:bg-gray-800 transition">Cancel</button>
           <button onClick={save} disabled={saving || !lastName.trim() || !firstName.trim()}
             className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 font-semibold transition disabled:opacity-60">
             {saving ? 'Saving...' : 'Add Learner'}
