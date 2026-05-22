@@ -124,7 +124,7 @@ function computeFromClassRecord(row:any, subject:string): number {
 // TYPES
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface Student { id:string; lrn:string; full_name:string; sex:string; birthdate?:string; }
+interface Student { id:string; lrn:string; full_name:string; sex:string; birthdate?:string; middle_name?:string; }
 interface Collaborator { id:string; email:string; subjects:string[]; status:string; role:string; }
 
 // Grade source: 'class_record' | 'manual' | 'none'
@@ -542,13 +542,17 @@ function CollabPanel({
 // ─────────────────────────────────────────────────────────────────────────────
 
 function SF9Card({ data, section }: { data:LearnerSF9; section:any }) {
+  // Parse from full_name: "DELA CRUZ, JUAN PEDRO" format
   const nameParts   = data.student.full_name.split(',').map((s:string) => s.trim());
   const lastName    = nameParts[0] ?? '';
-  // After comma: e.g. "JUAN P." or "JUAN PEDRO M." — last token is middle initial/name
   const afterComma  = (nameParts[1] ?? '').trim();
+  // Use dedicated middle_name field if available, otherwise leave blank
+  const middleName  = (data.student.middle_name ?? '').trim();
+  // First name is everything after comma; if middle_name matches last word, strip it
   const afterTokens = afterComma.split(' ').filter(Boolean);
-  const middleName  = afterTokens.length > 1 ? afterTokens[afterTokens.length - 1] : '';
-  const firstName   = afterTokens.length > 1 ? afterTokens.slice(0, -1).join(' ') : afterComma;
+  const firstName   = middleName && afterTokens[afterTokens.length - 1] === middleName
+    ? afterTokens.slice(0, -1).join(' ')
+    : afterComma;
   const schoolHead = (section?.school_head ?? '').toUpperCase();
   const adviserName= (section?.adviser     ?? '').toUpperCase();
 
