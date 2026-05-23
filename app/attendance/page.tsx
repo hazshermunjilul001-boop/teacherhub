@@ -718,13 +718,8 @@ export default function AttendancePage() {
           </table>
         )}
 
-        {/* ══ PAGE 2: GUIDELINES + CODES + SUMMARY ══════════════════════════ */}
-        <div style={{pageBreakBefore:'always', paddingTop:'4mm'}}>
-
-          {/* Page 2 title */}
-          <div style={{textAlign:'center', marginBottom:'4px', fontSize:'8px', color:'#555'}}>
-            School Form 2 (SF2) — Page 2 of 2 &nbsp;|&nbsp; {sectionName} &nbsp;|&nbsp; {month} {MONTH_YEAR[month]}
-          </div>
+        {/* ══ GUIDELINES + CODES + SUMMARY (flows after attendance table) ══ */}
+        <div style={{marginTop:'6px'}}>
 
           {/* Three-column bottom section */}
           <div style={{display:'flex', gap:'4px', alignItems:'stretch', fontSize:'8px'}}>
@@ -945,10 +940,7 @@ export default function AttendancePage() {
                 <div style={{fontSize:'7px'}}>(Signature of School Head over Printed Name)</div>
               </div>
 
-              {/* Footer */}
-              <div style={{textAlign:'center', marginTop:'8px', fontSize:'7px', color:'#888'}}>
-                School Form 2: Page 2 of ______
-              </div>
+
             </div>
 
           </div>{/* end 3-column */}
@@ -966,6 +958,9 @@ export default function AttendancePage() {
           body { background: white !important; }
           .no-print { display: none !important; }
           .sf2-print { padding: 4mm; }
+          table { page-break-inside: auto; }
+          tr { page-break-inside: avoid; page-break-after: auto; }
+          thead { display: table-header-group; }
           @page { size: landscape; margin: 8mm; }
         }
       `}</style>
