@@ -431,12 +431,12 @@ function SummaryOfGradesView({
 // ── E-CLASS RECORD VIEW (current term + test analysis) ────────────────────────
 function EClassRecordView({
   students, subject, sectionName, gradeLevel, schoolName, schoolId,
-  schoolYear, division, region, adviser, allTermData, currentTerm, onClose,
+  schoolYear, division, region, adviser, schoolHead, allTermData, currentTerm, onClose,
 }: {
   students: Student[]; subject: string;
   sectionName: string; gradeLevel: string; schoolName: string;
   schoolId: string; schoolYear: string; division: string;
-  region: string; adviser: string;
+  region: string; adviser: string; schoolHead: string;
   allTermData: Record<number, TermData>;
   currentTerm: number;
   onClose: () => void;
@@ -1157,6 +1157,7 @@ export default function ClassRecord() {
           division={division}
           region={region}
           adviser={adviser}
+          schoolHead={schoolHead}
           allTermData={allTermData}
           currentTerm={term}
           onClose={() => setShowEClass(false)}
