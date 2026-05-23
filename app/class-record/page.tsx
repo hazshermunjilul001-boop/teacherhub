@@ -270,12 +270,12 @@ function StatusBadge({ status }: { status?: StudentStatus }) {
 // ── SUMMARY OF GRADES VIEW ────────────────────────────────────────────────────
 function SummaryOfGradesView({
   students, subject, sectionName, gradeLevel, schoolName, schoolId,
-  schoolYear, division, region, adviser, allTermData, onClose,
+  schoolYear, division, region, adviser, schoolHead, allTermData, onClose,
 }: {
   students: Student[]; subject: string;
   sectionName: string; gradeLevel: string; schoolName: string;
   schoolId: string; schoolYear: string; division: string;
-  region: string; adviser: string;
+  region: string; adviser: string; schoolHead: string;
   allTermData: Record<number, TermData>;
   onClose: () => void;
 }) {
