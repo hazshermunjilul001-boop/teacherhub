@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   ArrowLeft, Plus, Trash2, Edit3, Upload, Users, CheckCircle,
-  AlertTriangle, RefreshCw, BookOpen, X, Save,
+  AlertTriangle, RefreshCw, BookOpen, X, Save, UserPlus, Search,
+  Pencil,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { parseSF1, type SF1ParseResult } from '../../lib/parseSF1';
@@ -28,6 +29,359 @@ const BLANK: Partial<Section> = {
   adviser:     '',
   school_head: '',
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TYPES
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface Student {
+  id: string;
+  section_id: string;
+  lrn: string;
+  full_name: string;
+  sex: string;
+  birthdate?: string;
+  status?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STUDENT ROSTER MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+
+function StudentRosterModal({
+  section, onClose,
+}: { section: Section; onClose: () => void }) {
+  const [students,     setStudents]     = useState<Student[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [search,       setSearch]       = useState('');
+  const [editStudent,  setEditStudent]  = useState<Student | null>(null);
+  const [addMode,      setAddMode]      = useState(false);
+  const [saving,       setSaving]       = useState(false);
+  const [deletingId,   setDeletingId]   = useState<string | null>(null);
+
+  const BLANK_STUDENT = { lrn: '', full_name: '', sex: 'M', birthdate: '' };
+  const [form, setForm] = useState({ ...BLANK_STUDENT });
+
+  // ── Load students ──────────────────────────────────────────────────────────
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('students')
+      .select('*')
+      .eq('section_id', section.id)
+      .order('full_name');
+    setStudents(data ?? []);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, [section.id]);
+
+  // ── Filtered list ──────────────────────────────────────────────────────────
+  const filtered = students.filter(s =>
+    s.full_name.toLowerCase().includes(search.toLowerCase()) ||
+    s.lrn.includes(search)
+  );
+  const males   = filtered.filter(s => s.sex === 'M');
+  const females = filtered.filter(s => s.sex === 'F');
+
+  // ── Save new student ───────────────────────────────────────────────────────
+  const handleAdd = async () => {
+    if (!form.full_name.trim()) return;
+    setSaving(true);
+    const { error } = await supabase.from('students').insert({
+      id:         crypto.randomUUID(),
+      section_id: section.id,
+      lrn:        form.lrn.trim(),
+      full_name:  form.full_name.trim().toUpperCase(),
+      sex:        form.sex,
+      birthdate:  form.birthdate || null,
+    });
+    if (error) { alert('Error: ' + error.message); }
+    else { setForm({ ...BLANK_STUDENT }); setAddMode(false); await load(); }
+    setSaving(false);
+  };
+
+  // ── Save edited student ────────────────────────────────────────────────────
+  const handleEdit = async () => {
+    if (!editStudent || !editStudent.full_name.trim()) return;
+    setSaving(true);
+    const { error } = await supabase.from('students').update({
+      lrn:       editStudent.lrn.trim(),
+      full_name: editStudent.full_name.trim().toUpperCase(),
+      sex:       editStudent.sex,
+      birthdate: editStudent.birthdate || null,
+    }).eq('id', editStudent.id);
+    if (error) { alert('Error: ' + error.message); }
+    else { setEditStudent(null); await load(); }
+    setSaving(false);
+  };
+
+  // ── Delete student ─────────────────────────────────────────────────────────
+  const handleDelete = async (student: Student) => {
+    if (!confirm(`Delete "${student.full_name}"?\n\nThis will also remove all their grades and attendance records. This cannot be undone.`)) return;
+    setDeletingId(student.id);
+    await supabase.from('grades').delete().eq('student_id', student.id);
+    await supabase.from('attendance_records').delete().eq('student_id', student.id);
+    await supabase.from('students').delete().eq('id', student.id);
+    await load();
+    setDeletingId(null);
+  };
+
+  const statusBadge = (s: Student) => {
+    if (!s.status || s.status === 'active') return null;
+    const cfg: Record<string, string> = {
+      dropped:          'bg-red-900/60 text-red-300 border-red-700',
+      transferred_out:  'bg-amber-900/60 text-amber-300 border-amber-700',
+      transferred_in:   'bg-blue-900/60 text-blue-300 border-blue-700',
+    };
+    const labels: Record<string, string> = {
+      dropped: 'Dropped', transferred_out: 'Transferred Out', transferred_in: 'Transferred In',
+    };
+    return (
+      <span className={`text-xs px-1.5 py-0.5 rounded-full border font-semibold ${cfg[s.status] ?? ''}`}>
+        {labels[s.status] ?? s.status}
+      </span>
+    );
+  };
+
+  const renderGroup = (group: Student[], label: string, color: string) => (
+    group.length > 0 && (
+      <>
+        <tr>
+          <td colSpan={5} className={`px-4 py-1.5 text-xs font-bold ${color}`}>
+            {label} — {group.length}
+          </td>
+        </tr>
+        {group.map((s, i) => (
+          <tr key={s.id} className="border-t border-gray-800 hover:bg-gray-900/50 group/row">
+            <td className="px-4 py-2.5 text-gray-500 text-xs">{i + 1}</td>
+            <td className="px-4 py-2.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`font-medium text-sm ${s.status && s.status !== 'active' ? 'line-through text-gray-500' : 'text-white'}`}>
+                  {s.full_name}
+                </span>
+                {statusBadge(s)}
+              </div>
+              {s.birthdate && <div className="text-xs text-gray-600 mt-0.5">{s.birthdate}</div>}
+            </td>
+            <td className="px-4 py-2.5 text-gray-400 text-xs font-mono">{s.lrn || '—'}</td>
+            <td className="px-4 py-2.5 text-center">
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${s.sex === 'M' ? 'bg-blue-900/50 text-blue-300' : 'bg-pink-900/50 text-pink-300'}`}>
+                {s.sex === 'M' ? 'Male' : 'Female'}
+              </span>
+            </td>
+            <td className="px-4 py-2.5 text-right">
+              <div className="flex items-center justify-end gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                <button
+                  onClick={() => { setEditStudent({ ...s }); setAddMode(false); }}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-blue-900/40 text-gray-500 hover:text-blue-400 transition"
+                  title="Edit learner">
+                  <Pencil size={13}/>
+                </button>
+                <button
+                  onClick={() => handleDelete(s)}
+                  disabled={deletingId === s.id}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-900/40 text-gray-500 hover:text-red-400 transition"
+                  title="Delete learner">
+                  {deletingId === s.id
+                    ? <RefreshCw size={13} className="animate-spin"/>
+                    : <Trash2 size={13}/>}
+                </button>
+              </div>
+            </td>
+          </tr>
+        ))}
+      </>
+    )
+  );
+
+  return (
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div
+        className="bg-gray-950 rounded-2xl w-full max-w-3xl border border-gray-700 shadow-2xl flex flex-col max-h-[90vh]"
+        onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800 flex-shrink-0">
+          <div>
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              <Users size={20} className="text-blue-400"/> {section.name} — Student Roster
+            </h3>
+            <p className="text-gray-500 text-xs mt-0.5">
+              {section.grade_level} · {section.school_year} ·{' '}
+              <span className="text-blue-400">{students.length} learner{students.length !== 1 ? 's' : ''}</span>
+              {' '}({students.filter(s=>s.sex==='M').length}M · {students.filter(s=>s.sex==='F').length}F)
+            </p>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition"><X size={20}/></button>
+        </div>
+
+        {/* Toolbar */}
+        <div className="px-6 py-3 border-b border-gray-800 flex items-center gap-3 flex-shrink-0">
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"/>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search by name or LRN…"
+              className="w-full bg-gray-900 border border-gray-700 rounded-xl pl-8 pr-4 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500"/>
+          </div>
+          <button
+            onClick={() => { setAddMode(true); setEditStudent(null); setForm({ ...BLANK_STUDENT }); }}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl text-sm font-semibold transition flex-shrink-0">
+            <UserPlus size={15}/> Add Learner
+          </button>
+        </div>
+
+        {/* Add form */}
+        {addMode && (
+          <div className="px-6 py-4 bg-blue-950/20 border-b border-blue-900/50 flex-shrink-0">
+            <p className="text-blue-400 text-xs font-semibold uppercase tracking-widest mb-3">New Learner</p>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="col-span-2">
+                <label className="block text-xs text-gray-400 mb-1">Full Name* <span className="text-gray-600">(Last, First, Middle)</span></label>
+                <input
+                  value={form.full_name}
+                  onChange={e => setForm(p => ({ ...p, full_name: e.target.value }))}
+                  placeholder="e.g. DELA CRUZ, JUAN MIGUEL"
+                  className="w-full bg-gray-900 border border-gray-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"/>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">LRN <span className="text-gray-600">(optional)</span></label>
+                <input
+                  value={form.lrn}
+                  onChange={e => setForm(p => ({ ...p, lrn: e.target.value }))}
+                  placeholder="12-digit LRN"
+                  className="w-full bg-gray-900 border border-gray-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"/>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Birthdate <span className="text-gray-600">(optional)</span></label>
+                <input
+                  type="date"
+                  value={form.birthdate}
+                  onChange={e => setForm(p => ({ ...p, birthdate: e.target.value }))}
+                  className="w-full bg-gray-900 border border-gray-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"/>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Sex</label>
+                <div className="flex gap-2">
+                  {['M', 'F'].map(sx => (
+                    <button key={sx} onClick={() => setForm(p => ({ ...p, sex: sx }))}
+                      className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition
+                        ${form.sex === sx
+                          ? sx === 'M' ? 'bg-blue-900/60 border-blue-500 text-blue-300' : 'bg-pink-900/60 border-pink-500 text-pink-300'
+                          : 'border-gray-700 text-gray-500 hover:border-gray-500'}`}>
+                      {sx === 'M' ? 'Male' : 'Female'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setAddMode(false)} className="flex-1 py-2 rounded-xl border border-gray-700 hover:bg-gray-800 transition text-sm">Cancel</button>
+              <button onClick={handleAdd} disabled={saving || !form.full_name.trim()}
+                className="flex-1 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 font-semibold transition text-sm disabled:opacity-60">
+                {saving ? 'Saving…' : 'Add Learner'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Edit form */}
+        {editStudent && (
+          <div className="px-6 py-4 bg-amber-950/20 border-b border-amber-900/50 flex-shrink-0">
+            <p className="text-amber-400 text-xs font-semibold uppercase tracking-widest mb-3">Editing: {editStudent.full_name}</p>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="col-span-2">
+                <label className="block text-xs text-gray-400 mb-1">Full Name*</label>
+                <input
+                  value={editStudent.full_name}
+                  onChange={e => setEditStudent(p => p ? { ...p, full_name: e.target.value } : p)}
+                  className="w-full bg-gray-900 border border-gray-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500"/>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">LRN</label>
+                <input
+                  value={editStudent.lrn}
+                  onChange={e => setEditStudent(p => p ? { ...p, lrn: e.target.value } : p)}
+                  className="w-full bg-gray-900 border border-gray-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500"/>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Birthdate</label>
+                <input
+                  type="date"
+                  value={editStudent.birthdate ?? ''}
+                  onChange={e => setEditStudent(p => p ? { ...p, birthdate: e.target.value } : p)}
+                  className="w-full bg-gray-900 border border-gray-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-amber-500"/>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Sex</label>
+                <div className="flex gap-2">
+                  {['M', 'F'].map(sx => (
+                    <button key={sx} onClick={() => setEditStudent(p => p ? { ...p, sex: sx } : p)}
+                      className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition
+                        ${editStudent.sex === sx
+                          ? sx === 'M' ? 'bg-blue-900/60 border-blue-500 text-blue-300' : 'bg-pink-900/60 border-pink-500 text-pink-300'
+                          : 'border-gray-700 text-gray-500 hover:border-gray-500'}`}>
+                      {sx === 'M' ? 'Male' : 'Female'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setEditStudent(null)} className="flex-1 py-2 rounded-xl border border-gray-700 hover:bg-gray-800 transition text-sm">Cancel</button>
+              <button onClick={handleEdit} disabled={saving || !editStudent.full_name.trim()}
+                className="flex-1 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 font-semibold transition text-sm disabled:opacity-60">
+                {saving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Student list */}
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <div className="flex items-center justify-center py-16 gap-3 text-gray-500">
+              <RefreshCw size={18} className="animate-spin"/> Loading roster…
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-16 text-gray-600">
+              <Users size={36} className="mx-auto mb-3 opacity-40"/>
+              <p className="text-sm">{search ? 'No learners match your search.' : 'No learners yet. Click "Add Learner" to start.'}</p>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-800">
+                  <th className="text-left px-4 py-2.5 text-gray-500 text-xs font-semibold w-10">#</th>
+                  <th className="text-left px-4 py-2.5 text-gray-500 text-xs font-semibold">Name</th>
+                  <th className="text-left px-4 py-2.5 text-gray-500 text-xs font-semibold">LRN</th>
+                  <th className="text-center px-4 py-2.5 text-gray-500 text-xs font-semibold">Sex</th>
+                  <th className="px-4 py-2.5 w-20"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {renderGroup(males,   'MALE',   'bg-blue-950/40 text-blue-400')}
+                {renderGroup(females, 'FEMALE', 'bg-pink-950/40 text-pink-400')}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-3 border-t border-gray-800 flex items-center justify-between flex-shrink-0">
+          <p className="text-gray-600 text-xs">
+            Hover a name to reveal edit / delete buttons
+          </p>
+          <button onClick={onClose} className="px-5 py-2 rounded-xl border border-gray-700 hover:bg-gray-800 transition text-sm">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SF1 IMPORT MODAL
@@ -72,7 +426,6 @@ function ImportModal({
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { alert('Not logged in.'); setStage('preview'); return; }
 
-    // Build section record
     const sectionData = {
       teacher_id:   user.id,
       name:         editSch.section || result.school.section,
@@ -101,7 +454,6 @@ function ImportModal({
       return;
     }
 
-    // Insert students
     setProgress(`Importing ${result.students.length} students…`);
     const studentRows = result.students.map(s => ({
       id:         crypto.randomUUID(),
@@ -112,13 +464,10 @@ function ImportModal({
       birthdate:  s.birthdate,
     }));
 
-    // Batch insert in chunks of 50
     for (let i = 0; i < studentRows.length; i += 50) {
       const chunk = studentRows.slice(i, i + 50);
       const { error } = await supabase.from('students').insert(chunk);
-      if (error) {
-        console.error('Student insert error:', error);
-      }
+      if (error) console.error('Student insert error:', error);
       setProgress(`Imported ${Math.min(i + 50, studentRows.length)} of ${studentRows.length} students…`);
     }
 
@@ -137,7 +486,6 @@ function ImportModal({
         </div>
 
         <div className="p-6">
-          {/* UPLOAD STAGE */}
           {stage === 'upload' && (
             <div>
               <p className="text-gray-400 text-sm mb-6">
@@ -155,10 +503,8 @@ function ImportModal({
             </div>
           )}
 
-          {/* PREVIEW STAGE */}
           {stage === 'preview' && result && (
             <div className="space-y-5">
-              {/* Errors */}
               {result.errors.length > 0 && (
                 <div className="bg-yellow-950/40 border border-yellow-700 rounded-xl p-4">
                   <div className="flex items-center gap-2 text-yellow-400 font-semibold mb-2">
@@ -167,8 +513,6 @@ function ImportModal({
                   {result.errors.map((e, i) => <p key={i} className="text-yellow-300 text-sm">{e}</p>)}
                 </div>
               )}
-
-              {/* School info — editable */}
               <div>
                 <h4 className="font-semibold text-white mb-3">📍 School Information <span className="text-gray-500 text-xs font-normal">(edit if incorrect)</span></h4>
                 <div className="grid grid-cols-2 gap-3">
@@ -192,26 +536,18 @@ function ImportModal({
                   ))}
                   <div className="col-span-2">
                     <label className="block text-xs text-gray-400 mb-1">Adviser / Teacher Name</label>
-                    <input
-                      value={adviser}
-                      onChange={e => setAdviser(e.target.value)}
+                    <input value={adviser} onChange={e => setAdviser(e.target.value)}
                       placeholder="e.g. HAZSHER MUNJILUL"
                       className="w-full bg-gray-800 border border-gray-600 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"/>
                   </div>
                 </div>
               </div>
-
-              {/* School Head field */}
               <div>
                 <label className="block text-xs text-gray-400 mb-1">School Head / Principal Name</label>
-                <input
-                  value={schoolHead}
-                  onChange={e => setSchoolHead(e.target.value)}
+                <input value={schoolHead} onChange={e => setSchoolHead(e.target.value)}
                   placeholder="e.g. REUEL ALIPIO ALVAREZ"
                   className="w-full bg-gray-800 border border-gray-600 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"/>
               </div>
-
-              {/* Student preview */}
               <div>
                 <h4 className="font-semibold text-white mb-3">
                   👥 Students Found: <span className="text-blue-400">{result.students.length}</span>
@@ -246,7 +582,6 @@ function ImportModal({
                   </table>
                 </div>
               </div>
-
               <div className="flex gap-3 pt-2">
                 <button onClick={() => { setStage('upload'); setResult(null); }}
                   className="flex-1 py-3 rounded-xl border border-gray-600 hover:bg-gray-800 transition text-sm">
@@ -260,7 +595,6 @@ function ImportModal({
             </div>
           )}
 
-          {/* SAVING STAGE */}
           {stage === 'saving' && (
             <div className="text-center py-12">
               <RefreshCw size={40} className="animate-spin text-blue-400 mx-auto mb-4"/>
@@ -376,11 +710,7 @@ function EditSectionModal({
   const save = async () => {
     setSaving(true);
     const { data, error } = await supabase
-      .from('sections')
-      .update(form)
-      .eq('id', section.id)
-      .select()
-      .single();
+      .from('sections').update(form).eq('id', section.id).select().single();
     if (!error && data) { onUpdated(data); onClose(); }
     else alert('Error: ' + error?.message);
     setSaving(false);
@@ -395,16 +725,16 @@ function EditSectionModal({
         </div>
         <div className="p-6 space-y-4">
           {[
-            { label: 'Section Name*',        key: 'name',        ph: 'e.g. STARGAZER' },
-            { label: 'Grade Level*',          key: 'grade_level', ph: 'e.g. Grade 7 (Year I)' },
-            { label: 'School Year',           key: 'school_year', ph: '2026 - 2027' },
-            { label: 'School Name',           key: 'school_name', ph: 'School name' },
-            { label: 'School ID',             key: 'school_id',   ph: '6-digit school ID' },
-            { label: 'Division',              key: 'division',    ph: 'e.g. Davao City' },
-            { label: 'District',              key: 'district',    ph: 'e.g. Sta. Ana' },
-            { label: 'Region',               key: 'region',      ph: 'e.g. Region XI' },
-            { label: 'Adviser Name',          key: 'adviser',     ph: 'Your full name' },
-            { label: "School Head / Principal", key: "school_head", ph: "Principal's full name" },
+            { label: 'Section Name*',          key: 'name',        ph: 'e.g. STARGAZER' },
+            { label: 'Grade Level*',            key: 'grade_level', ph: 'e.g. Grade 7 (Year I)' },
+            { label: 'School Year',             key: 'school_year', ph: '2026 - 2027' },
+            { label: 'School Name',             key: 'school_name', ph: 'School name' },
+            { label: 'School ID',               key: 'school_id',   ph: '6-digit school ID' },
+            { label: 'Division',                key: 'division',    ph: 'e.g. Davao City' },
+            { label: 'District',                key: 'district',    ph: 'e.g. Sta. Ana' },
+            { label: 'Region',                  key: 'region',      ph: 'e.g. Region XI' },
+            { label: 'Adviser Name',            key: 'adviser',     ph: 'Your full name' },
+            { label: 'School Head / Principal', key: 'school_head', ph: "Principal's full name" },
           ].map(f => (
             <div key={f.key}>
               <label className="block text-sm text-gray-400 mb-1">{f.label}</label>
@@ -413,18 +743,12 @@ function EditSectionModal({
                 className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"/>
             </div>
           ))}
-
-          {/* School head highlight */}
           <div className="bg-amber-950/30 border border-amber-800 rounded-xl p-3 text-xs text-amber-300">
             💡 The <strong>School Head / Principal</strong> name appears on SF2, SF8, SF5, and SF9 signature lines.
             Make sure to fill this in before printing any school forms.
           </div>
-
           <div className="flex gap-3 pt-2">
-            <button onClick={onClose}
-              className="flex-1 py-3 rounded-xl border border-gray-600 hover:bg-gray-800 transition text-sm">
-              Cancel
-            </button>
+            <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-600 hover:bg-gray-800 transition text-sm">Cancel</button>
             <button onClick={save} disabled={saving || !form.name || !form.grade_level}
               className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 font-semibold transition text-sm disabled:opacity-60">
               {saving ? 'Saving…' : 'Save Changes'}
@@ -444,16 +768,16 @@ export default function SectionsPage() {
   const { sections, activeSection, setActiveSection, loadSections } = useSection();
   const { isFree, maxSections } = useSubscription();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [showImport, setShowImport]   = useState(false);
-  const [showManual, setShowManual]   = useState(false);
-  const [showEdit,   setShowEdit]     = useState(false);
-  const [editTarget, setEditTarget]   = useState<Section | null>(null);
-  const [deleting,   setDeleting]     = useState<string | null>(null);
+  const [showImport,   setShowImport]   = useState(false);
+  const [showManual,   setShowManual]   = useState(false);
+  const [showEdit,     setShowEdit]     = useState(false);
+  const [editTarget,   setEditTarget]   = useState<Section | null>(null);
+  const [deleting,     setDeleting]     = useState<string | null>(null);
+  const [rosterSection, setRosterSection] = useState<Section | null>(null);
 
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Delete section "${name}"? This will also delete all students, grades, and attendance data for this section. This cannot be undone.`)) return;
     setDeleting(id);
-    // Delete students first (cascade should handle grades/attendance, but let's be explicit)
     await supabase.from('students').delete().eq('section_id', id);
     await supabase.from('grades').delete().eq('section_id', id);
     await supabase.from('attendance').delete().eq('section_id', id);
@@ -499,21 +823,15 @@ export default function SectionsPage() {
           </div>
           <div className="flex items-center gap-3">
             <button onClick={() => {
-                if (isFree && sections.length >= maxSections) {
-                  setShowUpgradeModal(true);
-                } else {
-                  setShowManual(true);
-                }
+                if (isFree && sections.length >= maxSections) setShowUpgradeModal(true);
+                else setShowManual(true);
               }}
               className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
               <Plus size={16}/> Create Manually
             </button>
             <button onClick={() => {
-                if (isFree && sections.length >= maxSections) {
-                  setShowUpgradeModal(true);
-                } else {
-                  setShowImport(true);
-                }
+                if (isFree && sections.length >= maxSections) setShowUpgradeModal(true);
+                else setShowImport(true);
               }}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl text-sm font-semibold transition">
               <Upload size={16}/> Import SF1 from LIS
@@ -522,34 +840,25 @@ export default function SectionsPage() {
         </div>
 
         <div className="p-6">
-
-          {/* Plan indicator banner */}
+          {/* Plan banner */}
           {isFree && (
             <div className={`flex items-center justify-between rounded-2xl px-5 py-4 mb-6 border ${
-              sections.length >= maxSections
-                ? 'bg-red-950/30 border-red-800'
-                : 'bg-amber-950/30 border-amber-800'
+              sections.length >= maxSections ? 'bg-red-950/30 border-red-800' : 'bg-amber-950/30 border-amber-800'
             }`}>
               <div className="flex items-center gap-3">
-                <span className="text-2xl">
-                  {sections.length >= maxSections ? '🔒' : '📋'}
-                </span>
+                <span className="text-2xl">{sections.length >= maxSections ? '🔒' : '📋'}</span>
                 <div>
-                  <div className={`font-semibold text-sm ${
-                    sections.length >= maxSections ? 'text-red-400' : 'text-amber-400'
-                  }`}>
+                  <div className={`font-semibold text-sm ${sections.length >= maxSections ? 'text-red-400' : 'text-amber-400'}`}>
                     Free Plan &mdash; {sections.length}/{maxSections} section used
                   </div>
                   <div className="text-gray-400 text-xs mt-0.5">
                     {sections.length >= maxSections
                       ? 'You have reached your section limit. Upgrade to add more sections.'
-                      : 'You can add 1 section on the Free plan. Upgrade for unlimited sections.'
-                    }
+                      : 'You can add 1 section on the Free plan. Upgrade for unlimited sections.'}
                   </div>
                 </div>
               </div>
-              <button
-                onClick={() => window.location.href = '/subscribe'}
+              <button onClick={() => window.location.href = '/subscribe'}
                 className="flex-shrink-0 ml-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition">
                 Upgrade &rarr;
               </button>
@@ -557,32 +866,18 @@ export default function SectionsPage() {
           )}
 
           {sections.length === 0 ? (
-            /* Empty state */
             <div className="text-center py-20">
               <BookOpen size={56} className="mx-auto mb-4 text-gray-700"/>
               <h2 className="text-2xl font-bold text-white mb-2">No sections yet</h2>
               <p className="text-gray-400 mb-8 max-w-md mx-auto">
-                Add your first class section by importing your SF1 Excel file from the DepEd LIS website,
-                or create one manually.
+                Add your first class section by importing your SF1 Excel file from the DepEd LIS website, or create one manually.
               </p>
               <div className="flex gap-4 justify-center">
-                <button onClick={() => {
-                    if (isFree && sections.length >= maxSections) {
-                      setShowUpgradeModal(true);
-                    } else {
-                      setShowManual(true);
-                    }
-                  }}
+                <button onClick={() => { if (isFree && sections.length >= maxSections) setShowUpgradeModal(true); else setShowManual(true); }}
                   className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-6 py-3 rounded-2xl font-semibold transition">
                   <Plus size={18}/> Create Manually
                 </button>
-                <button onClick={() => {
-                    if (isFree && sections.length >= maxSections) {
-                      setShowUpgradeModal(true);
-                    } else {
-                      setShowImport(true);
-                    }
-                  }}
+                <button onClick={() => { if (isFree && sections.length >= maxSections) setShowUpgradeModal(true); else setShowImport(true); }}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-2xl font-semibold transition">
                   <Upload size={18}/> Import SF1 from LIS
                 </button>
@@ -605,14 +900,12 @@ export default function SectionsPage() {
                           : 'bg-gray-900 border-gray-700 hover:border-gray-500 hover:shadow-lg'}`}
                       onClick={() => setActiveSection(section)}>
 
-                      {/* Active badge */}
                       {isActive && (
                         <div className="absolute top-4 right-4 flex items-center gap-1 bg-blue-600 text-white text-xs px-2 py-1 rounded-full font-semibold">
                           <CheckCircle size={12}/> Active
                         </div>
                       )}
 
-                      {/* Grade badge */}
                       <div className="w-12 h-12 bg-blue-900/50 rounded-2xl flex items-center justify-center mb-3 text-2xl font-black text-blue-400">
                         {section.grade_number}
                       </div>
@@ -625,28 +918,34 @@ export default function SectionsPage() {
                         <div className="flex items-center gap-2 text-xs text-gray-400">
                           <Users size={12}/> {section.student_count ?? '—'} students
                         </div>
-                        {section.school_name && (
-                          <div className="text-xs text-gray-500 truncate">{section.school_name}</div>
-                        )}
-                        {section.adviser && (
-                          <div className="text-xs text-gray-500">{section.adviser}</div>
-                        )}
-                        {section.school_head && (
-                          <div className="text-xs text-gray-500">🏫 {section.school_head}</div>
-                        )}
+                        {section.school_name && <div className="text-xs text-gray-500 truncate">{section.school_name}</div>}
+                        {section.adviser    && <div className="text-xs text-gray-500">{section.adviser}</div>}
+                        {section.school_head && <div className="text-xs text-gray-500">🏫 {section.school_head}</div>}
                       </div>
 
-                      {/* Edit + Delete buttons */}
-                      <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                      {/* Action buttons — visible on hover */}
+                      <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1"
+                           onClick={e => e.stopPropagation()}>
+                        {/* 👥 Roster button */}
                         <button
-                          onClick={e => { e.stopPropagation(); setEditTarget(section); setShowEdit(true); }}
-                          className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-500 hover:bg-blue-900/40 hover:text-blue-400 transition">
+                          onClick={() => setRosterSection(section)}
+                          className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-500 hover:bg-emerald-900/40 hover:text-emerald-400 transition"
+                          title="View / edit student roster">
+                          <Users size={14}/>
+                        </button>
+                        {/* ✏️ Edit section */}
+                        <button
+                          onClick={() => { setEditTarget(section); setShowEdit(true); }}
+                          className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-500 hover:bg-blue-900/40 hover:text-blue-400 transition"
+                          title="Edit section details">
                           <Edit3 size={14}/>
                         </button>
+                        {/* 🗑️ Delete section */}
                         <button
-                          onClick={e => { e.stopPropagation(); handleDelete(section.id, section.name); }}
+                          onClick={() => handleDelete(section.id, section.name)}
                           disabled={deleting === section.id}
-                          className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-600 hover:bg-red-900/40 hover:text-red-400 transition">
+                          className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-600 hover:bg-red-900/40 hover:text-red-400 transition"
+                          title="Delete section">
                           {deleting === section.id ? <RefreshCw size={14} className="animate-spin"/> : <Trash2 size={14}/>}
                         </button>
                       </div>
@@ -656,23 +955,16 @@ export default function SectionsPage() {
 
                 {/* Add more card */}
                 <button onClick={() => {
-                    if (isFree && sections.length >= maxSections) {
-                      setShowUpgradeModal(true);
-                    } else {
-                      setShowImport(true);
-                    }
+                    if (isFree && sections.length >= maxSections) setShowUpgradeModal(true);
+                    else setShowImport(true);
                   }}
                   className="rounded-2xl border-2 border-dashed border-gray-700 hover:border-blue-600 p-5 flex flex-col items-center justify-center gap-3 text-gray-500 hover:text-blue-400 transition-all min-h-[180px]">
                   <Upload size={28}/>
                   <span className="text-sm font-medium">
-                    {isFree && sections.length >= maxSections
-                      ? 'Upgrade to Add More'
-                      : 'Import Another SF1'}
+                    {isFree && sections.length >= maxSections ? 'Upgrade to Add More' : 'Import Another SF1'}
                   </span>
                   {isFree && sections.length >= maxSections && (
-                    <span className="text-xs bg-amber-900/50 text-amber-400 px-2 py-1 rounded-full">
-                      Free plan: 1 section only
-                    </span>
+                    <span className="text-xs bg-amber-900/50 text-amber-400 px-2 py-1 rounded-full">Free plan: 1 section only</span>
                   )}
                 </button>
               </div>
@@ -681,10 +973,11 @@ export default function SectionsPage() {
         </div>
       </div>
 
-      {showImport && <ImportModal onClose={() => setShowImport(false)} onImported={handleImported}/>}
-      {showManual && <CreateManualModal onClose={() => setShowManual(false)} onCreated={handleCreated}/>}
+      {/* Modals */}
+      {showImport   && <ImportModal onClose={() => setShowImport(false)} onImported={handleImported}/>}
+      {showManual   && <CreateManualModal onClose={() => setShowManual(false)} onCreated={handleCreated}/>}
+      {rosterSection && <StudentRosterModal section={rosterSection} onClose={() => { setRosterSection(null); loadSections(); }}/>}
 
-      {/* Upgrade Modal — shown when free user tries to add more than 1 section */}
       {showUpgradeModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900 rounded-2xl w-full max-w-md border border-amber-800 shadow-2xl p-8 text-center">
@@ -700,8 +993,6 @@ export default function SectionsPage() {
               Upgrade to <span className="text-blue-400 font-semibold">Teacher Pro</span> to add
               unlimited sections — perfect for teachers with multiple class loads.
             </p>
-
-            {/* What they unlock */}
             <div className="bg-gray-800 rounded-2xl p-4 mb-6 text-left text-sm space-y-2">
               <div className="text-gray-300 font-semibold mb-2">Teacher Pro unlocks:</div>
               {[
@@ -719,8 +1010,6 @@ export default function SectionsPage() {
                 </div>
               ))}
             </div>
-
-            {/* Pricing reminder */}
             <div className="flex gap-3 mb-6">
               <div className="flex-1 bg-blue-900/30 border border-blue-700 rounded-xl p-3 text-center">
                 <div className="text-xs text-emerald-400 mb-1">PHP 17/month billed annually</div>
@@ -728,9 +1017,7 @@ export default function SectionsPage() {
                 <div className="text-xs text-gray-500">/year</div>
               </div>
             </div>
-
-            <button
-              onClick={() => { setShowUpgradeModal(false); window.location.href = '/subscribe'; }}
+            <button onClick={() => { setShowUpgradeModal(false); window.location.href = '/subscribe'; }}
               className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 rounded-2xl font-bold transition mb-3">
               Upgrade to Teacher Pro
             </button>
@@ -741,6 +1028,7 @@ export default function SectionsPage() {
           </div>
         </div>
       )}
+
       {showEdit && editTarget && (
         <EditSectionModal
           section={editTarget}
