@@ -417,6 +417,8 @@ function SummaryOfGradesView({
       <style>{`
         @media print {
           .no-print { display: none !important; }
+          .eclass-modal-overlay { display: block !important; position: static !important; overflow: visible !important; background: white !important; }
+          .min-h-screen { display: none !important; }
           body { background: white !important; }
           .summary-print { padding: 8mm !important; max-width: 100% !important; }
           @page { size: portrait; margin: 8mm; }
@@ -769,7 +771,9 @@ function EClassRecordView({
         }
         @media print {
           .no-print { display: none !important; }
-          .eclass-modal-overlay { position: static !important; overflow: visible !important; background: white !important; }
+          /* Show this modal, hide the main live page */
+          .eclass-modal-overlay { display: block !important; position: static !important; overflow: visible !important; background: white !important; }
+          .min-h-screen { display: none !important; }
           body { background: white !important; margin: 0 !important; }
           .eclass-print { padding: 4mm !important; width: 100% !important; min-width: unset !important; box-shadow: none !important; border-radius: 0 !important; }
           table { page-break-inside: auto; }
@@ -969,7 +973,15 @@ export default function ClassRecord() {
 
   return (
     <>
-      <style>{`@media print{body{background:white!important}.no-print{display:none!important}input{border:none!important;background:transparent!important;color:black!important}}`}</style>
+      <style>{`
+        @media print {
+          body { background: white !important; }
+          .no-print { display: none !important; }
+          input { border: none !important; background: transparent !important; color: black !important; }
+          /* Hide the entire live page when E-Class modal or Summary modal is printing */
+          .min-h-screen { display: none !important; }
+        }
+      `}</style>
       <div className="min-h-screen bg-gray-950 text-white">
         {/* Header */}
         <div className="no-print bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
@@ -1040,7 +1052,7 @@ export default function ClassRecord() {
         {loading ? (
           <div className="flex items-center justify-center py-20 gap-3 text-gray-400"><RefreshCw size={20} className="animate-spin"/>Loading learners...</div>
         ) : (
-          <div className="px-6 pb-10 overflow-x-auto">
+          <div className="px-6 pb-10 overflow-x-auto no-print">
             <table className="w-full min-w-[1600px] text-sm border-separate border-spacing-0">
               <thead>
                 <tr>
