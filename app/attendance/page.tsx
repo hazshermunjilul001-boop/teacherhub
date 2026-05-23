@@ -537,7 +537,7 @@ export default function AttendancePage() {
     const thC = {...th, textAlign:'center' as const};
 
     return (
-      <div className="sf2-print bg-white text-black" style={{fontFamily:'Arial, sans-serif', fontSize:'9px', padding:'6mm'}}>
+      <div className="sf2-print bg-white text-black" style={{fontFamily:'Arial, sans-serif', fontSize:'9px', padding:'6mm', overflow:'visible'}}>
 
         {/* ══ PAGE 1: ATTENDANCE TABLE ══════════════════════════════════════ */}
 
@@ -718,8 +718,8 @@ export default function AttendancePage() {
           </table>
         )}
 
-        {/* ══ GUIDELINES + CODES + SUMMARY (flows after attendance table) ══ */}
-        <div style={{marginTop:'6px'}}>
+        {/* ══ GUIDELINES + CODES + SUMMARY ══ */}
+        <div className="sf2-summary" style={{marginTop:'4px'}}>
 
           {/* Three-column bottom section */}
           <div style={{display:'flex', gap:'4px', alignItems:'stretch', fontSize:'8px'}}>
@@ -955,12 +955,17 @@ export default function AttendancePage() {
     <>
       <style>{`
         @media print {
-          body { background: white !important; }
+          body { background: white !important; margin: 0 !important; }
           .no-print { display: none !important; }
-          .sf2-print { padding: 4mm; }
-          table { page-break-inside: auto; }
-          tr { page-break-inside: avoid; page-break-after: auto; }
-          thead { display: table-header-group; }
+          /* Collapse the min-h-screen wrapper so it doesn't create blank space */
+          .min-h-screen { min-height: 0 !important; height: auto !important; background: white !important; }
+          /* The SF2 content block */
+          .sf2-print { padding: 4mm !important; display: block !important; }
+          .sf2-print table { page-break-inside: auto; width: 100%; }
+          .sf2-print tr { page-break-inside: avoid; page-break-after: auto; }
+          .sf2-print thead { display: table-header-group; }
+          /* Summary section flows naturally — no forced page break */
+          .sf2-summary { page-break-before: auto !important; margin-top: 4px !important; }
           @page { size: landscape; margin: 8mm; }
         }
       `}</style>
