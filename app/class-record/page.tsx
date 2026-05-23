@@ -1176,6 +1176,7 @@ export default function ClassRecord() {
           division={division}
           region={region}
           adviser={adviser}
+          schoolHead={schoolHead}
           allTermData={allTermData}
           onClose={() => setShowSummary(false)}
         />
