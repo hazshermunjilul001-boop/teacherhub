@@ -756,7 +756,7 @@ function EClassRecordView({
           </div>
           <div style={{textAlign:'center', minWidth:'200px'}}>
             <div style={{fontWeight:'bold', borderTop:'1px solid black', paddingTop:'2px', marginTop:'20px'}}>{schoolHead?.toUpperCase() || '________________________________'}</div>
-            <div>{schoolHead || 'School Head'}</div>
+            <div>School Head</div>
           </div>
           <div style={{textAlign:'center', minWidth:'200px'}}>
             <div style={{borderTop:'1px solid black', paddingTop:'2px', marginTop:'20px'}}>________________________________</div>
