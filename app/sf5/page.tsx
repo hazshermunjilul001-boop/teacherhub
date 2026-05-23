@@ -201,62 +201,46 @@ export default function SF5Page() {
   const [view,        setView]        = useState<'table'|'sf5'>('table');
   const [statusModal, setStatusModal] = useState<Student|null>(null);
 
+  // ── Load data ─────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       setLoading(true);
-
       const { data: studs } = await supabase
         .from('students').select('*').eq('section_id', sectionId).order('full_name');
       const studentList: Student[] = studs ?? [];
       setStudents(studentList);
 
-      const allSubjects = [
-        'Filipino','English','Mathematics','Science',
-        'Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)',
-        'Edukasyong Pantahanan at Pangkabuhayan (EPP)',
-        'MAPEH - Music','MAPEH - Arts','MAPEH - Physical Education','MAPEH - Health',
-      ];
-
+      const allSubjects = [...SF5_SUBJECTS];
       const { data: gradesRaw } = await supabase
         .from('grades').select('*').in('subject', allSubjects).in('term', [1,2,3]);
 
       const result: LearnerSF5[] = studentList.map(student => {
-        const isInactive = student.status && student.status !== 'active';
         const termGrades: Record<string, number[]> = {};
         const finalGrades: Record<string, number>  = {};
 
         allSubjects.forEach(subj => {
-          if (isInactive) {
-            termGrades[subj] = [0,0,0];
-            finalGrades[subj] = 0;
-            return;
-          }
-          const t1row = gradesRaw?.find(g=>g.student_id===student.id&&g.subject===subj&&g.term===1);
-          const t2row = gradesRaw?.find(g=>g.student_id===student.id&&g.subject===subj&&g.term===2);
-          const t3row = gradesRaw?.find(g=>g.student_id===student.id&&g.subject===subj&&g.term===3);
+          const t1row = gradesRaw?.find(g => g.student_id===student.id && g.subject===subj && g.term===1);
+          const t2row = gradesRaw?.find(g => g.student_id===student.id && g.subject===subj && g.term===2);
+          const t3row = gradesRaw?.find(g => g.student_id===student.id && g.subject===subj && g.term===3);
           const t1 = t1row ? computeTransmutedFromGrade({...t1row,subject:subj}) : 0;
           const t2 = t2row ? computeTransmutedFromGrade({...t2row,subject:subj}) : 0;
           const t3 = t3row ? computeTransmutedFromGrade({...t3row,subject:subj}) : 0;
-          termGrades[subj] = [t1,t2,t3];
+          termGrades[subj] = [t1, t2, t3];
           const recorded = [t1,t2,t3].filter(v=>v>0);
           finalGrades[subj] = recorded.length>0 ? Math.round(recorded.reduce((a,b)=>a+b,0)/recorded.length) : 0;
         });
 
-        const mapehScores = isInactive ? [] : MAPEH_COMPONENTS.map(c=>finalGrades[c]).filter(v=>v>0);
+        const mapehScores = MAPEH_COMPONENTS.map(c => finalGrades[c]).filter(v=>v>0);
         const mapehFinal  = mapehScores.length>0 ? Math.round(mapehScores.reduce((a,b)=>a+b,0)/mapehScores.length) : 0;
 
         const gaSubjects = ['Filipino','English','Mathematics','Science','Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)','Edukasyong Pantahanan at Pangkabuhayan (EPP)'];
-        const gaScores = isInactive ? [] : [...gaSubjects.map(s=>finalGrades[s]), mapehFinal].filter(v=>v>0);
+        const gaScores = [...gaSubjects.map(s=>finalGrades[s]), mapehFinal].filter(v=>v>0);
         const generalAverage = gaScores.length>0 ? Math.round(gaScores.reduce((a,b)=>a+b,0)/gaScores.length) : 0;
 
-        const failedSubjects = isInactive ? [] : gaSubjects.filter(s=>finalGrades[s]>0&&finalGrades[s]<75);
-        if (!isInactive && mapehFinal>0&&mapehFinal<75) failedSubjects.push('MAPEH');
+        const failedSubjects = gaSubjects.filter(s => finalGrades[s]>0 && finalGrades[s]<75);
+        if (mapehFinal>0 && mapehFinal<75) failedSubjects.push('MAPEH');
 
-        return {
-          student, termGrades, finalGrades,
-          mapehFinal, generalAverage, failedSubjects,
-          action: determineAction(student, failedSubjects),
-        };
+        return { student, termGrades, finalGrades, mapehFinal, generalAverage, failedSubjects, action: determineAction(student, failedSubjects) };
       });
 
       setSF5Data(result);
@@ -277,7 +261,6 @@ export default function SF5Page() {
       'EPP T1','EPP T2','EPP T3','EPP Final',
       'MAPEH Final','General Average','Action','Notes',
     ];
-
     const rows = sf5Data.map(d => {
       const nameParts = d.student.full_name.split(',').map(s=>s.trim());
       const lastName  = nameParts[0] ?? '';
@@ -285,54 +268,36 @@ export default function SF5Page() {
       const firstName = firstMid.slice(0,-1).join(' ') || firstMid[0] || '';
       const midName   = firstMid.length>1 ? firstMid[firstMid.length-1] : '';
       const isInactive = d.student.status && d.student.status !== 'active';
-      const row = [
-        d.student.lrn, lastName, firstName, midName,
-        d.student.sex==='M'?'Male':'Female',
-        d.student.status ?? 'active',
-      ];
+      const row = [d.student.lrn, lastName, firstName, midName, d.student.sex==='M'?'Male':'Female', d.student.status ?? 'active'];
       ['Filipino','English','Mathematics','Science','Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)','Edukasyong Pantahanan at Pangkabuhayan (EPP)'].forEach(subj => {
         const [t1,t2,t3] = d.termGrades[subj] ?? [0,0,0];
         row.push(t1?String(t1):'', t2?String(t2):'', t3?String(t3):'', d.finalGrades[subj]?String(d.finalGrades[subj]):'');
       });
-      row.push(
-        d.mapehFinal ? String(d.mapehFinal) : '',
-        d.generalAverage ? String(d.generalAverage) : '',
-        d.action,
-        isInactive ? (d.student.status_note || '') : '',
-      );
+      row.push(d.mapehFinal?String(d.mapehFinal):'', d.generalAverage?String(d.generalAverage):'', d.action, isInactive?(d.student.status_note||''):'');
       return row;
     });
-
     const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href = url;
-    a.download = `SF5_${sectionName}_${schoolYear.replace(' ','')}.csv`;
-    a.click();
+    a.href = url; a.download = `SF5_${sectionName}_${schoolYear.replace(' ','')}.csv`; a.click();
     URL.revokeObjectURL(url);
   };
 
-  // ── Summary counts (active only) ──────────────────────────────────────────
-  const activeData     = sf5Data.filter(d => !d.student.status || d.student.status === 'active');
-  // Sort: males alphabetically first, then females alphabetically
-  const maleData       = sf5Data.filter(d => d.student.sex === 'M').sort((a,b) => a.student.full_name.localeCompare(b.student.full_name));
-  const femaleData     = sf5Data.filter(d => d.student.sex === 'F').sort((a,b) => a.student.full_name.localeCompare(b.student.full_name));
-  const sortedSF5Data  = [...maleData, ...femaleData];
-  const promoted       = activeData.filter(d => d.action === 'Promoted').length;
-  const conditional    = activeData.filter(d => d.action === 'Conditionally Promoted').length;
-  const retained       = activeData.filter(d => d.action === 'Retained').length;
-  const dropped        = sf5Data.filter(d => d.action === 'Dropped').length;
-  const transferred    = sf5Data.filter(d => d.action === 'Transferred Out' || d.action === 'Transferred In').length;
-  const classGA        = activeData.filter(d=>d.generalAverage>0).length>0
-    ? activeData.filter(d=>d.generalAverage>0).reduce((s,d)=>s+d.generalAverage,0)
-      / activeData.filter(d=>d.generalAverage>0).length
-    : 0;
+  // ── Derived counts ────────────────────────────────────────────────────────
+  const activeData  = sf5Data.filter(d => !d.student.status || d.student.status === 'active');
+  const maleData    = sf5Data.filter(d => d.student.sex === 'M').sort((a,b) => a.student.full_name.localeCompare(b.student.full_name));
+  const femaleData  = sf5Data.filter(d => d.student.sex === 'F').sort((a,b) => a.student.full_name.localeCompare(b.student.full_name));
+  const promoted    = activeData.filter(d => d.action === 'Promoted').length;
+  const conditional = activeData.filter(d => d.action === 'Conditionally Promoted').length;
+  const retained    = activeData.filter(d => d.action === 'Retained').length;
+  const dropped     = sf5Data.filter(d => d.action === 'Dropped').length;
+  const transferred = sf5Data.filter(d => d.action === 'Transferred Out' || d.action === 'Transferred In').length;
 
-  // ── SF5 Print View ────────────────────────────────────────────────────────
+  // ── SF5 Print View — matches official DepEd SF5 format ───────────────────
   const SF5PrintView = () => {
     const actionText = (d: typeof sf5Data[0]) => {
-      if (d.action === 'Dropped')         return 'DROPPED';
+      if (d.action === 'Dropped')         return 'DROPPED OUT';
       if (d.action === 'Transferred Out') return 'TRANSFERRED OUT';
       if (d.action === 'Transferred In')  return 'TRANSFERRED IN';
       if (d.action === 'Promoted' && d.generalAverage >= 90) return 'PROMOTED WITH HONORS';
@@ -340,42 +305,54 @@ export default function SF5Page() {
       if (d.action === 'Conditionally Promoted')  return 'CONDITIONALLY PROMOTED';
       return 'RETAINED';
     };
+
     const males   = sf5Data.filter(d => d.student.sex === 'M').sort((a,b) => a.student.full_name.localeCompare(b.student.full_name));
     const females = sf5Data.filter(d => d.student.sex === 'F').sort((a,b) => a.student.full_name.localeCompare(b.student.full_name));
+
+    // Summary table rows — matching official SF5
     const summaryRows = [
-      { label:'PROMOTED',               m:activeData.filter(d=>d.student.sex==='M'&&d.action==='Promoted').length,          f:activeData.filter(d=>d.student.sex==='F'&&d.action==='Promoted').length },
-      { label:'CONDITIONALLY PROMOTED', m:activeData.filter(d=>d.student.sex==='M'&&d.action==='Conditionally Promoted').length, f:activeData.filter(d=>d.student.sex==='F'&&d.action==='Conditionally Promoted').length },
-      { label:'RETAINED',               m:activeData.filter(d=>d.student.sex==='M'&&d.action==='Retained').length,          f:activeData.filter(d=>d.student.sex==='F'&&d.action==='Retained').length },
-      { label:'DROPPED',                m:sf5Data.filter(d=>d.student.sex==='M'&&d.action==='Dropped').length,              f:sf5Data.filter(d=>d.student.sex==='F'&&d.action==='Dropped').length },
-      { label:'TRANSFERRED OUT',        m:sf5Data.filter(d=>d.student.sex==='M'&&d.action==='Transferred Out').length,      f:sf5Data.filter(d=>d.student.sex==='F'&&d.action==='Transferred Out').length },
-      { label:'TRANSFERRED IN',         m:sf5Data.filter(d=>d.student.sex==='M'&&d.action==='Transferred In').length,       f:sf5Data.filter(d=>d.student.sex==='F'&&d.action==='Transferred In').length },
+      { label:'PROMOTED',               m:activeData.filter(d=>d.student.sex==='M'&&d.action==='Promoted').length,               f:activeData.filter(d=>d.student.sex==='F'&&d.action==='Promoted').length },
+      { label:'CONDITIONALLY PROMOTED', m:activeData.filter(d=>d.student.sex==='M'&&d.action==='Conditionally Promoted').length,  f:activeData.filter(d=>d.student.sex==='F'&&d.action==='Conditionally Promoted').length },
+      { label:'RETAINED',               m:activeData.filter(d=>d.student.sex==='M'&&d.action==='Retained').length,               f:activeData.filter(d=>d.student.sex==='F'&&d.action==='Retained').length },
     ];
-    const tdB = {border:'1px solid black',padding:'1px 3px',fontSize:'8px'} as React.CSSProperties;
-    const thB = {border:'1px solid black',padding:'1px 3px',fontSize:'8px',background:'#f3f4f6',textAlign:'center' as const,fontWeight:'bold' as const};
+
+    // Level of Progress rows — matching official SF5
+    const progressRows = [
+      { label:'Did Not Meet Expectations (74 and below)', m:activeData.filter(d=>d.student.sex==='M'&&d.generalAverage>0&&d.generalAverage<75).length,  f:activeData.filter(d=>d.student.sex==='F'&&d.generalAverage>0&&d.generalAverage<75).length },
+      { label:'Fairly Satisfactory (75-79)',              m:activeData.filter(d=>d.student.sex==='M'&&d.generalAverage>=75&&d.generalAverage<=79).length, f:activeData.filter(d=>d.student.sex==='F'&&d.generalAverage>=75&&d.generalAverage<=79).length },
+      { label:'Satisfactory (80-84)',                     m:activeData.filter(d=>d.student.sex==='M'&&d.generalAverage>=80&&d.generalAverage<=84).length, f:activeData.filter(d=>d.student.sex==='F'&&d.generalAverage>=80&&d.generalAverage<=84).length },
+      { label:'Very Satisfactory (85-89)',                m:activeData.filter(d=>d.student.sex==='M'&&d.generalAverage>=85&&d.generalAverage<=89).length, f:activeData.filter(d=>d.student.sex==='F'&&d.generalAverage>=85&&d.generalAverage<=89).length },
+      { label:'Outstanding (90-100)',                     m:activeData.filter(d=>d.student.sex==='M'&&d.generalAverage>=90).length,                       f:activeData.filter(d=>d.student.sex==='F'&&d.generalAverage>=90).length },
+    ];
+
+    const td  = {border:'1px solid black',padding:'1px 3px',fontSize:'8px'} as React.CSSProperties;
+    const th  = {border:'1px solid black',padding:'1px 3px',fontSize:'8px',background:'#f3f4f6',textAlign:'center' as const,fontWeight:'bold' as const};
+    const thL = {...th, textAlign:'left' as const};
 
     const renderGroup = (group: typeof sf5Data, label: string) => (
-      <>
+      <React.Fragment key={label}>
         <tr>
-          <td colSpan={5} style={{...tdB,fontWeight:'bold',background:label==='MALE'?'#dbeafe':'#fce7f3',textAlign:'left'}}>
+          <td colSpan={5} style={{...td,fontWeight:'bold',background:label==='MALE'?'#dbeafe':'#fce7f3',textAlign:'left',padding:'2px 4px'}}>
             {label}
           </td>
         </tr>
-        {group.map((d,idx) => {
+        {group.map((d, idx) => {
           const isInactive = d.student.status && d.student.status !== 'active';
           return (
             <tr key={d.student.id} style={{background:isInactive?'#fef2f2':idx%2===0?'white':'#f9fafb'}}>
-              <td style={{...tdB,fontSize:'7px'}}>{d.student.lrn}</td>
-              <td style={{...tdB,minWidth:'180px',textDecoration:isInactive?'line-through':'none',color:isInactive?'#9ca3af':'inherit'}}>
+              <td style={{...td,fontSize:'7px',fontFamily:'monospace'}}>{d.student.lrn}</td>
+              <td style={{...td,minWidth:'180px',textDecoration:isInactive?'line-through':'none',color:isInactive?'#9ca3af':'inherit'}}>
                 {d.student.full_name}
               </td>
-              <td style={{...tdB,textAlign:'center',fontWeight:'bold',background:d.generalAverage>=90?'#fef3c7':d.generalAverage>0&&d.generalAverage<75?'#fee2e2':'transparent'}}>
+              <td style={{...td,textAlign:'center',fontWeight:'bold',
+                background:d.generalAverage>=90?'#fef3c7':d.generalAverage>0&&d.generalAverage<75?'#fee2e2':'transparent'}}>
                 {d.generalAverage || ''}
               </td>
-              <td style={{...tdB,textAlign:'center',fontWeight:'bold',fontSize:'7px',
+              <td style={{...td,textAlign:'center',fontWeight:'bold',fontSize:'7px',
                 color:d.action==='Promoted'?'#166534':d.action==='Retained'||d.action==='Dropped'?'#991b1b':d.action==='Conditionally Promoted'?'#92400e':'#1e40af'}}>
                 {actionText(d)}
               </td>
-              <td style={{...tdB,fontSize:'7px'}}>
+              <td style={{...td,fontSize:'7px'}}>
                 {isInactive
                   ? `${d.student.status_date||''} ${d.student.status_note ? '— '+d.student.status_note : ''}`
                   : d.failedSubjects.length>0 ? d.failedSubjects.join(', ') : ''}
@@ -383,101 +360,192 @@ export default function SF5Page() {
             </tr>
           );
         })}
-      </>
+        <tr>
+          <td colSpan={2} style={{...td,textAlign:'right',fontStyle:'italic',fontWeight:'bold',background:'#f3f4f6'}}>
+            {group.length} &lt;=== TOTAL {label}
+          </td>
+          <td colSpan={3} style={{...td,background:'#f3f4f6'}}></td>
+        </tr>
+      </React.Fragment>
     );
 
     return (
       <div className="bg-white text-black font-sans" style={{padding:'4mm',fontSize:'9px'}}>
-        <div style={{textAlign:'center',marginBottom:'3px'}}>
-          <div style={{fontWeight:'bold',fontSize:'11px'}}>School Form 5 (SF 5) Report on Promotion and Level of Proficiency</div>
+
+        {/* ── TITLE ── */}
+        <div style={{textAlign:'center',marginBottom:'2px'}}>
+          <div style={{fontWeight:'bold',fontSize:'11px'}}>School Form 5 (SF 5) Report on Promotion and Level of Proficiency &amp; Achievement</div>
           <div style={{fontSize:'8px'}}>(This replaces Forms 18-E1, 18-E2, 18A and List of Graduates)</div>
         </div>
+
+        {/* ── MAIN LAYOUT: left = learner table, right = summary ── */}
         <div style={{display:'flex',gap:'6px',alignItems:'flex-start'}}>
+
+          {/* LEFT SIDE */}
           <div style={{flex:3}}>
-            <table style={{width:'100%',borderCollapse:'collapse',marginBottom:'3px',fontSize:'8px'}}>
+
+            {/* Header info */}
+            <table style={{width:'100%',borderCollapse:'collapse',marginBottom:'2px',fontSize:'8px'}}>
               <tbody>
                 <tr>
-                  <td style={tdB}>Region</td><td style={{...tdB,fontWeight:'bold'}}>{region}</td>
-                  <td style={tdB}>Division</td><td style={{...tdB,fontWeight:'bold'}}>{division}</td>
+                  <td style={td}><strong>Region</strong></td>
+                  <td style={{...td,fontWeight:'bold'}}>{region}</td>
+                  <td style={td}><strong>Division</strong></td>
+                  <td style={{...td,fontWeight:'bold'}}>{division}</td>
                 </tr>
                 <tr>
-                  <td style={tdB}>School ID</td><td style={{...tdB,fontWeight:'bold'}}>{schoolId}</td>
-                  <td style={tdB}>School Year</td><td style={{...tdB,fontWeight:'bold'}}>{schoolYear}</td>
+                  <td style={td}><strong>School ID</strong></td>
+                  <td style={{...td,fontWeight:'bold'}}>{schoolId}</td>
+                  <td style={td}><strong>School Year</strong></td>
+                  <td style={{...td,fontWeight:'bold'}}>{schoolYear}</td>
                 </tr>
                 <tr>
-                  <td style={tdB}>School Name</td>
-                  <td colSpan={3} style={{...tdB,fontWeight:'bold'}}>{schoolName}</td>
+                  <td style={td}><strong>School Name</strong></td>
+                  <td colSpan={3} style={{...td,fontWeight:'bold'}}>{schoolName}</td>
                 </tr>
                 <tr>
-                  <td style={tdB}>Grade Level</td><td style={{...tdB,fontWeight:'bold'}}>{gradeLevel}</td>
-                  <td style={tdB}>Section</td><td style={{...tdB,fontWeight:'bold'}}>{sectionName}</td>
+                  <td style={td}><strong>Grade Level</strong></td>
+                  <td style={{...td,fontWeight:'bold'}}>{gradeLevel}</td>
+                  <td style={td}><strong>Section</strong></td>
+                  <td style={{...td,fontWeight:'bold'}}>{sectionName}</td>
                 </tr>
               </tbody>
             </table>
 
+            {/* Learner table */}
             <table style={{width:'100%',borderCollapse:'collapse',fontSize:'8px'}}>
               <thead>
                 <tr>
-                  <th style={{...thB,minWidth:'110px'}}>LRN</th>
-                  <th style={{...thB,minWidth:'180px',textAlign:'left' as const}}>
-                    LEARNER'S NAME
-                    <span style={{fontWeight:'normal',fontSize:'7px'}}> (Last Name, First Name, Middle Name)</span>
+                  <th style={{...thL,minWidth:'110px'}}>LRN</th>
+                  <th style={{...thL,minWidth:'180px'}}>
+                    LEARNER'S NAME<br/>
+                    <span style={{fontWeight:'normal',fontSize:'7px'}}>(Last Name, First Name, Middle Name)</span>
                   </th>
-                  <th style={{...thB,minWidth:'55px'}}>GENERAL AVERAGE</th>
-                  <th style={{...thB,minWidth:'100px'}}>ACTION TAKEN</th>
-                  <th style={{...thB,minWidth:'120px',textAlign:'left' as const}}>REMARKS / FAILED SUBJECTS</th>
+                  <th style={{...th,minWidth:'50px'}}>GENERAL<br/>AVERAGE</th>
+                  <th style={{...th,minWidth:'100px'}}>
+                    ACTION TAKEN:<br/>
+                    <span style={{fontWeight:'normal',fontSize:'7px'}}>PROMOTED, CONDITIONAL or RETAINED</span>
+                  </th>
+                  <th style={{...thL,minWidth:'130px'}}>
+                    Did Not Meet Expectations of the ff.<br/>
+                    <span style={{fontWeight:'normal',fontSize:'7px'}}>Learning Area/s as of end of current School Year</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {renderGroup(males,   'MALE')}
                 {renderGroup(females, 'FEMALE')}
                 <tr style={{background:'#f3f4f6',fontWeight:'bold'}}>
-                  <td colSpan={2} style={{...tdB,textAlign:'right',fontStyle:'italic'}}>
+                  <td colSpan={2} style={{...td,textAlign:'right',fontStyle:'italic'}}>
                     {sf5Data.length} &lt;=== COMBINED
                   </td>
-                  <td colSpan={3} style={tdB}></td>
+                  <td colSpan={3} style={td}></td>
                 </tr>
               </tbody>
             </table>
+
+            {/* Instructions box */}
+            <div style={{border:'1px solid black',padding:'3px',marginTop:'4px',fontSize:'7px',lineHeight:'1.5'}}>
+              <strong>Instructions:</strong><br/>
+              1. The SCC shall conduct checking in their own school, no swapping of SCC from one school to another is permitted.<br/>
+              2. The name of SCC members shall be printed and put their signature on top (additional space may be added).<br/>
+              3. The school head is accountable and liable for any wrongful entry on the forms (DepEd Order 4, 2014 par. 5).<br/>
+              4. Only LIS generated SF5 shall be recognized (DO 11, 2018, page 7).<br/>
+              5. This form shall be submitted to the DCC together with the accomplished SFCR1-SCC (DepEd Order 11, 2018, page 11).
+            </div>
           </div>
 
-          <div style={{flex:1,minWidth:'185px'}}>
-            <table style={{width:'100%',borderCollapse:'collapse',fontSize:'8px',marginBottom:'6px'}}>
+          {/* RIGHT SIDE */}
+          <div style={{flex:1,minWidth:'200px'}}>
+
+            {/* Summary Table */}
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:'8px',marginBottom:'4px'}}>
               <thead>
-                <tr><th colSpan={4} style={{...thB,padding:'2px'}}>SUMMARY TABLE</th></tr>
+                <tr><th colSpan={4} style={{...th,padding:'2px',fontSize:'9px'}}>SUMMARY TABLE</th></tr>
                 <tr>
-                  <th style={{...thB,textAlign:'left' as const}}>Category</th>
-                  <th style={thB}>M</th><th style={thB}>F</th><th style={thB}>Total</th>
+                  <th style={{...thL,fontSize:'7px'}}>STATUS</th>
+                  <th style={th}>MALE</th>
+                  <th style={th}>FEMALE</th>
+                  <th style={th}>TOTAL</th>
                 </tr>
               </thead>
               <tbody>
                 {summaryRows.map(row=>(
                   <tr key={row.label}>
-                    <td style={{...tdB,fontSize:'7px'}}>{row.label}</td>
-                    <td style={{...tdB,textAlign:'center'}}>{row.m||''}</td>
-                    <td style={{...tdB,textAlign:'center'}}>{row.f||''}</td>
-                    <td style={{...tdB,textAlign:'center',fontWeight:'bold'}}>{(row.m+row.f)||''}</td>
+                    <td style={{...td,fontSize:'7px',fontWeight:'bold'}}>{row.label}</td>
+                    <td style={{...td,textAlign:'center'}}>{row.m||''}</td>
+                    <td style={{...td,textAlign:'center'}}>{row.f||''}</td>
+                    <td style={{...td,textAlign:'center',fontWeight:'bold'}}>{(row.m+row.f)||''}</td>
                   </tr>
                 ))}
-                <tr style={{background:'#f0fdf4',fontWeight:'bold'}}>
-                  <td style={{...tdB,fontSize:'7px'}}>TOTAL ENROLLMENT</td>
-                  <td style={{...tdB,textAlign:'center'}}>{sf5Data.filter(d=>d.student.sex==='M').length}</td>
-                  <td style={{...tdB,textAlign:'center'}}>{sf5Data.filter(d=>d.student.sex==='F').length}</td>
-                  <td style={{...tdB,textAlign:'center'}}>{sf5Data.length}</td>
+                {/* dropped/transferred rows */}
+                {[
+                  {label:'DROPPED OUT',    m:sf5Data.filter(d=>d.student.sex==='M'&&d.action==='Dropped').length,          f:sf5Data.filter(d=>d.student.sex==='F'&&d.action==='Dropped').length},
+                  {label:'TRANSFERRED OUT',m:sf5Data.filter(d=>d.student.sex==='M'&&d.action==='Transferred Out').length,  f:sf5Data.filter(d=>d.student.sex==='F'&&d.action==='Transferred Out').length},
+                  {label:'TRANSFERRED IN', m:sf5Data.filter(d=>d.student.sex==='M'&&d.action==='Transferred In').length,   f:sf5Data.filter(d=>d.student.sex==='F'&&d.action==='Transferred In').length},
+                ].map(row=>(
+                  <tr key={row.label}>
+                    <td style={{...td,fontSize:'7px'}}>{row.label}</td>
+                    <td style={{...td,textAlign:'center'}}>{row.m||''}</td>
+                    <td style={{...td,textAlign:'center'}}>{row.f||''}</td>
+                    <td style={{...td,textAlign:'center',fontWeight:'bold'}}>{(row.m+row.f)||''}</td>
+                  </tr>
+                ))}
+                <tr style={{background:'#f0fdf4'}}>
+                  <td style={{...td,fontSize:'7px',fontWeight:'bold'}}>TOTAL ENROLLMENT</td>
+                  <td style={{...td,textAlign:'center',fontWeight:'bold'}}>{sf5Data.filter(d=>d.student.sex==='M').length}</td>
+                  <td style={{...td,textAlign:'center',fontWeight:'bold'}}>{sf5Data.filter(d=>d.student.sex==='F').length}</td>
+                  <td style={{...td,textAlign:'center',fontWeight:'bold'}}>{sf5Data.length}</td>
                 </tr>
               </tbody>
             </table>
 
+            {/* Level of Progress and Achievement */}
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:'8px',marginBottom:'6px'}}>
+              <thead>
+                <tr><th colSpan={4} style={{...th,padding:'2px',fontSize:'8px'}}>LEVEL OF PROGRESS AND ACHIEVEMENT</th></tr>
+                <tr>
+                  <th style={{...thL,fontSize:'7px'}}>Descriptor &amp; Grading</th>
+                  <th style={th}>MALE</th>
+                  <th style={th}>FEMALE</th>
+                  <th style={th}>TOTAL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {progressRows.map(row=>(
+                  <tr key={row.label}>
+                    <td style={{...td,fontSize:'7px'}}>{row.label}</td>
+                    <td style={{...td,textAlign:'center'}}>{row.m||''}</td>
+                    <td style={{...td,textAlign:'center'}}>{row.f||''}</td>
+                    <td style={{...td,textAlign:'center',fontWeight:'bold'}}>{(row.m+row.f)||''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Signatures */}
             <div style={{fontSize:'8px'}}>
               <div style={{fontWeight:'bold',marginBottom:'1px'}}>PREPARED BY:</div>
-              <div style={{textAlign:'center',marginBottom:'10mm'}}>
+              <div style={{textAlign:'center',marginBottom:'8mm'}}>
                 <div style={{fontWeight:'bold'}}>{adviser.toUpperCase()}</div>
-                <div style={{borderTop:'1px solid black',paddingTop:'1px',fontSize:'7px'}}>Class Adviser</div>
+                <div style={{borderTop:'1px solid black',paddingTop:'1px',fontSize:'7px'}}>Class Adviser (Name and Signature)</div>
               </div>
-              <div style={{fontWeight:'bold',marginBottom:'1px'}}>CERTIFIED CORRECT:</div>
-              <div style={{textAlign:'center',marginBottom:'10mm'}}>
+
+              <div style={{fontWeight:'bold',marginBottom:'1px'}}>CERTIFIED CORRECT &amp; SUBMITTED BY:</div>
+              <div style={{textAlign:'center',marginBottom:'8mm'}}>
                 <div style={{fontWeight:'bold'}}>{(schoolHead||'').toUpperCase()}</div>
-                <div style={{borderTop:'1px solid black',paddingTop:'1px',fontSize:'7px'}}>School Head</div>
+                <div style={{borderTop:'1px solid black',paddingTop:'1px',fontSize:'7px'}}>School Head &amp; SCC Chair (Name and Signature)</div>
+              </div>
+
+              <div style={{fontWeight:'bold',marginBottom:'1px'}}>REVIEWED BY: SCC Members</div>
+              <div style={{textAlign:'center',marginBottom:'6mm'}}>
+                <div style={{borderTop:'1px solid black',paddingTop:'1px',fontSize:'7px'}}>(Signature Over Printed Name)</div>
+              </div>
+              <div style={{textAlign:'center',marginBottom:'6mm'}}>
+                <div style={{borderTop:'1px solid black',paddingTop:'1px',fontSize:'7px'}}>(Signature Over Printed Name)</div>
+              </div>
+              <div style={{textAlign:'center',marginBottom:'4mm'}}>
+                <div style={{borderTop:'1px solid black',paddingTop:'1px',fontSize:'7px'}}>Generated thru TeacherHub PH (SCC CO-Chair)</div>
               </div>
             </div>
           </div>
@@ -489,8 +557,18 @@ export default function SF5Page() {
   // ── RENDER ────────────────────────────────────────────────────────────────
   return (
     <>
-      <style>{`@media print{.no-print{display:none!important}body{background:white!important}@page{size:landscape;margin:8mm}}`}</style>
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          body { background: white !important; }
+          @page { size: landscape; margin: 8mm; }
+          .sf5-screen-wrapper { display: none !important; }
+          .sf5-print-only { display: block !important; }
+        }
+      `}</style>
+
       <div className="min-h-screen bg-gray-950 text-white">
+        {/* Header */}
         <div className="no-print bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
           <div className="flex items-center gap-4">
             <button onClick={()=>window.history.back()} className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-800 transition text-blue-400">
@@ -506,7 +584,7 @@ export default function SF5Page() {
               <button onClick={()=>setView('table')} className={`px-4 py-2 text-sm font-medium transition ${view==='table'?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>
                 Table
               </button>
-              <button onClick={()=>setView('sf5')}   className={`px-4 py-2 text-sm font-medium transition ${view==='sf5'  ?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>
+              <button onClick={()=>setView('sf5')} className={`px-4 py-2 text-sm font-medium transition ${view==='sf5'?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>
                 SF5 Form
               </button>
             </div>
@@ -528,6 +606,7 @@ export default function SF5Page() {
             <div className="no-print text-xs text-gray-600 italic mb-4">
               Click a learner's name to view info or update their status (Dropped, Transferred, etc.)
             </div>
+
             {/* Summary cards */}
             <div className="no-print grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
               <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-4">
@@ -579,54 +658,31 @@ export default function SF5Page() {
                     </tr>
                   </thead>
                   <tbody>
-                    {/* MALE GROUP */}
-                    <tr>
-                      <td colSpan={11} className="bg-blue-950/50 px-3 py-1.5 text-blue-400 font-bold text-xs">
-                        MALE ({maleData.length})
-                      </td>
-                    </tr>
+                    <tr><td colSpan={11} className="bg-blue-950/50 px-3 py-1.5 text-blue-400 font-bold text-xs">MALE ({maleData.length})</td></tr>
                     {maleData.map((d,idx) => {
                       const isInactive = d.student.status && d.student.status !== 'active';
                       return (
-                        <tr key={d.student.id} className={`border-t border-gray-800
-                          ${isInactive ? 'opacity-60 bg-gray-900/60' : 'hover:bg-gray-900/40'}`}>
+                        <tr key={d.student.id} className={`border-t border-gray-800 ${isInactive?'opacity-60 bg-gray-900/60':'hover:bg-gray-900/40'}`}>
                           <td className="px-3 py-2 sticky left-0 bg-gray-950 border-r border-gray-800 z-10">
                             <span className="text-gray-500 text-xs mr-2">{idx+1}</span>
-                            <button
-                              onClick={() => setStatusModal(d.student)}
-                              className={`font-medium text-sm hover:text-blue-300 transition text-left ${isInactive?'line-through text-gray-500':'text-white'}`}>
+                            <button onClick={()=>setStatusModal(d.student)} className={`font-medium text-sm hover:text-blue-300 transition text-left ${isInactive?'line-through text-gray-500':'text-white'}`}>
                               {d.student.full_name}
                             </button>
                             <div className="text-xs text-gray-600">{d.student.lrn}</div>
-                            {isInactive && (
-                              <div className="text-xs text-amber-500 mt-0.5">
-                                {d.student.status==='dropped'?'Dropped':d.student.status==='transferred_out'?'Transferred Out':'Transferred In'}
-                                {d.student.status_date ? ` (${d.student.status_date})` : ''}
-                              </div>
-                            )}
+                            {isInactive && <div className="text-xs text-amber-500 mt-0.5">{d.student.status==='dropped'?'Dropped':d.student.status==='transferred_out'?'Transferred Out':'Transferred In'}{d.student.status_date?` (${d.student.status_date})`:''}</div>}
                           </td>
                           {['Filipino','English','Mathematics','Science','Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)','Edukasyong Pantahanan at Pangkabuhayan (EPP)'].map(subj => {
                             const [t1,t2,t3]=d.termGrades[subj]??[0,0,0];
                             const final=d.finalGrades[subj]??0;
                             return (
                               <td key={subj} className="border-l border-gray-800">
-                                <div className="flex">
-                                  {[t1,t2,t3].map((v,vi)=>(
-                                    <span key={vi} className="text-center py-2 px-1 text-xs text-gray-400 w-7 inline-block">{v||''}</span>
-                                  ))}
-                                </div>
-                                <div className={`text-center text-xs font-bold pb-1 ${final>=75?'text-emerald-400':final>0?'text-red-400':'text-gray-600'}`}>
-                                  {final||''}
-                                </div>
+                                <div className="flex">{[t1,t2,t3].map((v,vi)=><span key={vi} className="text-center py-2 px-1 text-xs text-gray-400 w-7 inline-block">{v||''}</span>)}</div>
+                                <div className={`text-center text-xs font-bold pb-1 ${final>=75?'text-emerald-400':final>0?'text-red-400':'text-gray-600'}`}>{final||''}</div>
                               </td>
                             );
                           })}
-                          <td className={`text-center py-2 border-l border-gray-800 font-bold text-sm ${d.mapehFinal>=75?'text-emerald-400':d.mapehFinal>0?'text-red-400':'text-gray-600'}`}>
-                            {d.mapehFinal||''}
-                          </td>
-                          <td className={`text-center py-2 border-l border-gray-800 font-bold text-lg ${d.generalAverage>=75?'text-white':d.generalAverage>0?'text-red-400':'text-gray-600'}`}>
-                            {d.generalAverage||''}
-                          </td>
+                          <td className={`text-center py-2 border-l border-gray-800 font-bold text-sm ${d.mapehFinal>=75?'text-emerald-400':d.mapehFinal>0?'text-red-400':'text-gray-600'}`}>{d.mapehFinal||''}</td>
+                          <td className={`text-center py-2 border-l border-gray-800 font-bold text-lg ${d.generalAverage>=75?'text-white':d.generalAverage>0?'text-red-400':'text-gray-600'}`}>{d.generalAverage||''}</td>
                           <td className="px-3 py-2 border-l border-gray-800">
                             {d.action==='Promoted' && <span className="flex items-center gap-1 text-emerald-400 text-xs font-semibold"><CheckCircle size={14}/>Promoted{d.generalAverage>=90?' (Honors)':''}</span>}
                             {d.action==='Conditionally Promoted' && <div><span className="flex items-center gap-1 text-amber-400 text-xs font-semibold"><AlertCircle size={14}/>Conditional</span><div className="text-xs text-red-400 mt-0.5">{d.failedSubjects.join(', ')}</div></div>}
@@ -639,54 +695,31 @@ export default function SF5Page() {
                       );
                     })}
 
-                    {/* FEMALE GROUP */}
-                    <tr>
-                      <td colSpan={11} className="bg-pink-950/50 px-3 py-1.5 text-pink-400 font-bold text-xs">
-                        FEMALE ({femaleData.length})
-                      </td>
-                    </tr>
+                    <tr><td colSpan={11} className="bg-pink-950/50 px-3 py-1.5 text-pink-400 font-bold text-xs">FEMALE ({femaleData.length})</td></tr>
                     {femaleData.map((d,idx) => {
                       const isInactive = d.student.status && d.student.status !== 'active';
                       return (
-                        <tr key={d.student.id} className={`border-t border-gray-800
-                          ${isInactive ? 'opacity-60 bg-gray-900/60' : 'hover:bg-gray-900/40'}`}>
+                        <tr key={d.student.id} className={`border-t border-gray-800 ${isInactive?'opacity-60 bg-gray-900/60':'hover:bg-gray-900/40'}`}>
                           <td className="px-3 py-2 sticky left-0 bg-gray-950 border-r border-gray-800 z-10">
                             <span className="text-gray-500 text-xs mr-2">{idx+1}</span>
-                            <button
-                              onClick={() => setStatusModal(d.student)}
-                              className={`font-medium text-sm hover:text-blue-300 transition text-left ${isInactive?'line-through text-gray-500':'text-white'}`}>
+                            <button onClick={()=>setStatusModal(d.student)} className={`font-medium text-sm hover:text-blue-300 transition text-left ${isInactive?'line-through text-gray-500':'text-white'}`}>
                               {d.student.full_name}
                             </button>
                             <div className="text-xs text-gray-600">{d.student.lrn}</div>
-                            {isInactive && (
-                              <div className="text-xs text-amber-500 mt-0.5">
-                                {d.student.status==='dropped'?'Dropped':d.student.status==='transferred_out'?'Transferred Out':'Transferred In'}
-                                {d.student.status_date ? ` (${d.student.status_date})` : ''}
-                              </div>
-                            )}
+                            {isInactive && <div className="text-xs text-amber-500 mt-0.5">{d.student.status==='dropped'?'Dropped':d.student.status==='transferred_out'?'Transferred Out':'Transferred In'}{d.student.status_date?` (${d.student.status_date})`:''}</div>}
                           </td>
                           {['Filipino','English','Mathematics','Science','Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)','Edukasyong Pantahanan at Pangkabuhayan (EPP)'].map(subj => {
                             const [t1,t2,t3]=d.termGrades[subj]??[0,0,0];
                             const final=d.finalGrades[subj]??0;
                             return (
                               <td key={subj} className="border-l border-gray-800">
-                                <div className="flex">
-                                  {[t1,t2,t3].map((v,vi)=>(
-                                    <span key={vi} className="text-center py-2 px-1 text-xs text-gray-400 w-7 inline-block">{v||''}</span>
-                                  ))}
-                                </div>
-                                <div className={`text-center text-xs font-bold pb-1 ${final>=75?'text-emerald-400':final>0?'text-red-400':'text-gray-600'}`}>
-                                  {final||''}
-                                </div>
+                                <div className="flex">{[t1,t2,t3].map((v,vi)=><span key={vi} className="text-center py-2 px-1 text-xs text-gray-400 w-7 inline-block">{v||''}</span>)}</div>
+                                <div className={`text-center text-xs font-bold pb-1 ${final>=75?'text-emerald-400':final>0?'text-red-400':'text-gray-600'}`}>{final||''}</div>
                               </td>
                             );
                           })}
-                          <td className={`text-center py-2 border-l border-gray-800 font-bold text-sm ${d.mapehFinal>=75?'text-emerald-400':d.mapehFinal>0?'text-red-400':'text-gray-600'}`}>
-                            {d.mapehFinal||''}
-                          </td>
-                          <td className={`text-center py-2 border-l border-gray-800 font-bold text-lg ${d.generalAverage>=75?'text-white':d.generalAverage>0?'text-red-400':'text-gray-600'}`}>
-                            {d.generalAverage||''}
-                          </td>
+                          <td className={`text-center py-2 border-l border-gray-800 font-bold text-sm ${d.mapehFinal>=75?'text-emerald-400':d.mapehFinal>0?'text-red-400':'text-gray-600'}`}>{d.mapehFinal||''}</td>
+                          <td className={`text-center py-2 border-l border-gray-800 font-bold text-lg ${d.generalAverage>=75?'text-white':d.generalAverage>0?'text-red-400':'text-gray-600'}`}>{d.generalAverage||''}</td>
                           <td className="px-3 py-2 border-l border-gray-800">
                             {d.action==='Promoted' && <span className="flex items-center gap-1 text-emerald-400 text-xs font-semibold"><CheckCircle size={14}/>Promoted{d.generalAverage>=90?' (Honors)':''}</span>}
                             {d.action==='Conditionally Promoted' && <div><span className="flex items-center gap-1 text-amber-400 text-xs font-semibold"><AlertCircle size={14}/>Conditional</span><div className="text-xs text-red-400 mt-0.5">{d.failedSubjects.join(', ')}</div></div>}
@@ -700,27 +733,24 @@ export default function SF5Page() {
                     })}
 
                     {sf5Data.length === 0 && (
-                      <tr>
-                        <td colSpan={11} className="text-center py-16 text-gray-500">
-                          <p className="text-sm mt-1">Encode grades in the Class Record module first.</p>
-                        </td>
-                      </tr>
+                      <tr><td colSpan={11} className="text-center py-16 text-gray-500"><p className="text-sm mt-1">Encode grades in the Class Record module first.</p></td></tr>
                     )}
                   </tbody>
                 </table>
               </div>
             )}
 
-            {/* SF5 Form view */}
+            {/* SF5 Form screen view — hidden during print */}
             {view === 'sf5' && (
-              <div className="bg-white rounded-2xl overflow-hidden shadow-2xl">
+              <div className="sf5-screen-wrapper bg-white rounded-2xl overflow-hidden shadow-2xl">
                 <SF5PrintView/>
               </div>
             )}
           </div>
         )}
 
-        <div className="hidden print:block">
+        {/* Print-only — always rendered, hidden on screen, shown on print */}
+        <div className="sf5-print-only" style={{display:'none'}}>
           <SF5PrintView/>
         </div>
       </div>
