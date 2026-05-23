@@ -334,7 +334,7 @@ function SummaryOfGradesView({
   );
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-50 overflow-auto">
+    <div className="eclass-modal-overlay fixed inset-0 bg-black/80 z-50 overflow-auto">
       <div className="no-print sticky top-0 bg-gray-900 border-b border-gray-700 px-6 py-3 flex items-center justify-between z-10">
         <div className="flex items-center gap-3">
           <FileText size={18} className="text-emerald-400"/>
@@ -507,7 +507,7 @@ function EClassRecordView({
   // ── Render student group ───────────────────────────────────────────────────
   const renderGroup = (group: Student[], label: string) => (
     <>
-      <tr>
+      <tr style={{pageBreakAfter:'avoid', breakAfter:'avoid'}}>
         <td colSpan={hasTA?20:16} style={{...td, background:label==='MALE'?'#dbeafe':'#fce7f3', fontWeight:'bold', textAlign:'left'}}>
           {label}
         </td>
@@ -516,7 +516,7 @@ function EClassRecordView({
         const c = computeTerm(student.id);
         const desc = descriptor(c.transmuted);
         return (
-          <tr key={student.id} style={{background:idx%2===0?'white':'#f9fafb'}}>
+          <tr key={student.id} style={{background:idx%2===0?'white':'#f9fafb', pageBreakInside:'avoid', breakInside:'avoid'}}>
             <td style={td}>{idx+1}</td>
             <td style={{...td, textAlign:'left', minWidth:'140px'}}>{student.full_name}</td>
             {c.ww.map((v,i) => <td key={i} style={td}>{v||''}</td>)}
@@ -563,7 +563,7 @@ function EClassRecordView({
   );
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-50 overflow-auto">
+    <div className="eclass-modal-overlay fixed inset-0 bg-black/80 z-50 overflow-auto">
       <div className="no-print sticky top-0 bg-gray-900 border-b border-gray-700 px-6 py-3 flex items-center justify-between z-10">
         <div className="flex items-center gap-3">
           <FileText size={18} className="text-blue-400"/>
@@ -764,10 +764,17 @@ function EClassRecordView({
       </div>
 
       <style>{`
+        @media screen {
+          .eclass-print { background: white; margin: 20px auto; max-width: 1200px; border-radius: 8px; padding: 16px; }
+        }
         @media print {
           .no-print { display: none !important; }
-          body { background: white !important; }
-          .eclass-print { padding: 4mm !important; min-width: 100% !important; }
+          .eclass-modal-overlay { position: static !important; overflow: visible !important; background: white !important; }
+          body { background: white !important; margin: 0 !important; }
+          .eclass-print { padding: 4mm !important; width: 100% !important; min-width: unset !important; box-shadow: none !important; border-radius: 0 !important; }
+          table { page-break-inside: auto; }
+          tr { page-break-inside: avoid; page-break-after: auto; }
+          thead { display: table-header-group; }
           @page { size: landscape; margin: 6mm; }
         }
       `}</style>
