@@ -181,6 +181,7 @@ export default function AttendancePage() {
   const [holReason,setHolReason]   = useState('');
   const [showHolModal,setShowHolModal] = useState(false);
   const [statusModal,setStatusModal]   = useState<Student|null>(null);
+  const [showSF2Modal,setShowSF2Modal]   = useState(false);
 
   const schoolDays = useMemo(() => getSchoolDays(month, holidays), [month, holidays]);
 
@@ -957,14 +958,15 @@ export default function AttendancePage() {
         @media print {
           body { background: white !important; margin: 0 !important; }
           .no-print { display: none !important; }
-          /* Collapse the min-h-screen wrapper so it doesn't create blank space */
-          .min-h-screen { min-height: 0 !important; height: auto !important; background: white !important; }
-          /* The SF2 content block */
-          .sf2-print { padding: 4mm !important; display: block !important; }
+          /* Hide main page, show SF2 modal only */
+          .min-h-screen { display: none !important; }
+          .sf2-modal-overlay { display: block !important; position: static !important; overflow: visible !important; background: white !important; }
+          .sf2-modal-content { display: block !important; }
+          /* SF2 content */
+          .sf2-print { padding: 4mm !important; display: block !important; overflow: visible !important; }
           .sf2-print table { page-break-inside: auto; width: 100%; }
           .sf2-print tr { page-break-inside: avoid; page-break-after: auto; }
           .sf2-print thead { display: table-header-group; }
-          /* Summary section flows naturally — no forced page break */
           .sf2-summary { page-break-before: auto !important; margin-top: 4px !important; }
           @page { size: landscape; margin: 8mm; }
         }
@@ -1002,8 +1004,8 @@ export default function AttendancePage() {
                 className={`px-4 py-2 text-sm font-medium transition ${view==='tracker'?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>
                 Tracker
               </button>
-              <button onClick={() => setView('sf2')}
-                className={`px-4 py-2 text-sm font-medium transition ${view==='sf2'?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>
+              <button onClick={() => setShowSF2Modal(true)}
+                className="px-4 py-2 text-sm font-medium transition bg-gray-900 text-gray-400 hover:bg-gray-800">
                 SF2 Form
               </button>
             </div>
@@ -1013,10 +1015,7 @@ export default function AttendancePage() {
               <Calendar size={16}/> Holidays {holidays.length > 0 && <span className="bg-amber-900 px-1.5 py-0.5 rounded text-xs">{holidays.length}</span>}
             </button>
 
-            <button onClick={() => window.print()}
-              className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
-              <Printer size={16}/> Print SF2
-            </button>
+
           </div>
         </div>
 
@@ -1030,11 +1029,37 @@ export default function AttendancePage() {
             <RefreshCw size={20} className="animate-spin"/> Loading attendance data...
           </div>
         ) : (
-          <div className={view === 'sf2' ? 'bg-white p-4' : 'p-4'}>
-            {view === 'tracker' ? <TrackerView /> : <SF2View />}
+          <div className="p-4">
+            <TrackerView />
           </div>
         )}
       </div>
+
+      {/* SF2 Print Modal — isolated so only SF2 content prints */}
+      {showSF2Modal && (
+        <div className="sf2-modal-overlay fixed inset-0 bg-black/80 z-50 overflow-auto">
+          <div className="no-print sticky top-0 bg-gray-900 border-b border-gray-700 px-6 py-3 flex items-center justify-between z-10">
+            <div className="flex items-center gap-3">
+              <Printer size={18} className="text-blue-400"/>
+              <span className="font-semibold">SF2 Daily Attendance &mdash; {month} {MONTH_YEAR[month]}</span>
+              <span className="text-gray-400 text-sm">{sectionName} &middot; {schoolYear}</span>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => window.print()}
+                className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
+                <Printer size={16}/> Print SF2
+              </button>
+              <button onClick={() => setShowSF2Modal(false)}
+                className="flex items-center gap-2 bg-red-900/50 hover:bg-red-800 px-4 py-2 rounded-xl text-sm font-semibold transition">
+                <X size={16}/> Close
+              </button>
+            </div>
+          </div>
+          <div className="sf2-modal-content bg-white" style={{fontFamily:'Arial, sans-serif'}}>
+            <SF2View />
+          </div>
+        </div>
+      )}
 
       {/* Holiday Modal */}
       {showHolModal && (
