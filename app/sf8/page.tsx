@@ -375,7 +375,15 @@ export default function SF8Page() {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <>
-      <style>{`@media print{.no-print{display:none!important}body{background:white!important}@page{size:landscape;margin:8mm}}`}</style>
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          body { background: white !important; }
+          @page { size: landscape; margin: 8mm; }
+          .sf8-screen-wrapper { display: none !important; }
+          .sf8-print-only { display: block !important; }
+        }
+      `}</style>
       <div className="min-h-screen bg-gray-950 text-white">
 
         {/* Header */}
@@ -560,15 +568,15 @@ export default function SF8Page() {
             )}
 
             {view === 'sf8' && (
-              <div className="bg-white rounded-2xl overflow-hidden shadow-2xl">
+              <div className="sf8-screen-wrapper bg-white rounded-2xl overflow-hidden shadow-2xl">
                 <SF8PrintView/>
               </div>
             )}
           </div>
         )}
 
-        {/* Print only */}
-        <div className="hidden print:block">
+        {/* Print only — always rendered, hidden on screen, visible on print */}
+        <div className="sf8-print-only" style={{display:'none'}}>
           <SF8PrintView/>
         </div>
       </div>
