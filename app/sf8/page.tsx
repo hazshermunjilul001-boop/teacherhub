@@ -365,6 +365,7 @@ export default function SF8Page() {
           <div className="border-t border-black mt-8 pt-1" style={{minWidth:'180px'}}>
             {schoolHead || 'School Head'}
           </div>
+          <div>School Head</div>
         </div>
       </div>
     </div>
