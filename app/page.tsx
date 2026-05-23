@@ -157,7 +157,7 @@ function SectionSwitcher({ sidebarOpen, onManage }: { sidebarOpen: boolean; onMa
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute bottom-full left-0 right-0 mb-2 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50">
+        <div className="absolute top-full left-0 right-0 mb-2 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50">
           <div className="p-2 border-b border-gray-700">
             <p className="text-xs text-gray-500 px-2 py-1">Switch Section</p>
           </div>
