@@ -270,7 +270,7 @@ function StatusBadge({ status }: { status?: StudentStatus }) {
 // ── SUMMARY OF GRADES VIEW ────────────────────────────────────────────────────
 function SummaryOfGradesView({
   students, subject, sectionName, gradeLevel, schoolName, schoolId,
-  schoolYear, division, region, adviser, allTermData, onClose,
+  schoolYear, division, region, adviser, schoolHead, allTermData, onClose,
 }: {
   students: Student[]; subject: string;
   sectionName: string; gradeLevel: string; schoolName: string;
@@ -404,8 +404,8 @@ function SummaryOfGradesView({
             <div>Subject Teacher</div>
           </div>
           <div style={{textAlign:'center', minWidth:'200px'}}>
-            <div style={{borderTop:'1px solid black', paddingTop:'2px', marginTop:'24px'}}>________________________________</div>
-            <div>School Head</div>
+            <div style={{fontWeight:'bold', borderTop:'1px solid black', paddingTop:'2px', marginTop:'24px'}}>{schoolHead?.toUpperCase() || '________________________________'}</div>
+            <div>{schoolHead || 'School Head'}</div>
           </div>
           <div style={{textAlign:'center', minWidth:'200px'}}>
             <div style={{borderTop:'1px solid black', paddingTop:'2px', marginTop:'24px'}}>________________________________</div>
@@ -755,8 +755,8 @@ function EClassRecordView({
             <div>Subject Teacher</div>
           </div>
           <div style={{textAlign:'center', minWidth:'200px'}}>
-            <div style={{borderTop:'1px solid black', paddingTop:'2px', marginTop:'20px'}}>________________________________</div>
-            <div>School Head</div>
+            <div style={{fontWeight:'bold', borderTop:'1px solid black', paddingTop:'2px', marginTop:'20px'}}>{schoolHead?.toUpperCase() || '________________________________'}</div>
+            <div>{schoolHead || 'School Head'}</div>
           </div>
           <div style={{textAlign:'center', minWidth:'200px'}}>
             <div style={{borderTop:'1px solid black', paddingTop:'2px', marginTop:'20px'}}>________________________________</div>
@@ -804,7 +804,7 @@ export default function ClassRecord() {
   const [loadingSummary,setLoadingSummary] = useState(false);
   const [statusModal,setStatusModal] = useState<Student|null>(null);
 
-  const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear, division, region, adviser } = useActiveSection();
+  const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear, division, region, adviser, schoolHead } = useActiveSection();
   const weights = SUBJECT_WEIGHTS[subject] ?? {ww:0.25, pt:0.50, ta:0.25};
   const hasTA = (weights.ta??0)>0;
 

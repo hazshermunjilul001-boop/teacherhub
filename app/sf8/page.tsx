@@ -115,7 +115,7 @@ interface HealthRecord {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function SF8Page() {
-  const { sectionId, sectionName, gradeLevel, schoolName, schoolId, division, region, schoolYear, adviser } = useActiveSection();
+  const { sectionId, sectionName, gradeLevel, schoolName, schoolId, division, region, schoolYear, adviser, schoolHead } = useActiveSection();
   const [period,   setPeriod]   = useState<'BEY'|'EEY'>('BEY');
   const [students, setStudents] = useState<Student[]>([]);
   const [records,  setRecords]  = useState<Record<string, HealthRecord>>({});
@@ -363,7 +363,7 @@ export default function SF8Page() {
         </div>
         <div className="text-center">
           <div className="border-t border-black mt-8 pt-1" style={{minWidth:'180px'}}>
-            School Head
+            {schoolHead || 'School Head'}
           </div>
         </div>
       </div>
