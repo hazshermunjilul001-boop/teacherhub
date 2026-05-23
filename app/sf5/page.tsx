@@ -443,16 +443,6 @@ export default function SF5Page() {
                 </tr>
               </tbody>
             </table>
-
-            {/* Instructions box */}
-            <div style={{border:'1px solid black',padding:'3px',marginTop:'4px',fontSize:'7px',lineHeight:'1.5'}}>
-              <strong>Instructions:</strong><br/>
-              1. The SCC shall conduct checking in their own school, no swapping of SCC from one school to another is permitted.<br/>
-              2. The name of SCC members shall be printed and put their signature on top (additional space may be added).<br/>
-              3. The school head is accountable and liable for any wrongful entry on the forms (DepEd Order 4, 2014 par. 5).<br/>
-              4. Only LIS generated SF5 shall be recognized (DO 11, 2018, page 7).<br/>
-              5. This form shall be submitted to the DCC together with the accomplished SFCR1-SCC (DepEd Order 11, 2018, page 11).
-            </div>
           </div>
 
           {/* RIGHT SIDE */}
@@ -522,6 +512,17 @@ export default function SF5Page() {
                 ))}
               </tbody>
             </table>
+            
+            
+            {/* Instructions box */}
+            <div style={{border:'1px solid black',padding:'3px',marginTop:'6px',fontSize:'7px',lineHeight:'1.5'}}>
+              <strong>Instructions:</strong><br/>
+              1. The SCC shall conduct checking in their own school, no swapping of SCC from one school to another is permitted.<br/>
+              2. The name of SCC members shall be printed and put their signature on top (additional space may be added).<br/>
+              3. The school head is accountable and liable for any wrongful entry on the forms (DepEd Order 4, 2014 par. 5).<br/>
+              4. Only LIS generated SF5 shall be recognized (DO 11, 2018, page 7).<br/>
+              5. This form shall be submitted to the DCC together with the accomplished SFCR1-SCC (DepEd Order 11, 2018, page 11).
+            </div>
 
             {/* Signatures */}
             <div style={{fontSize:'8px'}}>
