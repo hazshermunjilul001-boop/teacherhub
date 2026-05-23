@@ -242,11 +242,12 @@ export default function BehaviorPage() {
 
   // ── Load students ──────────────────────────────────────────────────────────
   useEffect(() => {
+    if (!sectionId) return;
     (async () => {
       const { data } = await supabase.from('students').select('*').eq('section_id', sectionId).order('full_name');
       setStudents(data ?? []);
     })();
-  }, []);
+  }, [sectionId]);
 
   // ── Load records + conduct ─────────────────────────────────────────────────
   useEffect(() => {
