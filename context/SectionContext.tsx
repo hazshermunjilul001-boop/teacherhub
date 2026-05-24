@@ -71,18 +71,21 @@ export function SectionProvider({ children }: { children: ReactNode }) {
     const owned: Section[] = (ownSections ?? []).map(s => ({ ...s, _role: 'owner' as const }));
 
     // ── Step 3: Load shared sections via section_collaborators ────────────────
-    const { data: collabRows } = await supabase
+    const { data: collabRows, error: collabErr1 } = await supabase
       .from('section_collaborators')
       .select('section_id, subjects, status')
       .eq('user_id', user.id)
       .eq('status', 'active');
 
     // Also try matching by email in case user_id wasn't set yet
-    const { data: collabByEmail } = await supabase
+    const { data: collabByEmail, error: collabErr2 } = await supabase
       .from('section_collaborators')
       .select('section_id, subjects, status')
       .eq('email', user.email)
       .eq('status', 'active');
+
+    if (collabErr1) console.error('Collab by user_id error:', collabErr1);
+    if (collabErr2) console.error('Collab by email error:', collabErr2);
 
     const collabSectionIds = [
       ...(collabRows ?? []),
@@ -92,10 +95,12 @@ export function SectionProvider({ children }: { children: ReactNode }) {
     let sharedSections: Section[] = [];
     if (collabSectionIds.length > 0) {
       const ids = collabSectionIds.map(c => c.section_id);
-      const { data: sharedData } = await supabase
+      const { data: sharedData, error: sharedErr } = await supabase
         .from('sections')
         .select('*')
         .in('id', ids);
+
+      if (sharedErr) console.error('Shared sections fetch error (likely RLS):', sharedErr);
 
       sharedSections = (sharedData ?? [])
         .filter(s => s.teacher_id !== user.id) // don't duplicate own sections

@@ -302,6 +302,25 @@ function SummaryOfGradesView({
   const td = { border:'1px solid #999', padding:'2px 6px', fontSize:'9px', textAlign:'center' as const };
   const th = { ...td, background:'#e8e8e8', fontWeight:'bold' as const };
 
+
+  // ── Enter-key navigation: moves focus to next student in the same column ──
+  const handleEnter = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    studentId: string,
+    type: string,
+    idx: number | null,
+  ) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const key = `${type}:${idx ?? 'te'}`;
+    const all = Array.from(
+      document.querySelectorAll<HTMLInputElement>('input[data-cell]')
+    ).filter(el => el.dataset.cell?.endsWith(`:${key}`));
+    const cur = all.findIndex(el => el.dataset.cell === `${studentId}:${key}`);
+    const next = all[cur + 1];
+    if (next) { next.focus(); next.select(); }
+  };
+
   const renderGroup = (group: Student[], label: string) => (
     <>
       <tr>
@@ -930,14 +949,20 @@ export default function ClassRecord() {
             {ww.map((v,i)=>(
               <td key={i} className="px-1 py-1 border-l border-gray-800">
                 <input type="number" min={0} max={highest.ww[i]} value={v||''} disabled={!!isInactive}
-                  onChange={e=>updateScore(student.id,'ww',i,+e.target.value)} className={inp('blue')}/>
+                  data-cell={`${student.id}:ww:${i}`}
+                  onChange={e=>updateScore(student.id,'ww',i,+e.target.value)}
+                  onKeyDown={e=>handleEnter(e,student.id,'ww',i)}
+                  className={inp('blue')}/>
               </td>
             ))}
             <td className="px-2 py-2 text-center text-blue-300 text-xs border-l border-gray-800 font-mono">{isInactive?'—':avgWW.toFixed(1)}</td>
             {pt.map((v,i)=>(
               <td key={i} className="px-1 py-1 border-l border-gray-800">
                 <input type="number" min={0} max={highest.pt[i]} value={v||''} disabled={!!isInactive}
-                  onChange={e=>updateScore(student.id,'pt',i,+e.target.value)} className={inp('purple')}/>
+                  data-cell={`${student.id}:pt:${i}`}
+                  onChange={e=>updateScore(student.id,'pt',i,+e.target.value)}
+                  onKeyDown={e=>handleEnter(e,student.id,'pt',i)}
+                  className={inp('purple')}/>
               </td>
             ))}
             <td className="px-2 py-2 text-center text-purple-300 text-xs border-l border-gray-800 font-mono">{isInactive?'—':avgPT.toFixed(1)}</td>
@@ -945,12 +970,18 @@ export default function ClassRecord() {
               {st.map((v,i)=>(
                 <td key={i} className="px-1 py-1 border-l border-gray-800">
                   <input type="number" min={0} max={highest.st[i]} value={v||''} disabled={!!isInactive}
-                    onChange={e=>updateScore(student.id,'st',i,+e.target.value)} className={inp('amber')}/>
+                    data-cell={`${student.id}:st:${i}`}
+                    onChange={e=>updateScore(student.id,'st',i,+e.target.value)}
+                    onKeyDown={e=>handleEnter(e,student.id,'st',i)}
+                    className={inp('amber')}/>
                 </td>
               ))}
               <td className="px-1 py-1 border-l border-gray-800">
                 <input type="number" min={0} max={highest.te} value={te||''} disabled={!!isInactive}
-                  onChange={e=>updateScore(student.id,'te',null,+e.target.value)} className={inp('orange')}/>
+                  data-cell={`${student.id}:te:te`}
+                  onChange={e=>updateScore(student.id,'te',null,+e.target.value)}
+                  onKeyDown={e=>handleEnter(e,student.id,'te',null)}
+                  className={inp('orange')}/>
               </td>
               <td className="px-2 py-2 text-center text-amber-300 text-xs border-l border-gray-800 font-mono">{isInactive?'—':avgTA.toFixed(1)}</td>
             </>}
