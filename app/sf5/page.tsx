@@ -10,7 +10,7 @@ import { useActiveSection } from '../../lib/useActiveSection';
 const SF5_SUBJECTS = [
   'Filipino', 'English', 'Mathematics', 'Science',
   'Araling Panlipunan (AP)', 'Edukasyon sa Pagpapakatao (EsP)',
-  'Edukasyong Pantahanan at Pangkabuhayan (EPP)',
+  'EPP/TLE',
   'MAPEH - Music', 'MAPEH - Arts', 'MAPEH - Physical Education', 'MAPEH - Health',
 ];
 const MAPEH_COMPONENTS = ['MAPEH - Music', 'MAPEH - Arts', 'MAPEH - Physical Education', 'MAPEH - Health'];
@@ -156,7 +156,7 @@ function computeTransmutedFromGrade(row:any): number {
     'Mathematics':{ww:0.25,pt:0.50,ta:0.25},'Science':{ww:0.25,pt:0.50,ta:0.25},
     'Araling Panlipunan (AP)':{ww:0.25,pt:0.50,ta:0.25},
     'Edukasyon sa Pagpapakatao (EsP)':{ww:0.25,pt:0.50,ta:0.25},
-    'Edukasyong Pantahanan at Pangkabuhayan (EPP)':{ww:0.20,pt:0.60,ta:0.20},
+    'EPP/TLE':{ww:0.20,pt:0.60,ta:0.20},
     'MAPEH - Music':{ww:0.20,pt:0.60,ta:0.20},'MAPEH - Arts':{ww:0.20,pt:0.60,ta:0.20},
     'MAPEH - Physical Education':{ww:0.20,pt:0.60,ta:0.20},'MAPEH - Health':{ww:0.20,pt:0.60,ta:0.20},
   };
@@ -233,7 +233,7 @@ export default function SF5Page() {
         const mapehScores = MAPEH_COMPONENTS.map(c => finalGrades[c]).filter(v=>v>0);
         const mapehFinal  = mapehScores.length>0 ? Math.round(mapehScores.reduce((a,b)=>a+b,0)/mapehScores.length) : 0;
 
-        const gaSubjects = ['Filipino','English','Mathematics','Science','Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)','Edukasyong Pantahanan at Pangkabuhayan (EPP)'];
+        const gaSubjects = ['Filipino','English','Mathematics','Science','Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)','EPP/TLE'];
         const gaScores = [...gaSubjects.map(s=>finalGrades[s]), mapehFinal].filter(v=>v>0);
         const generalAverage = gaScores.length>0 ? Math.round(gaScores.reduce((a,b)=>a+b,0)/gaScores.length) : 0;
 
@@ -258,7 +258,7 @@ export default function SF5Page() {
       'Science T1','Science T2','Science T3','Science Final',
       'AP T1','AP T2','AP T3','AP Final',
       'EsP T1','EsP T2','EsP T3','EsP Final',
-      'EPP T1','EPP T2','EPP T3','EPP Final',
+      'EPP/TLE T1','EPP/TLE T2','EPP/TLE T3','EPP/TLE Final',
       'MAPEH Final','General Average','Action','Notes',
     ];
     const rows = sf5Data.map(d => {
@@ -269,7 +269,7 @@ export default function SF5Page() {
       const midName   = firstMid.length>1 ? firstMid[firstMid.length-1] : '';
       const isInactive = d.student.status && d.student.status !== 'active';
       const row = [d.student.lrn, lastName, firstName, midName, d.student.sex==='M'?'Male':'Female', d.student.status ?? 'active'];
-      ['Filipino','English','Mathematics','Science','Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)','Edukasyong Pantahanan at Pangkabuhayan (EPP)'].forEach(subj => {
+      ['Filipino','English','Mathematics','Science','Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)','EPP/TLE'].forEach(subj => {
         const [t1,t2,t3] = d.termGrades[subj] ?? [0,0,0];
         row.push(t1?String(t1):'', t2?String(t2):'', t3?String(t3):'', d.finalGrades[subj]?String(d.finalGrades[subj]):'');
       });
@@ -645,7 +645,7 @@ export default function SF5Page() {
                   <thead>
                     <tr>
                       <th className="bg-gray-800 text-left px-3 py-3 rounded-tl-xl min-w-[200px] sticky left-0 z-10">Learner</th>
-                      {['Filipino','English','Math','Science','AP','EsP','EPP'].map(s=>(
+                      {['Filipino','English','Math','Science','AP','EsP','EPP/TLE'].map(s=>(
                         <th key={s} className="bg-gray-800 text-center px-2 py-3 border-l border-gray-700 min-w-[80px]">
                           <div className="text-xs">{s}</div>
                           <div className="flex gap-0.5 justify-center mt-0.5">
@@ -672,7 +672,7 @@ export default function SF5Page() {
                             <div className="text-xs text-gray-600">{d.student.lrn}</div>
                             {isInactive && <div className="text-xs text-amber-500 mt-0.5">{d.student.status==='dropped'?'Dropped':d.student.status==='transferred_out'?'Transferred Out':'Transferred In'}{d.student.status_date?` (${d.student.status_date})`:''}</div>}
                           </td>
-                          {['Filipino','English','Mathematics','Science','Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)','Edukasyong Pantahanan at Pangkabuhayan (EPP)'].map(subj => {
+                          {['Filipino','English','Mathematics','Science','Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)','EPP/TLE'].map(subj => {
                             const [t1,t2,t3]=d.termGrades[subj]??[0,0,0];
                             const final=d.finalGrades[subj]??0;
                             return (
@@ -709,7 +709,7 @@ export default function SF5Page() {
                             <div className="text-xs text-gray-600">{d.student.lrn}</div>
                             {isInactive && <div className="text-xs text-amber-500 mt-0.5">{d.student.status==='dropped'?'Dropped':d.student.status==='transferred_out'?'Transferred Out':'Transferred In'}{d.student.status_date?` (${d.student.status_date})`:''}</div>}
                           </td>
-                          {['Filipino','English','Mathematics','Science','Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)','Edukasyong Pantahanan at Pangkabuhayan (EPP)'].map(subj => {
+                          {['Filipino','English','Mathematics','Science','Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)','EPP/TLE'].map(subj => {
                             const [t1,t2,t3]=d.termGrades[subj]??[0,0,0];
                             const final=d.finalGrades[subj]??0;
                             return (

@@ -9,7 +9,7 @@ import { useActiveSection } from '../../lib/useActiveSection';
 const SUBJECTS_JHS = [
   'Filipino', 'English', 'Mathematics', 'Science',
   'Araling Panlipunan (AP)', 'Edukasyon sa Pagpapakatao (EsP)',
-  'Edukasyong Pantahanan at Pangkabuhayan (EPP)',
+  'EPP/TLE',
   'MAPEH - Music', 'MAPEH - Arts', 'MAPEH - Physical Education', 'MAPEH - Health',
 ];
 const SUBJECTS_SHS = [
@@ -23,7 +23,7 @@ const SUBJECT_WEIGHTS: Record<string, { ww: number; pt: number; ta: number }> = 
   'Science':                                        { ww: 0.25, pt: 0.50, ta: 0.25 },
   'Araling Panlipunan (AP)':                        { ww: 0.25, pt: 0.50, ta: 0.25 },
   'Edukasyon sa Pagpapakatao (EsP)':                { ww: 0.25, pt: 0.50, ta: 0.25 },
-  'Edukasyong Pantahanan at Pangkabuhayan (EPP)':   { ww: 0.20, pt: 0.60, ta: 0.20 },
+  'EPP/TLE':                                        { ww: 0.20, pt: 0.60, ta: 0.20 },
   'MAPEH - Music':                                  { ww: 0.20, pt: 0.60, ta: 0.20 },
   'MAPEH - Arts':                                   { ww: 0.20, pt: 0.60, ta: 0.20 },
   'MAPEH - Physical Education':                     { ww: 0.20, pt: 0.60, ta: 0.20 },
