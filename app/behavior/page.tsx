@@ -244,8 +244,14 @@ export default function BehaviorPage() {
   useEffect(() => {
     if (!sectionId) return;
     (async () => {
-      const { data } = await supabase.from('students').select('*').eq('section_id', sectionId).order('full_name');
-      setStudents(data ?? []);
+      const { data } = await supabase
+        .from('students').select('*').eq('section_id', sectionId).order('full_name');
+      const sorted = (data ?? []).sort((a: Student, b: Student) => {
+        const sa = a.sex === 'M' ? 0 : 1, sb = b.sex === 'M' ? 0 : 1;
+        if (sa !== sb) return sa - sb;
+        return a.full_name.localeCompare(b.full_name);
+      });
+      setStudents(sorted);
     })();
   }, [sectionId]);
 
@@ -566,30 +572,46 @@ export default function BehaviorPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {students.map(student => (
-                        <tr key={student.id} className="border-t border-gray-800 hover:bg-gray-900/30">
-                          <td className="px-3 py-2 sticky left-0 bg-gray-950 border-r border-gray-800 z-10">
-                            <div className="font-medium text-white text-xs">{student.full_name}</div>
-                          </td>
-                          {CORE_VALUES.map(cv => cv.behaviors.map(b => {
-                            const current = conduct[student.id]?.ratings?.[b];
-                            return (
-                              <td key={b} className="p-1 text-center border-l border-gray-800">
-                                <select
-                                  value={current ?? ''}
-                                  onChange={e => updateConduct(student.id, b, e.target.value as ConductRating)}
-                                  className={`rounded-lg px-1 py-1 text-xs font-bold border-0 focus:outline-none cursor-pointer
-                                    ${current ? CONDUCT_COLORS[current] : 'bg-gray-800 text-gray-500'}`}>
-                                  <option value="">—</option>
-                                  {CONDUCT_RATINGS.map(r => (
-                                    <option key={r} value={r} className="bg-gray-900 text-white">{r}</option>
-                                  ))}
-                                </select>
+                      {(['M', 'F'] as const).map(sex => {
+                        const group = students.filter(s => s.sex === sex);
+                        if (group.length === 0) return null;
+                        return (
+                          <>
+                            <tr key={`header-${sex}`}>
+                              <td
+                                colSpan={1 + CORE_VALUES.reduce((s, cv) => s + cv.behaviors.length, 0)}
+                                className={`px-4 py-1.5 text-xs font-bold tracking-widest uppercase border-t border-gray-700
+                                  ${sex === 'M' ? 'bg-blue-950/40 text-blue-300' : 'bg-pink-950/40 text-pink-300'}`}>
+                                {sex === 'M' ? 'Male' : 'Female'} ({group.length})
                               </td>
-                            );
-                          }))}
-                        </tr>
-                      ))}
+                            </tr>
+                            {group.map(student => (
+                              <tr key={student.id} className="border-t border-gray-800 hover:bg-gray-900/30">
+                                <td className="px-3 py-2 sticky left-0 bg-gray-950 border-r border-gray-800 z-10">
+                                  <div className="font-medium text-white text-xs">{student.full_name}</div>
+                                </td>
+                                {CORE_VALUES.map(cv => cv.behaviors.map(b => {
+                                  const current = conduct[student.id]?.ratings?.[b];
+                                  return (
+                                    <td key={b} className="p-1 text-center border-l border-gray-800">
+                                      <select
+                                        value={current ?? ''}
+                                        onChange={e => updateConduct(student.id, b, e.target.value as ConductRating)}
+                                        className={`rounded-lg px-1 py-1 text-xs font-bold border-0 focus:outline-none cursor-pointer
+                                          ${current ? CONDUCT_COLORS[current] : 'bg-gray-800 text-gray-500'}`}>
+                                        <option value="">—</option>
+                                        {CONDUCT_RATINGS.map(r => (
+                                          <option key={r} value={r} className="bg-gray-900 text-white">{r}</option>
+                                        ))}
+                                      </select>
+                                    </td>
+                                  );
+                                }))}
+                              </tr>
+                            ))}
+                          </>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -600,38 +622,52 @@ export default function BehaviorPage() {
             {activeTab === 'summary' && (
               <div>
                 <p className="text-gray-400 text-sm mb-4">Click a learner to select them, then click Print Report for their individual behavior document.</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {students.map(student => {
-                    const stats = getStats(student.id);
-                    const isSelected = selectedSt === student.id;
+                <div className="space-y-6">
+                  {(['M', 'F'] as const).map(sex => {
+                    const group = students.filter(s => s.sex === sex);
+                    if (group.length === 0) return null;
                     return (
-                      <button key={student.id} onClick={() => setSelectedSt(isSelected ? null : student.id)}
-                        className={`text-left rounded-2xl p-5 border transition-all
-                          ${isSelected
-                            ? 'bg-blue-900/30 border-blue-500 shadow-lg shadow-blue-900/20'
-                            : 'bg-gray-900 border-gray-700 hover:border-gray-600'}`}>
-                        <div className="font-semibold text-white text-sm mb-3">{student.full_name}</div>
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className="bg-emerald-900/40 rounded-xl p-2 text-center">
-                            <div className="text-emerald-400 font-bold text-lg">{stats.positive}</div>
-                            <div className="text-xs text-gray-400">Positive</div>
-                          </div>
-                          <div className="bg-red-900/40 rounded-xl p-2 text-center">
-                            <div className="text-red-400 font-bold text-lg">{stats.negative}</div>
-                            <div className="text-xs text-gray-400">Negative</div>
-                          </div>
-                          <div className="bg-orange-900/40 rounded-xl p-2 text-center">
-                            <div className="text-orange-400 font-bold text-lg">{stats.incident}</div>
-                            <div className="text-xs text-gray-400">Incident</div>
-                          </div>
+                      <div key={sex}>
+                        <div className={`text-xs font-bold tracking-widest uppercase px-1 mb-3
+                          ${sex === 'M' ? 'text-blue-400' : 'text-pink-400'}`}>
+                          {sex === 'M' ? '👦 Male' : '👧 Female'} ({group.length})
                         </div>
-                        {stats.total === 0 && (
-                          <div className="text-xs text-gray-600 mt-2 text-center">No records this term</div>
-                        )}
-                        {isSelected && (
-                          <div className="mt-3 text-xs text-blue-400 font-semibold text-center">✓ Selected — click Print Report above</div>
-                        )}
-                      </button>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {group.map(student => {
+                            const stats = getStats(student.id);
+                            const isSelected = selectedSt === student.id;
+                            return (
+                              <button key={student.id} onClick={() => setSelectedSt(isSelected ? null : student.id)}
+                                className={`text-left rounded-2xl p-5 border transition-all
+                                  ${isSelected
+                                    ? 'bg-blue-900/30 border-blue-500 shadow-lg shadow-blue-900/20'
+                                    : 'bg-gray-900 border-gray-700 hover:border-gray-600'}`}>
+                                <div className="font-semibold text-white text-sm mb-3">{student.full_name}</div>
+                                <div className="grid grid-cols-3 gap-2">
+                                  <div className="bg-emerald-900/40 rounded-xl p-2 text-center">
+                                    <div className="text-emerald-400 font-bold text-lg">{stats.positive}</div>
+                                    <div className="text-xs text-gray-400">Positive</div>
+                                  </div>
+                                  <div className="bg-red-900/40 rounded-xl p-2 text-center">
+                                    <div className="text-red-400 font-bold text-lg">{stats.negative}</div>
+                                    <div className="text-xs text-gray-400">Negative</div>
+                                  </div>
+                                  <div className="bg-orange-900/40 rounded-xl p-2 text-center">
+                                    <div className="text-orange-400 font-bold text-lg">{stats.incident}</div>
+                                    <div className="text-xs text-gray-400">Incident</div>
+                                  </div>
+                                </div>
+                                {stats.total === 0 && (
+                                  <div className="text-xs text-gray-600 mt-2 text-center">No records this term</div>
+                                )}
+                                {isSelected && (
+                                  <div className="mt-3 text-xs text-blue-400 font-semibold text-center">✓ Selected — click Print Report above</div>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
