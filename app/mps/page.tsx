@@ -19,7 +19,7 @@ import { useActiveSection } from '../../lib/useActiveSection';
 const SUBJECTS_JHS = [
   'Filipino','English','Mathematics','Science',
   'Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)',
-  'Edukasyong Pantahanan at Pangkabuhayan (EPP)',
+  'EPP/TLE',
   'MAPEH - Music','MAPEH - Arts','MAPEH - Physical Education','MAPEH - Health',
 ];
 const SUBJECTS_SHS = [

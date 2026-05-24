@@ -16,7 +16,7 @@ import { useActiveSection } from '../../lib/useActiveSection';
 const JHS_SUBJECTS = [
   'Filipino', 'English', 'Mathematics', 'Science',
   'Araling Panlipunan (AP)', 'Edukasyon sa Pagpapakatao (EsP)',
-  'Edukasyong Pantahanan at Pangkabuhayan (EPP)',
+  'EPP/TLE',
 ];
 const MAPEH_COMPONENTS = ['MAPEH - Music', 'MAPEH - Arts', 'MAPEH - Physical Education', 'MAPEH - Health'];
 const ALL_SUBJECTS     = [...JHS_SUBJECTS, ...MAPEH_COMPONENTS];
@@ -65,7 +65,7 @@ const WEIGHTS: Record<string,{ww:number;pt:number;ta:number}> = {
   'Mathematics':{ww:0.25,pt:0.50,ta:0.25},'Science':{ww:0.25,pt:0.50,ta:0.25},
   'Araling Panlipunan (AP)':{ww:0.25,pt:0.50,ta:0.25},
   'Edukasyon sa Pagpapakatao (EsP)':{ww:0.25,pt:0.50,ta:0.25},
-  'Edukasyong Pantahanan at Pangkabuhayan (EPP)':{ww:0.20,pt:0.60,ta:0.20},
+  'EPP/TLE':{ww:0.20,pt:0.60,ta:0.20},
   'MAPEH - Music':{ww:0.20,pt:0.60,ta:0.20},'MAPEH - Arts':{ww:0.20,pt:0.60,ta:0.20},
   'MAPEH - Physical Education':{ww:0.20,pt:0.60,ta:0.20},'MAPEH - Health':{ww:0.20,pt:0.60,ta:0.20},
 };
@@ -258,7 +258,7 @@ function ManualGradePanel({
               }`}>
               {subj.replace('Araling Panlipunan (AP)','AP')
                    .replace('Edukasyon sa Pagpapakatao (EsP)','EsP')
-                   .replace('Edukasyong Pantahanan at Pangkabuhayan (EPP)','EPP')
+                   .replace('EPP/TLE','EPP/TLE')
                    .replace('MAPEH - ','')}
             </button>
           ))}
@@ -412,7 +412,7 @@ function CollabPanel({
   const subjectLabel = (s:string) => s
     .replace('Araling Panlipunan (AP)','AP')
     .replace('Edukasyon sa Pagpapakatao (EsP)','EsP')
-    .replace('Edukasyong Pantahanan at Pangkabuhayan (EPP)','EPP')
+    .replace('EPP/TLE','EPP/TLE')
     .replace('MAPEH - ','');
 
   return (
