@@ -378,13 +378,25 @@ function CollabPanel({
     if (!inviteEmail.trim() || inviteSubjects.length === 0) return;
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
+    const email = inviteEmail.trim().toLowerCase();
+
+    // Check if the invited teacher already has an account — auto-activate if so
+    const { data: existingUsers } = await supabase
+      .from('auth_users_view') // fallback: check via collaborators match
+      .select('id')
+      .eq('email', email)
+      .limit(1)
+      .maybeSingle()
+      .catch(() => ({ data: null }));
+
     const { data, error } = await supabase.from('section_collaborators').upsert({
       section_id:  sectionId,
-      email:       inviteEmail.trim().toLowerCase(),
+      email,
       subjects:    inviteSubjects,
       role:        'subject_teacher',
       status:      'pending',
       invited_by:  user?.id,
+      user_id:     existingUsers?.id ?? null,
     }, { onConflict: 'section_id,email' }).select().single();
 
     if (!error && data) {
@@ -436,6 +448,7 @@ function CollabPanel({
             <div className="font-semibold mb-2">📋 How it works:</div>
             <ol className="space-y-1 text-xs list-decimal list-inside text-blue-200">
               <li>Enter the subject teacher's email and select their subjects below</li>
+              <li className="text-amber-400">The subject teacher must <strong>register or log in</strong> to TeacherHub PH using the same email — the section will appear automatically in their dashboard</li>
               <li>They register/login to TeacherHub PH using that same email</li>
               <li>The section appears in their sidebar — they encode grades for their subjects only</li>
               <li>SF9 automatically uses their Class Record data for those subjects</li>
@@ -504,7 +517,7 @@ function CollabPanel({
                             ? 'bg-emerald-900/50 text-emerald-400'
                             : 'bg-yellow-900/50 text-yellow-400'
                         }`}>
-                          {c.status === 'active' ? '✓ Active' : '⏳ Pending login'}
+                          {c.status === 'active' ? 'Active' : 'Pending — teacher must log in to TeacherHub PH to activate'}
                         </span>
                       </div>
                       <button onClick={() => remove(c.id)}
