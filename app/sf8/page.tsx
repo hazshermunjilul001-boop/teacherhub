@@ -1,22 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Printer, RefreshCw, Save, Heart, Trash2 } from 'lucide-react';
+import { ArrowLeft, Printer, RefreshCw, Save } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useActiveSection } from '../../lib/useActiveSection';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WHO BMI-FOR-AGE REFERENCE (5–19 years, simplified cutoffs)
-// Source: WHO Growth Reference 2007
 // ─────────────────────────────────────────────────────────────────────────────
 
-// BMI cutoffs by age in months (simplified to yearly bands)
-// Format: [age_years, sex, sw_max, w_max, n_max, ow_max]
-// sw = Severely Wasted (<-3SD), w = Wasted (-3 to -2SD),
-// n = Normal (-2 to +1SD), ow = Overweight (+1 to +2SD), obese = >+2SD
-
 const BMI_CUTOFFS: Record<string, { sw: number; w: number; n: number; ow: number }> = {
-  // Boys (M) — approximate WHO -3SD, -2SD, +1SD, +2SD midpoints
   'M_5':  { sw: 12.1, w: 13.0, n: 18.3, ow: 20.2 },
   'M_6':  { sw: 12.1, w: 13.1, n: 18.5, ow: 20.5 },
   'M_7':  { sw: 12.2, w: 13.1, n: 19.0, ow: 21.0 },
@@ -32,7 +25,6 @@ const BMI_CUTOFFS: Record<string, { sw: number; w: number; n: number; ow: number
   'M_17': { sw: 13.2, w: 14.2, n: 22.5, ow: 25.5 },
   'M_18': { sw: 13.5, w: 14.5, n: 23.0, ow: 26.0 },
   'M_19': { sw: 13.7, w: 14.7, n: 23.5, ow: 26.5 },
-  // Girls (F)
   'F_5':  { sw: 11.7, w: 12.6, n: 18.9, ow: 21.2 },
   'F_6':  { sw: 11.7, w: 12.6, n: 19.0, ow: 21.7 },
   'F_7':  { sw: 11.7, w: 12.7, n: 19.5, ow: 22.5 },
@@ -99,14 +91,14 @@ function calcAge(birthdate: string, referenceDate?: string): number {
 
 interface Student { id: string; lrn: string; full_name: string; sex: string; birthdate?: string; }
 interface HealthRecord {
-  id:            string;
-  student_id:    string;
-  period:        'BEY' | 'EEY';   // Beginning / End of Year
-  date_measured: string;
-  weight_kg:     number;
-  height_m:      number;
-  bmi:           number;
-  ns_status:     string;
+  id:             string;
+  student_id:     string;
+  period:         'BEY' | 'EEY';
+  date_measured:  string;
+  weight_kg:      number;
+  height_m:       number;
+  bmi:            number;
+  ns_status:      string;
   age_at_measure: number;
 }
 
@@ -115,7 +107,11 @@ interface HealthRecord {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function SF8Page() {
-  const { sectionId, sectionName, gradeLevel, schoolName, schoolId, division, region, schoolYear, adviser, schoolHead } = useActiveSection();
+  const {
+    sectionId, sectionName, gradeLevel, schoolName, schoolId,
+    division, region, schoolYear, adviser, schoolHead,
+  } = useActiveSection();
+
   const [period,   setPeriod]   = useState<'BEY'|'EEY'>('BEY');
   const [students, setStudents] = useState<Student[]>([]);
   const [records,  setRecords]  = useState<Record<string, HealthRecord>>({});
@@ -129,7 +125,8 @@ export default function SF8Page() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const { data } = await supabase.from('students').select('*').eq('section_id', sectionId).order('full_name');
+      const { data } = await supabase
+        .from('students').select('*').eq('section_id', sectionId).order('full_name');
       setStudents(data ?? []);
       setLoading(false);
     })();
@@ -139,10 +136,8 @@ export default function SF8Page() {
   useEffect(() => {
     (async () => {
       const { data } = await supabase
-        .from('health_records')
-        .select('*')
-        .eq('section_id', sectionId)
-        .eq('period', period);
+        .from('health_records').select('*')
+        .eq('section_id', sectionId).eq('period', period);
       const map: Record<string, HealthRecord> = {};
       data?.forEach((r: any) => { map[r.student_id] = r; });
       setRecords(map);
@@ -155,7 +150,6 @@ export default function SF8Page() {
     setEditing(prev => {
       const cur = { ...(prev[sid] ?? records[sid] ?? {}) };
       (cur as any)[field] = val;
-      // Auto-compute BMI when weight + height both present
       const w = parseFloat(field === 'weight_kg' ? val : String(cur.weight_kg ?? ''));
       const h = parseFloat(field === 'height_m'  ? val : String(cur.height_m  ?? ''));
       if (w > 0 && h > 0) {
@@ -174,8 +168,8 @@ export default function SF8Page() {
     const data = editing[sid];
     if (!data) return;
     setSaving(sid);
-    const student  = students.find(s => s.id === sid);
-    const payload  = {
+    const student = students.find(s => s.id === sid);
+    const payload = {
       student_id:     sid,
       section_id:     sectionId,
       period,
@@ -203,26 +197,44 @@ export default function SF8Page() {
     const r = records[sid];
     return (e ? (e as any)[field] : (r as any)?.[field]) ?? '';
   };
-
-  const getBMI    = (sid: string) => getVal(sid, 'bmi');
-  const getNS     = (sid: string) => {
+  const getBMI = (sid: string) => getVal(sid, 'bmi');
+  const getNS  = (sid: string) => {
     if (editing[sid]) return editing[sid].ns_status ?? '—';
     return records[sid]?.ns_status ?? '—';
   };
 
-  // Summary stats
-  const allNS = students.map(s => getNS(s.id)).filter(s => s !== '—');
-  const countNS = (label: string) => allNS.filter(s => s === label).length;
+  // ── Enter-key navigation: moves to next student in same column ─────────────
+  const handleEnter = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    studentId: string,
+    field: 'weight_kg' | 'height_m',
+  ) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const all = Array.from(
+      document.querySelectorAll<HTMLInputElement>(`input[data-sf8="${field}"]`)
+    );
+    const cur  = all.findIndex(el => el.dataset.sid === studentId);
+    const next = all[cur + 1];
+    if (next) { next.focus(); next.select(); }
+  };
 
+  // Summary stats
+  const allNS   = students.map(s => getNS(s.id)).filter(s => s !== '—');
+  const countNS = (label: string) => allNS.filter(s => s === label).length;
   const males   = students.filter(s => s.sex === 'M');
   const females = students.filter(s => s.sex === 'F');
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // INPUT STYLE
+  // ─────────────────────────────────────────────────────────────────────────
+  const numInp = 'w-24 text-center bg-transparent border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500';
 
   // ─────────────────────────────────────────────────────────────────────────
   // SF8 PRINT VIEW
   // ─────────────────────────────────────────────────────────────────────────
   const SF8PrintView = () => (
     <div className="bg-white text-black p-4 font-sans" style={{fontSize:'9px', minWidth:'900px'}}>
-      {/* Title */}
       <div className="text-center mb-2">
         <div className="text-xs font-bold">SF 8</div>
         <div className="font-bold text-sm">Department of Education</div>
@@ -230,7 +242,6 @@ export default function SF8Page() {
         <div>(For All Grade Levels)</div>
       </div>
 
-      {/* Header info */}
       <table className="w-full border-collapse mb-1" style={{fontSize:'8px'}}>
         <tbody>
           <tr>
@@ -256,7 +267,6 @@ export default function SF8Page() {
         </tbody>
       </table>
 
-      {/* Main table */}
       <table className="w-full border-collapse" style={{fontSize:'8px'}}>
         <thead>
           <tr className="bg-gray-100">
@@ -279,12 +289,11 @@ export default function SF8Page() {
           </tr>
         </thead>
         <tbody>
-          {/* MALE */}
           <tr>
             <td colSpan={11} className="border border-black px-1 py-0.5 font-bold bg-blue-50">MALE</td>
           </tr>
           {males.map((student, idx) => {
-            const r   = records[student.id];
+            const r = records[student.id];
             const bmi = r?.bmi ?? 0;
             const ns  = r?.ns_status ?? '—';
             const h   = r?.height_m ?? 0;
@@ -308,12 +317,11 @@ export default function SF8Page() {
             );
           })}
 
-          {/* FEMALE */}
           <tr>
             <td colSpan={11} className="border border-black px-1 py-0.5 font-bold bg-pink-50">FEMALE</td>
           </tr>
           {females.map((student, idx) => {
-            const r   = records[student.id];
+            const r = records[student.id];
             const bmi = r?.bmi ?? 0;
             const ns  = r?.ns_status ?? '—';
             const h   = r?.height_m ?? 0;
@@ -337,7 +345,6 @@ export default function SF8Page() {
             );
           })}
 
-          {/* Summary */}
           <tr className="bg-gray-100 font-bold">
             <td colSpan={4} className="border border-black px-1 py-1">NUTRITIONAL STATUS SUMMARY</td>
             <td colSpan={2} className="border border-black text-center px-1">Severely Wasted: {countNS('Severely Wasted')}</td>
@@ -349,7 +356,6 @@ export default function SF8Page() {
         </tbody>
       </table>
 
-      {/* Signatures */}
       <div className="flex justify-between mt-4" style={{fontSize:'8px'}}>
         <div className="text-center">
           <div className="border-t border-black mt-8 pt-1" style={{minWidth:'180px'}}>
@@ -363,13 +369,79 @@ export default function SF8Page() {
         </div>
         <div className="text-center">
           <div className="border-t border-black mt-8 pt-1" style={{minWidth:'180px'}}>
-            {schoolHead || 'School Head'}
+            {schoolHead || '________________________________'}
           </div>
           <div>School Head</div>
         </div>
       </div>
     </div>
   );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RENDER ROW (shared between male and female groups)
+  // ─────────────────────────────────────────────────────────────────────────
+  const renderRow = (student: Student, idx: number) => {
+    const isDirty = !!editing[student.id];
+    const ns      = getNS(student.id);
+    const age     = editing[student.id]?.age_at_measure
+      ?? records[student.id]?.age_at_measure
+      ?? calcAge(student.birthdate ?? '', dateRef);
+
+    return (
+      <tr key={student.id} className="border-t border-gray-800 hover:bg-gray-900/40">
+        <td className="px-3 py-2 sticky left-0 bg-gray-950 border-r border-gray-800 z-10">
+          <div className="text-sm font-medium text-white">{idx+1}. {student.full_name}</div>
+          <div className="text-xs text-gray-600">{student.lrn}</div>
+        </td>
+        <td className="text-center border-l border-gray-800 text-gray-400 text-xs">{age || '—'}</td>
+        <td className="px-1 border-l border-gray-800">
+          <input
+            type="date"
+            value={getVal(student.id, 'date_measured') || dateRef}
+            onChange={e => handleChange(student.id, 'date_measured', e.target.value)}
+            className="w-full bg-transparent border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500"
+          />
+        </td>
+        <td className="px-1 border-l border-gray-800">
+          <input
+            type="number" step="0.1" min="0" placeholder="e.g. 45.5"
+            value={getVal(student.id, 'weight_kg')}
+            data-sf8="weight_kg"
+            data-sid={student.id}
+            onChange={e => handleChange(student.id, 'weight_kg', e.target.value)}
+            onKeyDown={e => handleEnter(e, student.id, 'weight_kg')}
+            className={numInp}
+          />
+        </td>
+        <td className="px-1 border-l border-gray-800">
+          <input
+            type="number" step="0.01" min="0" placeholder="e.g. 1.52"
+            value={getVal(student.id, 'height_m')}
+            data-sf8="height_m"
+            data-sid={student.id}
+            onChange={e => handleChange(student.id, 'height_m', e.target.value)}
+            onKeyDown={e => handleEnter(e, student.id, 'height_m')}
+            className={numInp}
+          />
+        </td>
+        <td className="text-center border-l border-gray-800 font-bold font-mono text-purple-300">
+          {getBMI(student.id) ? Number(getBMI(student.id)).toFixed(2) : '—'}
+        </td>
+        <td className="text-center border-l border-gray-800 px-2">
+          <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${getNSColor(ns)}`}>{ns}</span>
+        </td>
+        <td className="text-center border-l border-gray-800 px-2">
+          {isDirty && (
+            <button onClick={() => saveRecord(student.id)} disabled={saving === student.id}
+              className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition mx-auto">
+              {saving === student.id ? <RefreshCw size={12} className="animate-spin"/> : <Save size={12}/>}
+              Save
+            </button>
+          )}
+        </td>
+      </tr>
+    );
+  };
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -385,6 +457,7 @@ export default function SF8Page() {
           .sf8-print-only { display: block !important; }
         }
       `}</style>
+
       <div className="min-h-screen bg-gray-950 text-white">
 
         {/* Header */}
@@ -400,7 +473,6 @@ export default function SF8Page() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {/* Period toggle */}
             <div className="flex rounded-xl overflow-hidden border border-gray-700">
               {(['BEY','EEY'] as const).map(p => (
                 <button key={p} onClick={() => setPeriod(p)}
@@ -409,7 +481,6 @@ export default function SF8Page() {
                 </button>
               ))}
             </div>
-            {/* View toggle */}
             <div className="flex rounded-xl overflow-hidden border border-gray-700">
               <button onClick={() => setView('encode')} className={`px-4 py-2 text-sm font-medium transition ${view==='encode'?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>📝 Encode</button>
               <button onClick={() => setView('sf8')}   className={`px-4 py-2 text-sm font-medium transition ${view==='sf8'?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>📄 SF8 Form</button>
@@ -421,39 +492,47 @@ export default function SF8Page() {
           </div>
         </div>
 
-        {/* Reference date */}
-        <div className="no-print px-6 py-3 bg-gray-900/50 border-b border-gray-800 flex items-center gap-4">
-          <label className="text-sm text-gray-400">Date of Weighing:</label>
-          <input type="date" value={dateRef} onChange={e => setDateRef(e.target.value)}
-            className="bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-blue-500"/>
-          <p className="text-gray-500 text-xs">Ages and BMI categories are computed relative to this date.</p>
-
-          {/* NS summary chips */}
-          <div className="ml-auto flex items-center gap-2 flex-wrap">
-            {['Severely Wasted','Wasted','Normal','Overweight','Obese'].map(ns => {
-              const count = countNS(ns);
-              if (!count) return null;
-              return (
-                <span key={ns} className={`px-3 py-1 rounded-xl text-xs font-semibold ${getNSColor(ns)}`}>
-                  {ns}: {count}
-                </span>
-              );
-            })}
+        {/* Reference date + hint */}
+        <div className="no-print px-6 py-3 bg-gray-900/50 border-b border-gray-800 flex items-center gap-6 flex-wrap">
+          <div className="flex items-center gap-3">
+            <label className="text-sm text-gray-400">Date of Weighing:</label>
+            <input type="date" value={dateRef} onChange={e => setDateRef(e.target.value)}
+              className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-blue-500"/>
           </div>
+          <p className="text-xs text-gray-600 italic">
+            💡 Tip: Press <kbd className="bg-gray-800 border border-gray-700 px-1.5 py-0.5 rounded text-gray-400 font-mono">Enter</kbd> after typing a weight or height to jump to the next student automatically.
+          </p>
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-20 gap-3 text-gray-400">
-            <RefreshCw size={20} className="animate-spin"/>Loading…
+            <RefreshCw size={20} className="animate-spin"/> Loading...
           </div>
         ) : (
-          <div className={view === 'sf8' ? 'bg-white p-4' : 'p-6'}>
+          <div className="p-6">
+
+            {/* Summary cards */}
+            <div className="no-print grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+              {[
+                { label:'Severely Wasted', count:countNS('Severely Wasted'), color:'border-red-800 text-red-400' },
+                { label:'Wasted',          count:countNS('Wasted'),          color:'border-orange-800 text-orange-400' },
+                { label:'Normal',          count:countNS('Normal'),          color:'border-emerald-800 text-emerald-400' },
+                { label:'Overweight',      count:countNS('Overweight'),      color:'border-yellow-800 text-yellow-400' },
+                { label:'Obese',           count:countNS('Obese'),           color:'border-purple-800 text-purple-400' },
+              ].map(s => (
+                <div key={s.label} className={`bg-gray-900 border rounded-2xl p-4 ${s.color}`}>
+                  <p className="text-gray-400 text-xs">{s.label}</p>
+                  <p className={`text-3xl font-bold ${s.color.split(' ')[1]}`}>{s.count}</p>
+                </div>
+              ))}
+            </div>
+
             {view === 'encode' && (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm border-separate border-spacing-0" style={{minWidth:'900px'}}>
                   <thead>
                     <tr>
-                      <th className="bg-gray-800 text-left px-3 py-3 rounded-tl-xl min-w-[210px] sticky left-0 z-10">#  Learner's Name</th>
+                      <th className="bg-gray-800 text-left px-3 py-3 rounded-tl-xl sticky left-0 z-20 min-w-[220px]">Learner</th>
                       <th className="bg-gray-800 text-center px-3 py-3 border-l border-gray-700">Age</th>
                       <th className="bg-gray-800 text-center px-3 py-3 border-l border-gray-700">Date Measured</th>
                       <th className="bg-blue-900 text-center px-3 py-3 border-l border-gray-700">Weight (kg)</th>
@@ -464,105 +543,19 @@ export default function SF8Page() {
                     </tr>
                   </thead>
                   <tbody>
-                    {/* MALE */}
-                    <tr><td colSpan={8} className="bg-blue-950/50 px-3 py-1.5 text-blue-400 font-semibold text-xs">MALE ({males.length})</td></tr>
-                    {males.map((student, idx) => {
-                      const isDirty = !!editing[student.id];
-                      const ns      = getNS(student.id);
-                      const age     = editing[student.id]?.age_at_measure ?? records[student.id]?.age_at_measure ?? calcAge(student.birthdate ?? '', dateRef);
-                      return (
-                        <tr key={student.id} className="border-t border-gray-800 hover:bg-gray-900/40">
-                          <td className="px-3 py-2 sticky left-0 bg-gray-950 border-r border-gray-800 z-10">
-                            <div className="text-sm font-medium text-white">{idx+1}. {student.full_name}</div>
-                            <div className="text-xs text-gray-600">{student.lrn}</div>
-                          </td>
-                          <td className="text-center border-l border-gray-800 text-gray-400 text-xs">{age || '—'}</td>
-                          <td className="px-1 border-l border-gray-800">
-                            <input type="date" value={getVal(student.id,'date_measured') || dateRef}
-                              onChange={e => handleChange(student.id,'date_measured',e.target.value)}
-                              className="w-full bg-transparent border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500"/>
-                          </td>
-                          <td className="px-1 border-l border-gray-800">
-                            <input type="number" step="0.1" min="0" placeholder="e.g. 45.5"
-                              value={getVal(student.id,'weight_kg')}
-                              onChange={e => handleChange(student.id,'weight_kg',e.target.value)}
-                              className="w-24 text-center bg-transparent border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500"/>
-                          </td>
-                          <td className="px-1 border-l border-gray-800">
-                            <input type="number" step="0.01" min="0" placeholder="e.g. 1.52"
-                              value={getVal(student.id,'height_m')}
-                              onChange={e => handleChange(student.id,'height_m',e.target.value)}
-                              className="w-24 text-center bg-transparent border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500"/>
-                          </td>
-                          <td className="text-center border-l border-gray-800 font-bold font-mono text-purple-300">
-                            {getBMI(student.id) ? Number(getBMI(student.id)).toFixed(2) : '—'}
-                          </td>
-                          <td className="text-center border-l border-gray-800 px-2">
-                            <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${getNSColor(ns)}`}>{ns}</span>
-                          </td>
-                          <td className="text-center border-l border-gray-800 px-2">
-                            {isDirty && (
-                              <button onClick={() => saveRecord(student.id)}
-                                disabled={saving === student.id}
-                                className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition mx-auto">
-                                {saving === student.id ? <RefreshCw size={12} className="animate-spin"/> : <Save size={12}/>}
-                                Save
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    <tr>
+                      <td colSpan={8} className="bg-blue-950/50 px-3 py-1.5 text-blue-400 font-semibold text-xs">
+                        MALE ({males.length})
+                      </td>
+                    </tr>
+                    {males.map((s, i) => renderRow(s, i))}
 
-                    {/* FEMALE */}
-                    <tr><td colSpan={8} className="bg-pink-950/50 px-3 py-1.5 text-pink-400 font-semibold text-xs">FEMALE ({females.length})</td></tr>
-                    {females.map((student, idx) => {
-                      const isDirty = !!editing[student.id];
-                      const ns      = getNS(student.id);
-                      const age     = editing[student.id]?.age_at_measure ?? records[student.id]?.age_at_measure ?? calcAge(student.birthdate ?? '', dateRef);
-                      return (
-                        <tr key={student.id} className="border-t border-gray-800 hover:bg-gray-900/40">
-                          <td className="px-3 py-2 sticky left-0 bg-gray-950 border-r border-gray-800 z-10">
-                            <div className="text-sm font-medium text-white">{idx+1}. {student.full_name}</div>
-                            <div className="text-xs text-gray-600">{student.lrn}</div>
-                          </td>
-                          <td className="text-center border-l border-gray-800 text-gray-400 text-xs">{age || '—'}</td>
-                          <td className="px-1 border-l border-gray-800">
-                            <input type="date" value={getVal(student.id,'date_measured') || dateRef}
-                              onChange={e => handleChange(student.id,'date_measured',e.target.value)}
-                              className="w-full bg-transparent border border-gray-700 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500"/>
-                          </td>
-                          <td className="px-1 border-l border-gray-800">
-                            <input type="number" step="0.1" min="0" placeholder="e.g. 45.5"
-                              value={getVal(student.id,'weight_kg')}
-                              onChange={e => handleChange(student.id,'weight_kg',e.target.value)}
-                              className="w-24 text-center bg-transparent border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500"/>
-                          </td>
-                          <td className="px-1 border-l border-gray-800">
-                            <input type="number" step="0.01" min="0" placeholder="e.g. 1.52"
-                              value={getVal(student.id,'height_m')}
-                              onChange={e => handleChange(student.id,'height_m',e.target.value)}
-                              className="w-24 text-center bg-transparent border border-gray-700 rounded-lg px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500"/>
-                          </td>
-                          <td className="text-center border-l border-gray-800 font-bold font-mono text-purple-300">
-                            {getBMI(student.id) ? Number(getBMI(student.id)).toFixed(2) : '—'}
-                          </td>
-                          <td className="text-center border-l border-gray-800 px-2">
-                            <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${getNSColor(ns)}`}>{ns}</span>
-                          </td>
-                          <td className="text-center border-l border-gray-800 px-2">
-                            {isDirty && (
-                              <button onClick={() => saveRecord(student.id)}
-                                disabled={saving === student.id}
-                                className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition mx-auto">
-                                {saving === student.id ? <RefreshCw size={12} className="animate-spin"/> : <Save size={12}/>}
-                                Save
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    <tr>
+                      <td colSpan={8} className="bg-pink-950/50 px-3 py-1.5 text-pink-400 font-semibold text-xs">
+                        FEMALE ({females.length})
+                      </td>
+                    </tr>
+                    {females.map((s, i) => renderRow(s, i))}
                   </tbody>
                 </table>
               </div>
@@ -576,7 +569,7 @@ export default function SF8Page() {
           </div>
         )}
 
-        {/* Print only — always rendered, hidden on screen, visible on print */}
+        {/* Print only */}
         <div className="sf8-print-only" style={{display:'none'}}>
           <SF8PrintView/>
         </div>
