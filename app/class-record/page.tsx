@@ -10,7 +10,7 @@ const SUBJECTS_JHS = [
   'Filipino', 'English', 'Mathematics', 'Science',
   'Araling Panlipunan (AP)', 'Edukasyon sa Pagpapakatao (EsP)',
   'EPP/TLE',
-  'MAPEH - Music', 'MAPEH - Arts', 'MAPEH - Physical Education', 'MAPEH - Health',
+  'MAPEH - Music & Arts', 'MAPEH - PE & Health',
 ];
 const SUBJECTS_SHS = [
   'SHS Core Subject', 'SHS Applied Track', 'SHS Specialized Subject',
@@ -24,10 +24,8 @@ const SUBJECT_WEIGHTS: Record<string, { ww: number; pt: number; ta: number }> = 
   'Araling Panlipunan (AP)':                        { ww: 0.25, pt: 0.50, ta: 0.25 },
   'Edukasyon sa Pagpapakatao (EsP)':                { ww: 0.25, pt: 0.50, ta: 0.25 },
   'EPP/TLE':                                        { ww: 0.20, pt: 0.60, ta: 0.20 },
-  'MAPEH - Music':                                  { ww: 0.20, pt: 0.60, ta: 0.20 },
-  'MAPEH - Arts':                                   { ww: 0.20, pt: 0.60, ta: 0.20 },
-  'MAPEH - Physical Education':                     { ww: 0.20, pt: 0.60, ta: 0.20 },
-  'MAPEH - Health':                                 { ww: 0.20, pt: 0.60, ta: 0.20 },
+  'MAPEH - Music & Arts':                           { ww: 0.20, pt: 0.60, ta: 0.20 },
+  'MAPEH - PE & Health':                            { ww: 0.20, pt: 0.60, ta: 0.20 },
   'SHS Core Subject':                               { ww: 0.25, pt: 0.50, ta: 0.25 },
   'SHS Applied Track':                              { ww: 0.20, pt: 0.60, ta: 0.20 },
   'SHS Specialized Subject':                        { ww: 0.20, pt: 0.60, ta: 0.20 },
