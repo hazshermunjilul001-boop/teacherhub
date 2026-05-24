@@ -11,9 +11,9 @@ const SF5_SUBJECTS = [
   'Filipino', 'English', 'Mathematics', 'Science',
   'Araling Panlipunan (AP)', 'Edukasyon sa Pagpapakatao (EsP)',
   'EPP/TLE',
-  'MAPEH - Music', 'MAPEH - Arts', 'MAPEH - Physical Education', 'MAPEH - Health',
+  'MAPEH - Music & Arts', 'MAPEH - PE & Health',
 ];
-const MAPEH_COMPONENTS = ['MAPEH - Music', 'MAPEH - Arts', 'MAPEH - Physical Education', 'MAPEH - Health'];
+const MAPEH_COMPONENTS = ['MAPEH - Music & Arts', 'MAPEH - PE & Health'];
 
 const TRANSMUTATION = [
   {min:99.50,max:100,trans:100},{min:97.50,max:99.49,trans:99},{min:96.00,max:97.49,trans:98},
@@ -157,8 +157,8 @@ function computeTransmutedFromGrade(row:any): number {
     'Araling Panlipunan (AP)':{ww:0.25,pt:0.50,ta:0.25},
     'Edukasyon sa Pagpapakatao (EsP)':{ww:0.25,pt:0.50,ta:0.25},
     'EPP/TLE':{ww:0.20,pt:0.60,ta:0.20},
-    'MAPEH - Music':{ww:0.20,pt:0.60,ta:0.20},'MAPEH - Arts':{ww:0.20,pt:0.60,ta:0.20},
-    'MAPEH - Physical Education':{ww:0.20,pt:0.60,ta:0.20},'MAPEH - Health':{ww:0.20,pt:0.60,ta:0.20},
+    'MAPEH - Music & Arts':{ww:0.20,pt:0.60,ta:0.20},
+    'MAPEH - PE & Health':{ww:0.20,pt:0.60,ta:0.20},
   };
   const w = WEIGHTS[row.subject] ?? {ww:0.25,pt:0.50,ta:0.25};
   const ww = Array.from({length:5},(_,i)=>row.written_scores?.[i]??0);
@@ -207,12 +207,20 @@ export default function SF5Page() {
       setLoading(true);
       const { data: studs } = await supabase
         .from('students').select('*').eq('section_id', sectionId).order('full_name');
-      const studentList: Student[] = studs ?? [];
+      const studentList: Student[] = (studs ?? []).sort((a: Student, b: Student) => {
+        const sa = a.sex === 'M' ? 0 : 1, sb = b.sex === 'M' ? 0 : 1;
+        if (sa !== sb) return sa - sb;
+        return a.full_name.localeCompare(b.full_name);
+      });
       setStudents(studentList);
 
+      const studentIds = studentList.map(s => s.id);
       const allSubjects = [...SF5_SUBJECTS];
       const { data: gradesRaw } = await supabase
-        .from('grades').select('*').in('subject', allSubjects).in('term', [1,2,3]);
+        .from('grades').select('*')
+        .in('subject', allSubjects)
+        .in('term', [1,2,3])
+        .in('student_id', studentIds.length > 0 ? studentIds : ['none']);
 
       const result: LearnerSF5[] = studentList.map(student => {
         const termGrades: Record<string, number[]> = {};
