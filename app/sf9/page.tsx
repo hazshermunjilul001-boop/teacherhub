@@ -380,15 +380,6 @@ function CollabPanel({
     const { data: { user } } = await supabase.auth.getUser();
     const email = inviteEmail.trim().toLowerCase();
 
-    // Check if the invited teacher already has an account — auto-activate if so
-    const { data: existingUsers } = await supabase
-      .from('auth_users_view') // fallback: check via collaborators match
-      .select('id')
-      .eq('email', email)
-      .limit(1)
-      .maybeSingle()
-      .catch(() => ({ data: null }));
-
     const { data, error } = await supabase.from('section_collaborators').upsert({
       section_id:  sectionId,
       email,
@@ -396,7 +387,6 @@ function CollabPanel({
       role:        'subject_teacher',
       status:      'pending',
       invited_by:  user?.id,
-      user_id:     existingUsers?.id ?? null,
     }, { onConflict: 'section_id,email' }).select().single();
 
     if (!error && data) {
