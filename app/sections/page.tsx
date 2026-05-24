@@ -907,7 +907,7 @@ export default function SectionsPage() {
                       )}
 
                       <div className="w-12 h-12 bg-blue-900/50 rounded-2xl flex items-center justify-center mb-3 text-2xl font-black text-blue-400">
-                        {section.grade_number}
+                        {section.grade_level?.match(/\d+/)?.[0] ?? section.grade_number}
                       </div>
 
                       <h3 className="text-xl font-bold text-white">{section.name}</h3>
