@@ -775,7 +775,21 @@ export default function SectionsPage() {
   const [deleting,     setDeleting]     = useState<string | null>(null);
   const [rosterSection, setRosterSection] = useState<Section | null>(null);
 
-  const handleDelete = async (id: string, name: string) => {
+  const handleDelete = async (id: string, name: string, role?: string) => {
+    if (role === 'subject_teacher') {
+      if (!confirm(`Remove "${name}" from your section list?\n\nThis only removes your access — the adviser's section and all its data remain untouched.`)) return;
+      setDeleting(id);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('section_collaborators')
+          .delete()
+          .eq('section_id', id)
+          .eq('user_id', user.id);
+      }
+      await loadSections();
+      setDeleting(null);
+      return;
+    }
     if (!confirm(`Delete section "${name}"? This will also delete all students, grades, and attendance data for this section. This cannot be undone.`)) return;
     setDeleting(id);
     await supabase.from('students').delete().eq('section_id', id);
@@ -942,10 +956,10 @@ export default function SectionsPage() {
                         </button>
                         {/* 🗑️ Delete section */}
                         <button
-                          onClick={() => handleDelete(section.id, section.name)}
+                          onClick={() => handleDelete(section.id, section.name, section._role)}
                           disabled={deleting === section.id}
                           className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-600 hover:bg-red-900/40 hover:text-red-400 transition"
-                          title="Delete section">
+                          title={section._role === 'subject_teacher' ? 'Remove from my list' : 'Delete section'}>
                           {deleting === section.id ? <RefreshCw size={14} className="animate-spin"/> : <Trash2 size={14}/>}
                         </button>
                       </div>
