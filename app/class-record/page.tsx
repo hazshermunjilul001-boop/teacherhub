@@ -1073,7 +1073,7 @@ export default function ClassRecord() {
         <div className="no-print px-6 py-4 flex flex-wrap gap-3 items-center">
           <select value={subject} onChange={e=>setSubject(e.target.value)}
             className="bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500">
-            <optgroup label="Junior High School">{SUBJECTS_JHS.map(s=><option key={s}>{s}</option>)}</optgroup>
+            <optgroup label="Junior High School/Elementary">{SUBJECTS_JHS.map(s=><option key={s}>{s}</option>)}</optgroup>
             <optgroup label="Senior High School">{SUBJECTS_SHS.map(s=><option key={s}>{s}</option>)}</optgroup>
           </select>
           <div className="flex rounded-xl overflow-hidden border border-gray-700">
