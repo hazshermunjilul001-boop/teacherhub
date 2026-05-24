@@ -3,6 +3,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 
+// ── TYPES ─────────────────────────────────────────────────────────────────────
+
 export interface Section {
   id: string;
   teacher_id: string;
@@ -19,22 +21,27 @@ export interface Section {
   school_head?: string;
   student_count?: number;
   created_at?: string;
+  // Extra fields for shared sections
+  _role?: 'owner' | 'subject_teacher';
+  _subjects?: string[]; // subjects this teacher can access in shared section
 }
 
 interface SectionContextType {
-  sections: Section[];
-  activeSection: Section | null;
+  sections:         Section[];
+  activeSection:    Section | null;
   setActiveSection: (s: Section) => void;
-  loadSections: () => Promise<void>;
-  loading: boolean;
+  loadSections:     () => Promise<void>;
+  loading:          boolean;
 }
 
+// ── CONTEXT ───────────────────────────────────────────────────────────────────
+
 const SectionContext = createContext<SectionContextType>({
-  sections: [],
-  activeSection: null,
+  sections:         [],
+  activeSection:    null,
   setActiveSection: () => {},
-  loadSections: async () => {},
-  loading: true,
+  loadSections:     async () => {},
+  loading:          true,
 });
 
 export function SectionProvider({ children }: { children: ReactNode }) {
@@ -47,23 +54,74 @@ export function SectionProvider({ children }: { children: ReactNode }) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    const { data, error } = await supabase
+    // ── Step 1: Auto-accept any pending invites for this user's email ──────────
+    await supabase
+      .from('section_collaborators')
+      .update({ status: 'active', user_id: user.id })
+      .eq('email', user.email)
+      .eq('status', 'pending');
+
+    // ── Step 2: Load own sections (teacher_id = this user) ────────────────────
+    const { data: ownSections, error: ownError } = await supabase
       .from('sections')
       .select('*')
       .eq('teacher_id', user.id)
       .order('created_at');
 
-    if (!error && data) {
-      setSections(data);
+    const owned: Section[] = (ownSections ?? []).map(s => ({ ...s, _role: 'owner' as const }));
+
+    // ── Step 3: Load shared sections via section_collaborators ────────────────
+    const { data: collabRows } = await supabase
+      .from('section_collaborators')
+      .select('section_id, subjects, status')
+      .eq('user_id', user.id)
+      .eq('status', 'active');
+
+    // Also try matching by email in case user_id wasn't set yet
+    const { data: collabByEmail } = await supabase
+      .from('section_collaborators')
+      .select('section_id, subjects, status')
+      .eq('email', user.email)
+      .eq('status', 'active');
+
+    const collabSectionIds = [
+      ...(collabRows ?? []),
+      ...(collabByEmail ?? []),
+    ].filter((c, i, arr) => arr.findIndex(x => x.section_id === c.section_id) === i); // dedupe
+
+    let sharedSections: Section[] = [];
+    if (collabSectionIds.length > 0) {
+      const ids = collabSectionIds.map(c => c.section_id);
+      const { data: sharedData } = await supabase
+        .from('sections')
+        .select('*')
+        .in('id', ids);
+
+      sharedSections = (sharedData ?? [])
+        .filter(s => s.teacher_id !== user.id) // don't duplicate own sections
+        .map(s => {
+          const collab = collabSectionIds.find(c => c.section_id === s.id);
+          return { ...s, _role: 'subject_teacher' as const, _subjects: collab?.subjects ?? [] };
+        });
+    }
+
+    // ── Step 4: Merge and set ─────────────────────────────────────────────────
+    const all = [...owned, ...sharedSections];
+
+    if (!ownError && all.length > 0) {
+      setSections(all);
       const savedId = localStorage.getItem('activeSection_id');
-      const saved   = data.find((s: Section) => s.id === savedId);
+      const saved   = all.find((s: Section) => s.id === savedId);
       if (saved) {
         setActiveSectionState(saved);
-      } else if (data.length > 0) {
-        setActiveSectionState(data[0]);
-        localStorage.setItem('activeSection_id', data[0].id);
+      } else if (all.length > 0) {
+        setActiveSectionState(all[0]);
+        localStorage.setItem('activeSection_id', all[0].id);
       }
+    } else if (!ownError) {
+      setSections([]);
     }
+
     setLoading(false);
   };
 
@@ -87,6 +145,8 @@ export function SectionProvider({ children }: { children: ReactNode }) {
     </SectionContext.Provider>
   );
 }
+
+// ── HOOK ──────────────────────────────────────────────────────────────────────
 
 export function useSection() {
   return useContext(SectionContext);
