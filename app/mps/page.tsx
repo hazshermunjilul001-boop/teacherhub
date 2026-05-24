@@ -20,7 +20,7 @@ const SUBJECTS_JHS = [
   'Filipino','English','Mathematics','Science',
   'Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)',
   'EPP/TLE',
-  'MAPEH - Music','MAPEH - Arts','MAPEH - Physical Education','MAPEH - Health',
+  'MAPEH - Music & Arts','MAPEH - PE & Health',
 ];
 const SUBJECTS_SHS = [
   'SHS Core Subject','SHS Applied Track','SHS Specialized Subject',
@@ -45,7 +45,7 @@ function getMastery(pct: number) {
 // TYPES
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface Student  { id: string; full_name: string; }
+interface Student  { id: string; full_name: string; sex?: string; status?: string; }
 interface Item     { id: string; no: number; competency: string; }
 interface ItemScore { student_id: string; item_id: string; score: number; } // 1 or 0
 
@@ -114,14 +114,24 @@ export default function MPSPage() {
   const [newComp,  setNewComp]  = useState('');
   const [view,     setView]     = useState<'encode'|'analysis'>('encode');
 
-  // ── Load students ──────────────────────────────────────────────────────────
+  // ── Load students (active only) ───────────────────────────────────────────
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from('students').select('id,full_name').eq('section_id', sectionId).order('full_name');
-      setStudents(data ?? []);
+      const { data } = await supabase
+        .from('students')
+        .select('id,full_name,sex,status')
+        .eq('section_id', sectionId)
+        .order('full_name');
+      const active = (data ?? []).filter((s: any) => !s.status || s.status === 'active');
+      const sorted = [...active].sort((a: any, b: any) => {
+        const sa = a.sex === 'M' ? 0 : 1, sb = b.sex === 'M' ? 0 : 1;
+        if (sa !== sb) return sa - sb;
+        return a.full_name.localeCompare(b.full_name);
+      });
+      setStudents(sorted);
       setLoading(false);
     })();
-  }, []);
+  }, [sectionId]);
 
   // ── Load MPS record for current filter ────────────────────────────────────
   useEffect(() => {
@@ -147,7 +157,7 @@ export default function MPSPage() {
       }
       setLoading(false);
     })();
-  }, [subject, term, assessType]);
+  }, [subject, term, assessType, sectionId]);
 
   // ── Save full record ───────────────────────────────────────────────────────
   const save = async (newItems: Item[], newScores: ItemScore[]) => {
