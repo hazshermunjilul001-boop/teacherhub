@@ -18,7 +18,7 @@ const JHS_SUBJECTS = [
   'Araling Panlipunan (AP)', 'Edukasyon sa Pagpapakatao (EsP)',
   'EPP/TLE',
 ];
-const MAPEH_COMPONENTS = ['MAPEH - Music', 'MAPEH - Arts', 'MAPEH - Physical Education', 'MAPEH - Health'];
+const MAPEH_COMPONENTS = ['MAPEH - Music & Arts', 'MAPEH - PE & Health'];
 const ALL_SUBJECTS     = [...JHS_SUBJECTS, ...MAPEH_COMPONENTS];
 
 const CORE_VALUES = [
@@ -66,8 +66,8 @@ const WEIGHTS: Record<string,{ww:number;pt:number;ta:number}> = {
   'Araling Panlipunan (AP)':{ww:0.25,pt:0.50,ta:0.25},
   'Edukasyon sa Pagpapakatao (EsP)':{ww:0.25,pt:0.50,ta:0.25},
   'EPP/TLE':{ww:0.20,pt:0.60,ta:0.20},
-  'MAPEH - Music':{ww:0.20,pt:0.60,ta:0.20},'MAPEH - Arts':{ww:0.20,pt:0.60,ta:0.20},
-  'MAPEH - Physical Education':{ww:0.20,pt:0.60,ta:0.20},'MAPEH - Health':{ww:0.20,pt:0.60,ta:0.20},
+  'MAPEH - Music & Arts':{ww:0.20,pt:0.60,ta:0.20},
+  'MAPEH - PE & Health':{ww:0.20,pt:0.60,ta:0.20},
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1011,13 +1011,22 @@ export default function SF9Page() {
 
     const { data: studs } = await supabase
       .from('students').select('*').eq('section_id', sectionId).order('full_name');
-    const studentList: Student[] = studs ?? [];
+    const studentList: Student[] = (studs ?? []).sort((a: Student, b: Student) => {
+      const sa = a.sex === 'M' ? 0 : 1, sb = b.sex === 'M' ? 0 : 1;
+      if (sa !== sb) return sa - sb;
+      return a.full_name.localeCompare(b.full_name);
+    });
     setStudents(studentList);
     if (!studentList.length) { setLoading(false); return; }
 
-    // Load class record grades
+    const studentIds = studentList.map(s => s.id);
+
+    // Load class record grades — filtered to this section's students only
     const { data: gradesRaw } = await supabase
-      .from('grades').select('*').in('term',[1,2,3]).in('subject', ALL_SUBJECTS);
+      .from('grades').select('*')
+      .in('term', [1,2,3])
+      .in('subject', ALL_SUBJECTS)
+      .in('student_id', studentIds.length > 0 ? studentIds : ['none']);
 
     // Load manual grades (adviser-typed)
     const { data: manualRaw } = await supabase
