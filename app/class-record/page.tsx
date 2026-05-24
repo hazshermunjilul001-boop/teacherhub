@@ -909,6 +909,23 @@ export default function ClassRecord() {
     setLoadingSummary(false);
     setShowSummary(true);
   };
+  
+  const handleEnter = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    studentId: string,
+    type: string,
+    idx: number | null,
+  ) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const key = `${type}:${idx ?? 'te'}`;
+    const all = Array.from(
+      document.querySelectorAll<HTMLInputElement>('input[data-cell]')
+    ).filter(el => el.dataset.cell?.endsWith(`:${key}`));
+    const cur = all.findIndex(el => el.dataset.cell === `${studentId}:${key}`);
+    const next = all[cur + 1];
+    if (next) { next.focus(); next.select(); }
+  };
 
   const inp=(color:string)=>`w-14 text-center bg-transparent border border-gray-700 hover:border-${color}-600 focus:border-${color}-500 rounded py-2 text-white text-sm outline-none focus:bg-gray-900`;
   const totalCols = 2+5+1+3+1+(hasTA?4:0)+3;
