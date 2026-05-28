@@ -112,24 +112,14 @@ function CertificateView({ qualifier, section, certDate, onClose, printAll, allQ
           backgroundSize:'cover', backgroundPosition:'center',
           backgroundRepeat:'no-repeat',
           display:'flex', flexDirection:'column', alignItems:'center',
-          justifyContent:'flex-start', overflow:'hidden',
+          justifyContent:'center', overflow:'hidden',
           border:'1px solid #ccc',
-          paddingTop:'12mm', paddingLeft:'55mm', paddingRight:'35mm',
+          paddingTop:'8mm', paddingBottom:'6mm',
+          paddingLeft:'58mm', paddingRight:'32mm',
         }}>
 
         {/* All text content — centered in the white/marble area */}
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center',width:'100%'}}>
-
-          {/* DepEd Logo — use actual image from public folder */}
-          <img
-            src="/cert-deped-logo.webp"
-            alt="DepEd Logo"
-            style={{width:'52px',height:'52px',objectFit:'contain',marginBottom:'4px'}}
-            onError={e=>{
-              // fallback if image not found
-              (e.target as HTMLImageElement).style.display='none';
-            }}
-          />
 
           {/* Republic of the Philippines — Old English Text */}
           <p style={{margin:'0 0 0 0',fontSize:'11px',color:'#222',
@@ -249,7 +239,7 @@ function CertificateView({ qualifier, section, certDate, onClose, printAll, allQ
           </button>
         </div>
       </div>
-      <div className="cert-container p-8 flex flex-col items-center gap-6">
+      <div className="cert-container p-4 flex flex-col items-center gap-4">
         {students.map((d,i)=>renderCert(d,i))}
       </div>
       <style>{`
