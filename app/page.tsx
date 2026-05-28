@@ -6,7 +6,7 @@ import {
   Mail, Lock, Menu, LogOut, BookOpen, Users, Calendar,
   Heart, Award, FileText, ChevronRight, BarChart2,
   GraduationCap, Bell, ChevronDown, Settings, Plus,
-  CheckCircle, CreditCard, Shield,
+  CheckCircle, CreditCard, Shield, Trophy,
 } from 'lucide-react';
 import { useSubscription } from '../lib/useSubscription';
 import { supabase } from '../lib/supabase';
@@ -25,6 +25,7 @@ const NAV_ITEMS = [
   { name: 'Behavior Record',          icon: Award,         path: '/behavior',     status: 'active' },
   { name: 'SF5 / LIS Export',         icon: FileText,      path: '/sf5',          status: 'active' },
   { name: 'Report Card (SF9)',         icon: GraduationCap, path: '/sf9',          status: 'active' },
+  { name: 'Academic Excellence Awards', icon: Trophy,        path: '/awards',        status: 'active' },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -157,7 +158,7 @@ function SectionSwitcher({ sidebarOpen, onManage }: { sidebarOpen: boolean; onMa
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute top-full left-0 right-0 mb-2 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50">
+        <div className="absolute bottom-full left-0 right-0 mb-2 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50">
           <div className="p-2 border-b border-gray-700">
             <p className="text-xs text-gray-500 px-2 py-1">Switch Section</p>
           </div>
@@ -310,7 +311,7 @@ function Dashboard({ user }: { user: any }) {
             {isFree && (
               <button onClick={() => router.push('/subscribe')}
                 className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 hover:text-blue-300 transition text-xs font-semibold border border-blue-800">
-                ⭐ Upgrade to Pro ⭐
+                ⭐ Upgrade to Pro — ₱99/mo
               </button>
             )}
             <button onClick={() => router.push('/sections')}
@@ -389,14 +390,14 @@ function Dashboard({ user }: { user: any }) {
             <div className="bg-blue-950/30 border border-blue-800 rounded-2xl p-4 mb-6 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-blue-400 font-bold">⭐ Add More Sections</span>
+                  <span className="text-blue-400 font-bold">⭐ Unlock All 8 Modules</span>
                   <span className="text-xs bg-blue-900 text-blue-300 px-2 py-0.5 rounded-full">Free Plan</span>
                 </div>
-                <p className="text-gray-400 text-sm">Upgrade to Teacher Pro for more sections to add.</p>
+                <p className="text-gray-400 text-sm">Upgrade to Teacher Pro for SF9, SF5, MPS, Behavior Record, SF8 and more.</p>
               </div>
               <button onClick={() => router.push('/subscribe')}
                 className="flex-shrink-0 ml-4 flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition">
-                <CreditCard size={16}/> ₱199/yr
+                <CreditCard size={16}/> ₱99/mo
               </button>
             </div>
           )}
@@ -422,7 +423,7 @@ function Dashboard({ user }: { user: any }) {
             <p className="text-gray-400 mt-1">
               {activeSection
                 ? `${activeSection.name} · ${activeSection.grade_level} · SY ${activeSection.school_year}`
-                : 'School Year 2026–2027 · Revised K-12 Curriculum'}
+                : 'School Year 2025–2026 · Revised K-12 Curriculum'}
               {' · Term 1'}
             </p>
           </div>
