@@ -108,112 +108,110 @@ function CertificateView({ qualifier, section, certDate, onClose, printAll, allQ
       <div key={d.student.id} className={`cert-page ${idx>0?'page-break-before':''}`}
         style={{
           width:'297mm', height:'210mm', position:'relative',
-          backgroundImage:'url(/cert-bg.webp)',
+          backgroundImage:'url(/cert-bg.jpg)',
           backgroundSize:'cover', backgroundPosition:'center',
           backgroundRepeat:'no-repeat',
           display:'flex', flexDirection:'column', alignItems:'center',
-          justifyContent:'center', overflow:'hidden',
+          justifyContent:'flex-start', overflow:'hidden',
           border:'1px solid #ccc',
-          paddingTop:'8mm', paddingBottom:'6mm',
-          paddingLeft:'58mm', paddingRight:'32mm',
+          paddingTop:'6mm', paddingBottom:'4mm',
+          paddingLeft:'56mm', paddingRight:'30mm',
         }}>
 
-        {/* All text content — centered in the white/marble area */}
+        {/* All text content — centered in the marble area */}
         <div style={{display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center',width:'100%'}}>
 
-          {/* Republic of the Philippines — Old English Text */}
-          <p style={{margin:'0 0 0 0',fontSize:'11px',color:'#222',
-            fontFamily:'"UnifrakturMaguntia", "MedievalSharp", "Old English Text MT", serif',
-            letterSpacing:'0.5px'}}>
+          {/* Republic of the Philippines — Old English Text, tight spacing */}
+          <p style={{margin:'0',fontSize:'10px',color:'#222',lineHeight:'1.4',
+            fontFamily:'"UnifrakturMaguntia","MedievalSharp","Old English Text MT",serif'}}>
             Republic of the Philippines
           </p>
-          <p style={{margin:'0 0 4px 0',fontSize:'11px',color:'#222',
-            fontFamily:'"UnifrakturMaguntia", "MedievalSharp", "Old English Text MT", serif',
-            letterSpacing:'0.5px'}}>
+          <p style={{margin:'0 0 3px 0',fontSize:'10px',color:'#222',lineHeight:'1.4',
+            fontFamily:'"UnifrakturMaguntia","MedievalSharp","Old English Text MT",serif'}}>
             Department of Education
           </p>
 
-          {/* Region / Division / School — Bookman Old Style */}
-          <p style={{margin:'0 0 0 0',fontSize:'10.5px',fontWeight:'bold',color:'#1a1a6e',
-            fontFamily:'"Bookman Old Style", "Libre Baskerville", "Book Antiqua", Palatino, serif'}}>
+          {/* Region / Division / School */}
+          <p style={{margin:'0',fontSize:'11px',fontWeight:'bold',color:'#1a1a6e',lineHeight:'1.5',
+            fontFamily:'"Bookman Old Style","Libre Baskerville","Book Antiqua",Palatino,serif'}}>
             REGION XI
           </p>
-          <p style={{margin:'0 0 0 0',fontSize:'10.5px',fontWeight:'bold',color:'#1a1a6e',
-            fontFamily:'"Bookman Old Style", "Libre Baskerville", "Book Antiqua", Palatino, serif'}}>
+          <p style={{margin:'0',fontSize:'11px',fontWeight:'bold',color:'#1a1a6e',lineHeight:'1.5',
+            fontFamily:'"Bookman Old Style","Libre Baskerville","Book Antiqua",Palatino,serif'}}>
             DIVISION OF DAVAO CITY
           </p>
-          <p style={{margin:'0 0 0 0',fontSize:'10.5px',fontWeight:'bold',color:'#1a1a6e',
-            fontFamily:'"Bookman Old Style", "Libre Baskerville", "Book Antiqua", Palatino, serif'}}>
+          <p style={{margin:'0',fontSize:'11px',fontWeight:'bold',color:'#1a1a6e',lineHeight:'1.5',
+            fontFamily:'"Bookman Old Style","Libre Baskerville","Book Antiqua",Palatino,serif'}}>
             STA. ANA NATIONAL HIGH SCHOOL
           </p>
-          <p style={{margin:'0 0 7px 0',fontSize:'9.5px',color:'#444',
-            fontFamily:'"Bookman Old Style", "Libre Baskerville", "Book Antiqua", Palatino, serif'}}>
+          <p style={{margin:'0 0 5px 0',fontSize:'9px',color:'#444',lineHeight:'1.4',
+            fontFamily:'"Bookman Old Style","Libre Baskerville","Book Antiqua",Palatino,serif'}}>
             D. SUAZO ST., DAVAO CITY
           </p>
 
-          {/* awards this — Georgia italic */}
-          <p style={{margin:'0 0 2px 0',fontSize:'11px',color:'#333',fontFamily:'Georgia, serif',fontStyle:'italic'}}>
+          {/* awards this */}
+          <p style={{margin:'0 0 1px 0',fontSize:'11px',color:'#333',fontFamily:'Georgia,serif',fontStyle:'italic',lineHeight:'1.4'}}>
             awards this
           </p>
 
           {/* CERTIFICATE OF RECOGNITION */}
-          <p style={{margin:'0 0 1px 0',fontSize:'20px',fontWeight:'bold',color:'#1a1a6e',letterSpacing:'1.5px',
-            fontFamily:'"Bookman Old Style", "Libre Baskerville", "Book Antiqua", Palatino, serif'}}>
+          <p style={{margin:'0 0 1px 0',fontSize:'22px',fontWeight:'bold',color:'#1a1a6e',letterSpacing:'1.5px',lineHeight:'1.3',
+            fontFamily:'"Bookman Old Style","Libre Baskerville","Book Antiqua",Palatino,serif'}}>
             CERTIFICATE OF RECOGNITION
           </p>
 
           {/* Award Level */}
-          <p style={{margin:'0 0 7px 0',fontSize:'17px',fontWeight:'bold',color:'#8B0000',fontStyle:'italic',
-            fontFamily:'"Bookman Old Style", "Libre Baskerville", "Book Antiqua", Palatino, serif'}}>
+          <p style={{margin:'0 0 4px 0',fontSize:'18px',fontWeight:'bold',color:'#8B0000',fontStyle:'italic',lineHeight:'1.3',
+            fontFamily:'"Bookman Old Style","Libre Baskerville","Book Antiqua",Palatino,serif'}}>
             {d.award?.label}
           </p>
 
           {/* to */}
-          <p style={{margin:'0 0 3px 0',fontSize:'11px',color:'#333',fontFamily:'Georgia, serif'}}>to</p>
+          <p style={{margin:'0 0 2px 0',fontSize:'11px',color:'#333',fontFamily:'Georgia,serif',lineHeight:'1.3'}}>to</p>
 
           {/* Student Name */}
-          <p style={{margin:'0 0 7px 0',fontSize:'21px',fontWeight:'bold',color:'#1a1a6e',letterSpacing:'0.5px',
-            fontFamily:'"Bookman Old Style", "Libre Baskerville", "Book Antiqua", Palatino, serif'}}>
+          <p style={{margin:'0 0 5px 0',fontSize:'23px',fontWeight:'bold',color:'#1a1a6e',letterSpacing:'0.5px',lineHeight:'1.3',
+            fontFamily:'"Bookman Old Style","Libre Baskerville","Book Antiqua",Palatino,serif'}}>
             {d.student.full_name}
           </p>
 
           {/* Body text */}
-          <p style={{margin:'0 0 8px 0',fontSize:'10.5px',color:'#222',lineHeight:'1.7',maxWidth:'155mm',
-            fontFamily:'"Bookman Old Style", "Libre Baskerville", "Book Antiqua", Palatino, serif'}}>
+          <p style={{margin:'0 0 5px 0',fontSize:'11px',color:'#222',lineHeight:'1.6',maxWidth:'150mm',
+            fontFamily:'"Bookman Old Style","Libre Baskerville","Book Antiqua",Palatino,serif'}}>
             for {pronoun} outstanding academic performance, achieving a General Average of{' '}
             <strong>{d.generalAverage}</strong> with no grade below 85 in any subject in{' '}
             {section?.gradeLevel ?? ''}, SY {section?.schoolYear ?? ''}.
           </p>
 
           {/* Date and venue */}
-          <p style={{margin:'0 0 12px 0',fontSize:'10.5px',color:'#222',lineHeight:'1.7',
-            fontFamily:'"Bookman Old Style", "Libre Baskerville", "Book Antiqua", Palatino, serif'}}>
+          <p style={{margin:'0 0 8px 0',fontSize:'11px',color:'#222',lineHeight:'1.6',
+            fontFamily:'"Bookman Old Style","Libre Baskerville","Book Antiqua",Palatino,serif'}}>
             Given this {day ? ordinal(day) : '___'} day of {month} {year}<br/>
             at Sta. Ana National High School, D. Suazo Street, Davao City.
           </p>
 
           {/* Signatories */}
           <div style={{display:'flex',justifyContent:'space-between',width:'100%',
-            paddingLeft:'8mm',paddingRight:'8mm',marginTop:'2px'}}>
-            <div style={{textAlign:'center',minWidth:'65mm'}}>
-              <p style={{margin:'0',fontWeight:'bold',fontSize:'10.5px',color:'#1a1a6e',
-                borderTop:'1.5px solid #333',paddingTop:'4px',
-                fontFamily:'"Bookman Old Style", "Libre Baskerville", "Book Antiqua", Palatino, serif'}}>
+            paddingLeft:'6mm',paddingRight:'6mm'}}>
+            <div style={{textAlign:'center',minWidth:'60mm'}}>
+              <p style={{margin:'0',fontWeight:'bold',fontSize:'11px',color:'#1a1a6e',
+                borderTop:'1.5px solid #333',paddingTop:'3px',
+                fontFamily:'"Bookman Old Style","Libre Baskerville","Book Antiqua",Palatino,serif'}}>
                 {(section?.adviser??'').toUpperCase()}
               </p>
-              <p style={{margin:'0',fontSize:'10px',color:'#333',
-                fontFamily:'"Bookman Old Style", "Libre Baskerville", "Book Antiqua", Palatino, serif'}}>
+              <p style={{margin:'0',fontSize:'10.5px',color:'#333',
+                fontFamily:'"Bookman Old Style","Libre Baskerville","Book Antiqua",Palatino,serif'}}>
                 Adviser
               </p>
             </div>
-            <div style={{textAlign:'center',minWidth:'65mm'}}>
-              <p style={{margin:'0',fontWeight:'bold',fontSize:'10.5px',color:'#1a1a6e',
-                borderTop:'1.5px solid #333',paddingTop:'4px',
-                fontFamily:'"Bookman Old Style", "Libre Baskerville", "Book Antiqua", Palatino, serif'}}>
+            <div style={{textAlign:'center',minWidth:'60mm'}}>
+              <p style={{margin:'0',fontWeight:'bold',fontSize:'11px',color:'#1a1a6e',
+                borderTop:'1.5px solid #333',paddingTop:'3px',
+                fontFamily:'"Bookman Old Style","Libre Baskerville","Book Antiqua",Palatino,serif'}}>
                 {(section?.school_head??'WELITO I. ROSAL').toUpperCase()}
               </p>
-              <p style={{margin:'0',fontSize:'10px',color:'#333',
-                fontFamily:'"Bookman Old Style", "Libre Baskerville", "Book Antiqua", Palatino, serif'}}>
+              <p style={{margin:'0',fontSize:'10.5px',color:'#333',
+                fontFamily:'"Bookman Old Style","Libre Baskerville","Book Antiqua",Palatino,serif'}}>
                 School Head
               </p>
             </div>
