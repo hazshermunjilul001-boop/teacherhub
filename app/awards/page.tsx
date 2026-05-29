@@ -35,7 +35,23 @@ const getAwardLevel = (ga:number, minSubjectGrade:number) => {
   return { label:'With High Honors', color:'text-blue-400', bg:'bg-blue-900/30 border-blue-700', badge:'bg-blue-500' };
 };
 
-interface Student { id:string; lrn:string; full_name:string; sex:string; status?:string; }
+interface Student { id:string; lrn:string; full_name:string; first_name?:string; middle_name?:string; last_name?:string; sex:string; status?:string; }
+
+// Convert "LASTNAME, FIRSTNAME MIDDLENAME" → "FIRSTNAME MIDDLENAME LASTNAME"
+// or use separate fields if available
+function formatCertName(student: Student): string {
+  if (student.first_name || student.last_name) {
+    return [student.first_name, student.middle_name, student.last_name]
+      .filter(Boolean).join(' ').toUpperCase();
+  }
+  // Parse from full_name stored as "LAST, FIRST MIDDLE"
+  const name = student.full_name ?? '';
+  const commaIdx = name.indexOf(',');
+  if (commaIdx === -1) return name.toUpperCase();
+  const last = name.slice(0, commaIdx).trim();
+  const rest = name.slice(commaIdx + 1).trim();
+  return `${rest} ${last}`.toUpperCase();
+}
 interface AwardData {
   student: Student;
   finalGrades: Record<string,number>;
@@ -175,7 +191,7 @@ function CertificateView({ qualifier, section, certDate, onClose, printAll, allQ
           {/* Student Name */}
           <p style={{margin:'0 0 8px 0',fontSize:'30px',fontWeight:'bold',color:'#1a1a6e',letterSpacing:'1px',lineHeight:'1.3',
             fontFamily:'"Bookman Old Style","Libre Baskerville","Book Antiqua",Palatino,serif'}}>
-            {d.student.full_name}
+            {formatCertName(d.student)}
           </p>
 
           {/* Body text */}
