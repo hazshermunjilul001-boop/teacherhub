@@ -111,15 +111,18 @@ function CertificateView({ qualifier, section, certDate, onClose, printAll, allQ
           backgroundImage:'url(/cert-bg.webp)',
           backgroundSize:'cover', backgroundPosition:'center',
           backgroundRepeat:'no-repeat',
-          display:'flex', flexDirection:'column', alignItems:'center',
-          justifyContent:'flex-start', overflow:'hidden',
+          overflow:'hidden',
           border:'1px solid #ccc',
-          paddingTop:'6mm', paddingBottom:'4mm',
-          paddingLeft:'56mm', paddingRight:'30mm',
         }}>
 
-        {/* All text content — centered in the marble area */}
-        <div style={{display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center',width:'100%'}}>
+        {/* Content block — positioned BELOW the logo area in the background */}
+        {/* Logo in bg is approx top 20% of 210mm = ~42mm, so start at 44mm */}
+        <div style={{
+          position:'absolute',
+          top:'44mm', left:'56mm', right:'28mm', bottom:'6mm',
+          display:'flex', flexDirection:'column', alignItems:'center',
+          textAlign:'center', justifyContent:'center',
+        }}>
 
           {/* Republic of the Philippines — Old English Text, tight spacing */}
           <p style={{margin:'0',fontSize:'10px',color:'#222',lineHeight:'1.4',
