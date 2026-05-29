@@ -108,7 +108,7 @@ function CertificateView({ qualifier, section, certDate, onClose, printAll, allQ
       <div key={d.student.id} className={`cert-page ${idx>0?'page-break-before':''}`}
         style={{
           width:'297mm', height:'210mm', position:'relative',
-          backgroundImage:'url(/cert-bg.jpg)',
+          backgroundImage:'url(/cert-bg.webp)',
           backgroundSize:'cover', backgroundPosition:'center',
           backgroundRepeat:'no-repeat',
           display:'flex', flexDirection:'column', alignItems:'center',
