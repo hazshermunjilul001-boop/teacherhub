@@ -119,9 +119,9 @@ function CertificateView({ qualifier, section, certDate, onClose, printAll, allQ
         {/* Logo in bg is approx top 20% of 210mm = ~42mm, so start at 44mm */}
         <div style={{
           position:'absolute',
-          top:'44mm', left:'44mm', right:'16mm', bottom:'6mm',
+          top:'36mm', left:'44mm', right:'16mm', bottom:'6mm',
           display:'flex', flexDirection:'column', alignItems:'center',
-          textAlign:'center', justifyContent:'center',
+          textAlign:'center', justifyContent:'flex-start', paddingTop:'4mm',
         }}>
 
           {/* Republic of the Philippines — Old English Text */}
@@ -195,7 +195,7 @@ function CertificateView({ qualifier, section, certDate, onClose, printAll, allQ
 
           {/* Signatories */}
           <div style={{display:'flex',justifyContent:'space-between',width:'100%',
-            paddingLeft:'4mm',paddingRight:'4mm'}}>
+            paddingLeft:'4mm',paddingRight:'22mm'}}>
             <div style={{textAlign:'center',minWidth:'65mm'}}>
               <p style={{margin:'0',fontWeight:'bold',fontSize:'14px',color:'#1a1a6e',
                 borderTop:'1.5px solid #333',paddingTop:'4px',
@@ -207,7 +207,7 @@ function CertificateView({ qualifier, section, certDate, onClose, printAll, allQ
                 Adviser
               </p>
             </div>
-            <div style={{textAlign:'center',minWidth:'65mm'}}>
+            <div style={{textAlign:'center',minWidth:'55mm'}}>
               <p style={{margin:'0',fontWeight:'bold',fontSize:'14px',color:'#1a1a6e',
                 borderTop:'1.5px solid #333',paddingTop:'4px',
                 fontFamily:'"Bookman Old Style","Libre Baskerville","Book Antiqua",Palatino,serif'}}>
