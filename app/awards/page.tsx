@@ -29,10 +29,11 @@ const TRANSMUTATION = [
 ];
 const transmute = (v:number) => TRANSMUTATION.find(t=>v>=t.min&&v<=t.max)?.trans ?? 60;
 
+// DO 15 s. 2026 — Academic Excellence Award
+// Criteria: GA ≥ 90, no Final Grade below 80 in any learning area (KS2–KS4, Grades 4–12)
 const getAwardLevel = (ga:number, minSubjectGrade:number) => {
-  if (ga < 95 || minSubjectGrade < 85) return null;
-  if (ga >= 98) return { label:'With Highest Honors', color:'text-yellow-400', bg:'bg-yellow-900/30 border-yellow-700', badge:'bg-yellow-500' };
-  return { label:'With High Honors', color:'text-blue-400', bg:'bg-blue-900/30 border-blue-700', badge:'bg-blue-500' };
+  if (ga < 90 || minSubjectGrade < 80) return null;
+  return { label:'Academic Excellence Award', color:'text-yellow-400', bg:'bg-yellow-900/30 border-yellow-700', badge:'bg-yellow-500' };
 };
 
 interface Student { id:string; lrn:string; full_name:string; first_name?:string; middle_name?:string; last_name?:string; sex:string; status?:string; }
@@ -198,7 +199,7 @@ function CertificateView({ qualifier, section, certDate, onClose, printAll, allQ
           <p style={{margin:'0 0 6px 0',fontSize:'14px',color:'#222',lineHeight:'1.7',maxWidth:'148mm',
             fontFamily:'"Bookman Old Style","Libre Baskerville","Book Antiqua",Palatino,serif'}}>
             for {pronoun} outstanding academic performance, achieving a General Average of{' '}
-            <strong>{d.generalAverage}</strong> with no grade below 85 in any subject in{' '}
+            <strong>{d.generalAverage}</strong> with no Final Grade below 80 in any learning area in{' '}
             {section?.gradeLevel ?? ''}, SY {section?.schoolYear ?? ''}.
           </p>
 
@@ -338,12 +339,12 @@ export default function AwardsPage() {
         return tGrades.length>0 ? Math.round(tGrades.reduce((a,b)=>a+b,0)/tGrades.length) : 0;
       };
 
-      // Disqualify reasons
+      // Disqualify reasons (DO 15 s. 2026)
       const disqualifyReasons: string[] = [];
-      if (generalAverage>0 && generalAverage<95) disqualifyReasons.push(`General Average is ${generalAverage} — needs 95 to qualify`);
-      if (minSubjectGrade>0 && minSubjectGrade<85) disqualifyReasons.push(`${lowestSubject} grade is ${minSubjectGrade} — below 85 minimum`);
+      if (generalAverage>0 && generalAverage<90) disqualifyReasons.push(`General Average is ${generalAverage} — needs 90 to qualify`);
+      if (minSubjectGrade>0 && minSubjectGrade<80) disqualifyReasons.push(`${lowestSubject} grade is ${minSubjectGrade} — below 80 minimum`);
 
-      const award = generalAverage>=95 && minSubjectGrade>=85 ? getAwardLevel(generalAverage, minSubjectGrade) : null;
+      const award = generalAverage>=90 && minSubjectGrade>=80 ? getAwardLevel(generalAverage, minSubjectGrade) : null;
 
       return {
         student, finalGrades, mapehFinal, generalAverage, minSubjectGrade,
@@ -353,10 +354,11 @@ export default function AwardsPage() {
       };
     });
 
-    // Sort: qualifiers by GA desc, then alphabetical
+    // DO 15 s. 2026: qualifiers listed alphabetically; non-qualifiers by GA desc
     results.sort((a,b) => {
       if (a.award && !b.award) return -1;
       if (!a.award && b.award) return 1;
+      if (a.award && b.award) return a.student.full_name.localeCompare(b.student.full_name);
       return b.generalAverage - a.generalAverage;
     });
 
@@ -365,10 +367,9 @@ export default function AwardsPage() {
   };
 
   const qualifiers  = awardData.filter(d=>d.award);
-  const watchlist   = awardData.filter(d=>!d.award && d.generalAverage>=90);
+  const watchlist   = awardData.filter(d=>!d.award && d.generalAverage>=85);
   const allLearners = awardData;
-  const highestHonors = qualifiers.filter(d=>d.generalAverage>=98).length;
-  const highHonors    = qualifiers.filter(d=>d.generalAverage>=95&&d.generalAverage<98).length;
+  const excellenceAwardees = qualifiers.length;
 
   const exportCSV = () => {
     const headers = ['Rank','LRN','Full Name','Sex','General Average','Award Level',...GA_SUBJECTS,'MAPEH'];
@@ -387,12 +388,12 @@ export default function AwardsPage() {
   const gradeNum = gradeNumber ?? 7;
   const isEligibleGrade = gradeNum >= 4;
 
-  // Grade color helper
+  // Grade color helper — reflects DO 15 s. 2026 thresholds
   const gradeColor = (g:number) => {
     if (!g) return 'text-gray-600';
-    if (g >= 98) return 'text-yellow-400 font-bold';
-    if (g >= 95) return 'text-blue-400 font-bold';
-    if (g >= 85) return 'text-emerald-400';
+    if (g >= 90) return 'text-yellow-400 font-bold';
+    if (g >= 85) return 'text-blue-400 font-bold';
+    if (g >= 80) return 'text-emerald-400';
     return 'text-red-400 font-semibold';
   };
 
@@ -440,7 +441,7 @@ export default function AwardsPage() {
               <td className={`text-center py-2 border-l border-gray-800 ${gradeColor(d.mapehFinal)}`}>
                 {d.mapehFinal||'—'}
               </td>
-              <td className={`text-center py-2 border-l border-gray-800 text-xl font-bold ${d.generalAverage>=98?'text-yellow-400':d.generalAverage>=95?'text-blue-400':d.generalAverage>=90?'text-white':'text-gray-400'}`}>
+              <td className={`text-center py-2 border-l border-gray-800 text-xl font-bold ${d.generalAverage>=90?'text-yellow-400':d.generalAverage>=85?'text-blue-400':d.generalAverage>=80?'text-white':'text-gray-400'}`}>
                 {d.generalAverage||'—'}
               </td>
               <td className="px-3 py-2 border-l border-gray-800 text-center">
@@ -533,37 +534,32 @@ export default function AwardsPage() {
             <div className="mb-6 bg-blue-950/40 border border-blue-800 rounded-2xl p-4 flex items-start gap-3">
               <Info size={18} className="text-blue-400 flex-shrink-0 mt-0.5"/>
               <div className="text-sm text-blue-200">
-                <span className="font-bold text-blue-300">DepEd Qualification Criteria (Grades 4–12):</span>
-                <span className="ml-2">General Average </span><span className="font-bold text-white">≥ 95</span>
+                <span className="font-bold text-blue-300">DepEd Order 15, s. 2026 — Academic Excellence Award (Grades 4–12):</span>
+                <span className="ml-2">General Average </span><span className="font-bold text-white">≥ 90</span>
                 <span className="mx-2">&middot;</span>
-                <span>No subject grade below </span><span className="font-bold text-white">85</span>
+                <span>No Final Grade below </span><span className="font-bold text-white">80</span>
                 <span className="mx-2">&middot;</span>
-                <span className="text-yellow-300 font-semibold">98–100 = With Highest Honors</span>
+                <span>No derogatory records or disciplinary cases within the SY</span>
                 <span className="mx-2">&middot;</span>
-                <span className="text-blue-300 font-semibold">95–97 = With High Honors</span>
+                <span className="text-yellow-300 font-semibold">Awardees listed alphabetically</span>
               </div>
             </div>
 
             {/* Stats cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
               <div className="bg-gradient-to-br from-gray-700 to-gray-900 rounded-2xl p-4 border border-gray-700">
                 <p className="text-gray-400 text-xs">Total Learners</p>
                 <p className="text-3xl font-bold text-white">{awardData.length}</p>
               </div>
               <div className="bg-gradient-to-br from-yellow-800 to-yellow-950 rounded-2xl p-4 border border-yellow-700">
-                <p className="text-yellow-300 text-xs">With Highest Honors</p>
-                <p className="text-3xl font-bold text-yellow-400">{highestHonors}</p>
-                <p className="text-yellow-600 text-xs">GA 98–100</p>
-              </div>
-              <div className="bg-gradient-to-br from-blue-800 to-blue-950 rounded-2xl p-4 border border-blue-700">
-                <p className="text-blue-300 text-xs">With High Honors</p>
-                <p className="text-3xl font-bold text-blue-400">{highHonors}</p>
-                <p className="text-blue-600 text-xs">GA 95–97</p>
+                <p className="text-yellow-300 text-xs">Academic Excellence Awardees</p>
+                <p className="text-3xl font-bold text-yellow-400">{excellenceAwardees}</p>
+                <p className="text-yellow-600 text-xs">GA ≥ 90, no FG &lt; 80 (DO 15 s. 2026)</p>
               </div>
               <div className="bg-gradient-to-br from-amber-800 to-amber-950 rounded-2xl p-4 border border-amber-700">
                 <p className="text-amber-300 text-xs">Watchlist</p>
                 <p className="text-3xl font-bold text-amber-400">{watchlist.length}</p>
-                <p className="text-amber-600 text-xs">GA 90–94 or subject &lt; 85</p>
+                <p className="text-amber-600 text-xs">GA 85–89 or FG &lt; 80</p>
               </div>
             </div>
 
