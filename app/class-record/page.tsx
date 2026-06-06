@@ -8,7 +8,7 @@ import { useActiveSection } from '../../lib/useActiveSection';
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 const SUBJECTS_JHS = [
   'Filipino', 'English', 'Mathematics', 'Science',
-  'Araling Panlipunan (AP)', 'Edukasyon sa Pagpapakatao (EsP)',
+  'Araling Panlipunan (AP)', 'GMRC/VE',
   'EPP/TLE',
   'MAPEH - Music & Arts', 'MAPEH - PE & Health',
 ];
@@ -17,16 +17,16 @@ const SUBJECTS_SHS = [
   'SHS Work Immersion', 'SHS Research / Capstone',
 ];
 const SUBJECT_WEIGHTS: Record<string, { ww: number; pt: number; ta: number }> = {
-  'Filipino':                                       { ww: 0.25, pt: 0.50, ta: 0.25 },
-  'English':                                        { ww: 0.25, pt: 0.50, ta: 0.25 },
-  'Mathematics':                                    { ww: 0.25, pt: 0.50, ta: 0.25 },
-  'Science':                                        { ww: 0.25, pt: 0.50, ta: 0.25 },
-  'Araling Panlipunan (AP)':                        { ww: 0.25, pt: 0.50, ta: 0.25 },
-  'Edukasyon sa Pagpapakatao (EsP)':                { ww: 0.25, pt: 0.50, ta: 0.25 },
+  'Filipino':                                       { ww: 0.20, pt: 0.50, ta: 0.30 },
+  'English':                                        { ww: 0.20, pt: 0.50, ta: 0.30 },
+  'Mathematics':                                    { ww: 0.20, pt: 0.50, ta: 0.30 },
+  'Science':                                        { ww: 0.20, pt: 0.50, ta: 0.30 },
+  'Araling Panlipunan (AP)':                        { ww: 0.20, pt: 0.50, ta: 0.30 },
+  'GMRC/VE':                                        { ww: 0.20, pt: 0.50, ta: 0.30 },
   'EPP/TLE':                                        { ww: 0.20, pt: 0.60, ta: 0.20 },
   'MAPEH - Music & Arts':                           { ww: 0.20, pt: 0.60, ta: 0.20 },
   'MAPEH - PE & Health':                            { ww: 0.20, pt: 0.60, ta: 0.20 },
-  'SHS Core Subject':                               { ww: 0.25, pt: 0.50, ta: 0.25 },
+  'SHS Core Subject':                               { ww: 0.20, pt: 0.50, ta: 0.30 },
   'SHS Applied Track':                              { ww: 0.20, pt: 0.60, ta: 0.20 },
   'SHS Specialized Subject':                        { ww: 0.20, pt: 0.60, ta: 0.20 },
   'SHS Work Immersion':                             { ww: 0.20, pt: 0.80, ta: 0.00 },
@@ -59,6 +59,23 @@ const calcAvg = (scores:number[], highs:number[]) => {
   let tot=0, cnt=0;
   scores.forEach((s,i)=>{ if(highs[i]>0){tot+=(s/highs[i])*100;cnt++;} });
   return cnt>0?tot/cnt:0;
+};
+
+// DO 15 s. 2026 — Within the EXs component:
+// ST1 = 30%, ST2 = 30%, TE = 40% of the EXs assigned weight.
+// Parts with no highest (>0) are excluded; remaining weights redistributed proportionally.
+const calcEX = (
+  st1:number, st2:number, te:number,
+  highSt1:number, highSt2:number, highTe:number
+): number => {
+  const parts = [
+    { w:0.30, score:st1, high:highSt1 },
+    { w:0.30, score:st2, high:highSt2 },
+    { w:0.40, score:te,  high:highTe  },
+  ].filter(p => p.high > 0);
+  if (parts.length === 0) return 0;
+  const totalW = parts.reduce((s,p) => s+p.w, 0);
+  return parts.reduce((sum,p) => sum + (p.score/p.high)*100*(p.w/totalW), 0);
 };
 
 // ── STATUS CONFIG ─────────────────────────────────────────────────────────────
@@ -292,7 +309,7 @@ function SummaryOfGradesView({
     const te = s.te ?? 0;
     const avgWW = calcAvg(ww, td.highest.ww);
     const avgPT = calcAvg(pt, td.highest.pt);
-    const avgTA = calcAvg([...st,te], [...td.highest.st, td.highest.te]);
+    const avgTA = calcEX(st[0],st[1],te, td.highest.st[0],td.highest.st[1],td.highest.te);
     const initial = avgWW*weights.ww + avgPT*weights.pt + avgTA*(weights.ta??0.25);
     return transmute(initial);
   };
@@ -475,7 +492,7 @@ function EClassRecordView({
     const te = s.te ?? 0;
     const avgWW = calcAvg(ww, highest.ww);
     const avgPT = calcAvg(pt, highest.pt);
-    const avgTA = calcAvg([...st,te], [...highest.st, highest.te]);
+    const avgTA = calcEX(st[0],st[1],te, highest.st[0],highest.st[1],highest.te);
     const initial = avgWW*weights.ww + avgPT*weights.pt + avgTA*(weights.ta??0.25);
     return { transmuted:transmute(initial), initial, ww, pt, st, te, avgWW, avgPT, avgTA };
   };
@@ -868,7 +885,7 @@ export default function ClassRecord() {
     const te=s.te??0;
     const avgWW=calcAvg(ww,highest.ww);
     const avgPT=calcAvg(pt,highest.pt);
-    const avgTA=calcAvg([...st,te],[...highest.st,highest.te]);
+    const avgTA=calcEX(st[0],st[1],te,highest.st[0],highest.st[1],highest.te);
     const initial=avgWW*weights.ww+avgPT*weights.pt+avgTA*(weights.ta??0.25);
     return {ww,pt,st,te,avgWW,avgPT,avgTA,initial,transmuted:transmute(initial)};
   };
