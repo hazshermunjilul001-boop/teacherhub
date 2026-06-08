@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Plus, Printer, Users, RefreshCw, FileText, X, UserX, ArrowRightLeft, UserCheck, UserPlus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useActiveSection } from '../../lib/useActiveSection';
+import { useSubscription } from '../../lib/useSubscription';
+import { useSection } from '../../context/SectionContext';
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 const SUBJECTS_JHS = [
@@ -839,6 +841,29 @@ export default function ClassRecord() {
   const [statusModal,setStatusModal] = useState<Student|null>(null);
 
   const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear, division, region, adviser, schoolHead } = useActiveSection();
+  const { isCollaborator } = useSubscription();
+  const { activeSection } = useSection();
+
+  // If this user is a subject teacher collaborator, only show their assigned subjects
+  // _subjects is set by SectionContext when loading shared sections
+  const assignedSubjects: string[] = activeSection?._subjects ?? [];
+  const isSubjectTeacher = isCollaborator && activeSection?._role === 'subject_teacher' && assignedSubjects.length > 0;
+
+  // Filter the subject lists — subject teachers only see their assigned subjects
+  const visibleSubjectsJHS = isSubjectTeacher
+    ? SUBJECTS_JHS.filter(s => assignedSubjects.includes(s))
+    : SUBJECTS_JHS;
+  const visibleSubjectsSHS = isSubjectTeacher
+    ? SUBJECTS_SHS.filter(s => assignedSubjects.includes(s))
+    : SUBJECTS_SHS;
+
+  // Auto-select first assigned subject when a subject teacher opens the page
+  useEffect(() => {
+    if (isSubjectTeacher && assignedSubjects.length > 0) {
+      setSubject(assignedSubjects[0]);
+    }
+  }, [isSubjectTeacher, assignedSubjects.join(',')]);
+
   const weights = SUBJECT_WEIGHTS[subject] ?? {ww:0.25, pt:0.50, ta:0.25};
   const hasTA = (weights.ta??0)>0;
 
@@ -1088,8 +1113,15 @@ export default function ClassRecord() {
         <div className="no-print px-6 py-4 flex flex-wrap gap-3 items-center">
           <select value={subject} onChange={e=>setSubject(e.target.value)}
             className="bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500">
-            <optgroup label="Junior High School/Elementary">{SUBJECTS_JHS.map(s=><option key={s}>{s}</option>)}</optgroup>
-            <optgroup label="Senior High School">{SUBJECTS_SHS.map(s=><option key={s}>{s}</option>)}</optgroup>
+            {isSubjectTeacher ? (
+              // Subject teacher — only show their assigned subjects
+              assignedSubjects.map(s => <option key={s}>{s}</option>)
+            ) : (
+              <>
+                <optgroup label="Junior High School/Elementary">{visibleSubjectsJHS.map(s=><option key={s}>{s}</option>)}</optgroup>
+                <optgroup label="Senior High School">{visibleSubjectsSHS.map(s=><option key={s}>{s}</option>)}</optgroup>
+              </>
+            )}
           </select>
           <div className="flex rounded-xl overflow-hidden border border-gray-700">
             {[1,2,3].map(t=>(
