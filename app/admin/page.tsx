@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   CheckCircle, XCircle, RefreshCw, ArrowLeft,
-  Users, DollarSign, Clock, AlertCircle,
+  Users, DollarSign, Clock, AlertCircle, Shield,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
@@ -35,13 +35,40 @@ interface Subscription {
   user_email?: string;
 }
 
+interface School {
+  id:            string;
+  name:          string;
+  school_id_str: string;
+  division:      string;
+  status:        string;
+  expires_at:    string | null;
+  created_at:    string;
+}
+
+interface NewSchoolForm {
+  name:          string;
+  school_id_str: string;
+  division:      string;
+  region:        string;
+  admin_email:   string;
+  expires_at:    string;
+}
+
 export default function AdminPage() {
   const router = useRouter();
   const [isAdmin,    setIsAdmin]    = useState(false);
   const [loading,    setLoading]    = useState(true);
   const [requests,   setRequests]   = useState<PaymentRequest[]>([]);
   const [subs,       setSubs]       = useState<Subscription[]>([]);
-  const [activeTab,  setActiveTab]  = useState<'pending'|'all'|'subscribers'>('pending');
+  const [activeTab,  setActiveTab]  = useState<'pending'|'all'|'subscribers'|'schools'>('pending');
+  const [schools,        setSchools]        = useState<School[]>([]);
+  const [showSchoolForm, setShowSchoolForm] = useState(false);
+  const [creatingSchool, setCreatingSchool] = useState(false);
+  const [newSchool,      setNewSchool]      = useState<NewSchoolForm>({
+    name: '', school_id_str: '', division: '', region: 'Region XI',
+    admin_email: '',
+    expires_at: new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
+  });
   const [processing, setProcessing] = useState<string|null>(null);
   const [stats,      setStats]      = useState({ total:0, pro:0, school:0, pending:0, revenue:0 });
 
@@ -73,6 +100,13 @@ export default function AdminPage() {
       .select('*')
       .order('created_at', { ascending: false });
     setSubs(subData ?? []);
+    
+    // Load schools
+    const { data: schoolData } = await supabase
+      .from('schools')
+      .select('*')
+      .order('created_at', { ascending: false });
+    setSchools(schoolData ?? []);
 
     // Compute stats
     const pending = (reqs ?? []).filter(r => r.status === 'pending').length;
@@ -146,6 +180,82 @@ export default function AdminPage() {
     }).eq('user_id', userId);
     await loadData();
   };
+  
+  const createSchool = async () => {
+    if (!newSchool.name || !newSchool.admin_email) {
+      alert('School name and admin email are required.');
+      return;
+    }
+    setCreatingSchool(true);
+
+    // Step 1: Look up the user by email
+    const res = await fetch('/api/find-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: newSchool.admin_email }),
+    });
+    const { userId, error: findErr } = await res.json();
+    if (findErr || !userId) {
+      alert(`User not found: ${newSchool.admin_email}\nMake sure they registered at teacherhub-one.vercel.app first.`);
+      setCreatingSchool(false);
+      return;
+    }
+
+    // Step 2: Create the school record
+    const expiresAt = newSchool.expires_at
+      ? new Date(newSchool.expires_at).toISOString()
+      : new Date(Date.now() + 365*24*60*60*1000).toISOString();
+
+    const { data: school, error: schoolErr } = await supabase
+      .from('schools')
+      .insert({
+        name:          newSchool.name,
+        school_id_str: newSchool.school_id_str,
+        division:      newSchool.division,
+        region:        newSchool.region,
+        expires_at:    expiresAt,
+      })
+      .select()
+      .single();
+
+    if (schoolErr || !school) {
+      alert('Error creating school: ' + schoolErr?.message);
+      setCreatingSchool(false);
+      return;
+    }
+
+    // Step 3: Assign the school admin
+    const { error: adminErr } = await supabase.from('school_admins').insert({
+      user_id:   userId,
+      school_id: school.id,
+    });
+    if (adminErr) {
+      alert('Error assigning school admin: ' + adminErr.message);
+      setCreatingSchool(false);
+      return;
+    }
+
+    // Step 4: Give school admin their subscription (same pattern as approve())
+    await supabase.from('subscriptions').upsert({
+      user_id:       userId,
+      user_email:    newSchool.admin_email,
+      plan_id:       'school',
+      status:        'active',
+      billing_cycle: 'yearly',
+      school_id:     school.id,
+      started_at:    new Date().toISOString(),
+      expires_at:    expiresAt,
+    }, { onConflict: 'user_id' });
+
+    alert(`✅ Done!\n\n${newSchool.admin_email} is now school admin for:\n${newSchool.name}\n\nThey can activate their teachers at /school-admin`);
+    setShowSchoolForm(false);
+    setNewSchool({
+      name: '', school_id_str: '', division: '', region: 'Region XI', admin_email: '',
+      expires_at: new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
+    });
+    await loadData();
+    setCreatingSchool(false);
+  };
 
   const statusBadge = (status: string) => {
     const styles: Record<string,string> = {
@@ -215,8 +325,9 @@ export default function AdminPage() {
         <div className="flex gap-1 mb-6 border-b border-gray-800">
           {[
             { key:'pending',     label:`⭐ Pending (${pendingReqs.length})` },
-            { key:'all',         label:'⭐‹ All Requests' },
-            { key:'subscribers', label:'⭐ Subscribers' },
+            { key:'all',         label:'All Requests' },
+            { key:'subscribers', label:'Subscribers' },
+            { key:'schools',     label:`🏫 Schools (${schools.length})` },
           ].map(tab => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key as any)}
               className={`px-5 py-3 text-sm font-medium border-b-2 transition ${
@@ -302,7 +413,107 @@ export default function AdminPage() {
             )}
           </div>
         )}
+        
+        {/* Schools Tab */}
+        {activeTab === 'schools' && (
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <p className="text-gray-400 text-sm">
+                One school = one school admin. They activate all their own teachers.
+              </p>
+              <button
+                onClick={() => setShowSchoolForm(!showSchoolForm)}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-700 hover:bg-purple-600 rounded-xl text-sm font-semibold transition"
+              >
+                <Shield size={16}/> + Create School
+              </button>
+            </div>
 
+            {showSchoolForm && (
+              <div className="bg-gray-900 border border-purple-800 rounded-2xl p-6 mb-6">
+                <h3 className="font-bold text-lg mb-4 text-purple-300">New School Setup</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  {[
+                    { label: 'School Name *',        key: 'name',          placeholder: 'Sta. Ana National High School' },
+                    { label: 'DepEd School ID',      key: 'school_id_str', placeholder: '304393' },
+                    { label: 'Division',             key: 'division',      placeholder: 'Davao City' },
+                    { label: 'Region',               key: 'region',        placeholder: 'Region XI' },
+                    { label: 'School Admin Email *', key: 'admin_email',   placeholder: 'coordinator@deped.gov.ph' },
+                    { label: 'Plan Expires',         key: 'expires_at',    placeholder: '', type: 'date' },
+                  ].map(field => (
+                    <div key={field.key}>
+                      <label className="block text-xs text-gray-400 mb-1">{field.label}</label>
+                      <input
+                        type={field.type ?? 'text'}
+                        value={(newSchool as any)[field.key]}
+                        onChange={e => setNewSchool(prev => ({ ...prev, [field.key]: e.target.value }))}
+                        placeholder={field.placeholder}
+                        className="w-full bg-gray-800 border border-gray-600 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-500"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mb-4">
+                  * Admin must have already registered at teacherhub-one.vercel.app before you assign them.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={createSchool}
+                    disabled={creatingSchool}
+                    className="flex items-center gap-2 px-5 py-2 bg-purple-700 hover:bg-purple-600 rounded-xl text-sm font-semibold transition disabled:opacity-50"
+                  >
+                    {creatingSchool ? <RefreshCw size={14} className="animate-spin"/> : <CheckCircle size={14}/>}
+                    {creatingSchool ? 'Creating...' : 'Create School & Assign Admin'}
+                  </button>
+                  <button
+                    onClick={() => setShowSchoolForm(false)}
+                    className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-xl text-sm transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {schools.length === 0 ? (
+              <div className="text-center py-16 text-gray-500">
+                <Shield size={40} className="mx-auto mb-3 opacity-30"/>
+                <p>No schools yet. Create one above.</p>
+              </div>
+            ) : (
+              <table className="w-full text-sm border-separate border-spacing-0">
+                <thead>
+                  <tr>
+                    {['School Name','School ID','Division','Status','Expires',''].map(h => (
+                      <th key={h} className="bg-gray-800 text-left px-3 py-3 first:rounded-tl-xl last:rounded-tr-xl border-b border-gray-700 text-gray-400 text-xs font-semibold">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {schools.map(school => (
+                    <tr key={school.id} className="border-t border-gray-800 hover:bg-gray-900/40">
+                      <td className="px-3 py-3 text-white font-medium">{school.name}</td>
+                      <td className="px-3 py-3 text-gray-400 text-xs font-mono">{school.school_id_str || '—'}</td>
+                      <td className="px-3 py-3 text-gray-400 text-xs">{school.division || '—'}</td>
+                      <td className="px-3 py-3">
+                        <span className={statusBadge(school.status)}>{school.status}</span>
+                      </td>
+                      <td className="px-3 py-3 text-gray-400 text-xs">
+                        {school.expires_at ? new Date(school.expires_at).toLocaleDateString('en-PH') : '—'}
+                      </td>
+                      <td className="px-3 py-3 text-gray-500 text-xs font-mono">
+                        {school.id.slice(0, 8)}…
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+        
         {/* Subscribers Tab */}
         {activeTab === 'subscribers' && (
           <div className="overflow-x-auto">

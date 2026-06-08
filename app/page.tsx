@@ -202,6 +202,7 @@ function Dashboard({ user }: { user: any }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activePath,  setActivePath]  = useState('/');
   const [stats, setStats] = useState({ students: 0, average: 0, passing: 0, days: 0 });
+  const [isSchoolAdmin, setIsSchoolAdmin] = useState(false);
 
   const emailDisplay = user?.email?.split('@')[0] ?? 'Teacher';
 
@@ -226,7 +227,16 @@ function Dashboard({ user }: { user: any }) {
       }));
     })();
   }, [activeSection]);
-
+  
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('school_admins')
+      .select('id')
+      .eq('user_id', user.id)
+      .single()
+      .then(({ data }) => setIsSchoolAdmin(!!data));
+  }, [user]);
   const handleNav = (item: typeof NAV_ITEMS[0]) => {
     if (item.status === 'coming') return;
     setActivePath(item.path);
@@ -330,6 +340,16 @@ function Dashboard({ user }: { user: any }) {
           </div>
         )}
 
+        {isSchoolAdmin && (
+          <button
+            onClick={() => router.push('/school-admin')}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-purple-400 hover:bg-gray-800 transition"
+          >
+            <Shield size={18} />
+            {sidebarOpen && 'School Admin'}
+          </button>
+        )}
+        
         {/* Sign out */}
         <div className="p-3 border-t border-gray-800 space-y-1">
           {sidebarOpen && (
