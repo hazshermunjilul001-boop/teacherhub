@@ -71,6 +71,12 @@ export default function AdminPage() {
   });
   const [processing, setProcessing] = useState<string|null>(null);
   const [stats,      setStats]      = useState({ total:0, pro:0, school:0, pending:0, revenue:0 });
+  const [toast,      setToast]      = useState<{ msg: string; type: 'success'|'error' } | null>(null);
+
+  const showToast = (msg: string, type: 'success'|'error' = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 5000);
+  };
 
   // Check admin access
   useEffect(() => {
@@ -150,9 +156,16 @@ export default function AdminPage() {
       paymaya_ref:   req.payment_method === 'maya'  ? req.reference_no : null,
     }, { onConflict: 'user_id' });
 
+    // Optimistically update the request status in state so the badge changes immediately
+    setRequests(prev => prev.map(r =>
+      r.id === req.id
+        ? { ...r, status: 'approved', processed_at: now.toISOString() }
+        : r
+    ));
+
     await loadData();
     setProcessing(null);
-    alert(`âœ… Approved! ${req.user_email} is now on ${req.plan_id} plan until ${expires.toLocaleDateString('en-PH')}`);
+    showToast(`✅ Approved! ${req.user_email} is now on ${req.plan_id} plan until ${expires.toLocaleDateString('en-PH')}`);
   };
 
   const reject = async (req: PaymentRequest) => {
@@ -167,11 +180,16 @@ export default function AdminPage() {
       notes:        reason,
     }).eq('id', req.id);
 
+    // Optimistically update status
+    setRequests(prev => prev.map(r =>
+      r.id === req.id
+        ? { ...r, status: 'rejected', processed_at: new Date().toISOString(), notes: reason }
+        : r
+    ));
+
     await loadData();
     setProcessing(null);
-  };
-
-  const downgrade = async (userId: string, email: string) => {
+    showToast(`❌ Rejected — ${req.user_email}`, 'error'); = async (userId: string, email: string) => {
     if (!confirm(`Downgrade ${email} to Free plan?`)) return;
     await supabase.from('subscriptions').update({
       plan_id:    'free',
@@ -247,7 +265,7 @@ export default function AdminPage() {
       expires_at:    expiresAt,
     }, { onConflict: 'user_id' });
 
-    alert(`✅ Done!\n\n${newSchool.admin_email} is now school admin for:\n${newSchool.name}\n\nThey can activate their teachers at /school-admin`);
+    showToast(`✅ Done! ${newSchool.admin_email} is now school admin for: ${newSchool.name}`);
     setShowSchoolForm(false);
     setNewSchool({
       name: '', school_id_str: '', division: '', region: 'Region XI', admin_email: '',
@@ -288,7 +306,18 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
-      {/* Header */}
+      {/* Toast notification */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl shadow-2xl text-sm font-medium transition-all duration-300 ${
+          toast.type === 'success'
+            ? 'bg-emerald-800 border border-emerald-600 text-emerald-100'
+            : 'bg-red-900 border border-red-700 text-red-100'
+        }`}>
+          {toast.type === 'success' ? <CheckCircle size={16}/> : <XCircle size={16}/>}
+          {toast.msg}
+          <button onClick={() => setToast(null)} className="ml-2 opacity-60 hover:opacity-100">✕</button>
+        </div>
+      )}
       <div className="bg-gray-900 border-b border-gray-800 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-4">
           <button onClick={() => router.push('/')} className="text-gray-400 hover:text-white transition">
@@ -341,7 +370,7 @@ export default function AdminPage() {
         </div>
 
         {/* Payment Requests Table */}
-        {activeTab !== 'subscribers' && (
+        {(activeTab === 'pending' || activeTab === 'all') && (
           <div className="overflow-x-auto">
             {displayReqs.length === 0 ? (
               <div className="text-center py-16 text-gray-500">
