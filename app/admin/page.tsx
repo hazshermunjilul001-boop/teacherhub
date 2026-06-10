@@ -189,7 +189,10 @@ export default function AdminPage() {
 
     await loadData();
     setProcessing(null);
-    showToast(`❌ Rejected — ${req.user_email}`, 'error'); = async (userId: string, email: string) => {
+    showToast(`❌ Rejected — ${req.user_email}`, 'error');
+  };
+
+  const downgrade = async (userId: string, email: string) => {
     if (!confirm(`Downgrade ${email} to Free plan?`)) return;
     await supabase.from('subscriptions').update({
       plan_id:    'free',
