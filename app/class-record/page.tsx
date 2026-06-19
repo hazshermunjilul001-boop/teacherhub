@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowLeft, Plus, Printer, Users, RefreshCw, FileText, X, UserX, ArrowRightLeft, UserCheck, UserPlus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useActiveSection } from '../../lib/useActiveSection';
@@ -893,6 +893,36 @@ export default function ClassRecord() {
     return () => { cancelled = true; };
   },[subject,term]);
 
+  // Persist "Highest Possible Score" edits on their own, per subject/term — independent of
+  // whether any individual score has been entered yet.
+  const skipHighestSave = useRef(true);
+  const [savingHighest, setSavingHighest] = useState(false);
+
+  // Whenever subject/term changes, the *next* highest update will be the one coming from
+  // the load effect above (not a user edit) — skip persisting that one.
+  useEffect(() => {
+    skipHighestSave.current = true;
+  }, [subject, term]);
+
+  useEffect(() => {
+    if (skipHighestSave.current) { skipHighestSave.current = false; return; }
+    if (students.length === 0) return;
+    setSavingHighest(true);
+    const t = setTimeout(async () => {
+      await Promise.all(students.map(st => {
+        const s = scores[st.id] || { ww:{}, pt:{}, st:{}, te:0 };
+        return supabase.from('grades').upsert({
+          student_id: st.id, term, subject,
+          written_scores: s.ww, pt_scores: s.pt, st_scores: s.st, te_score: s.te,
+          highest_ww: highest.ww, highest_pt: highest.pt, highest_st: highest.st, highest_te: highest.te,
+        }, { onConflict: 'student_id,term,subject' });
+      }));
+      setSavingHighest(false);
+    }, 600); // debounce so rapid typing doesn't fire a write per keystroke
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highest]);
+
   const updateScore = useCallback(async(sid:string, cat:'ww'|'pt'|'st'|'te', idx:number|null, val:number)=>{
     setScores(prev=>{
       const cur=prev[sid]||{ww:{},pt:{},st:{},te:0};
@@ -1173,7 +1203,9 @@ export default function ClassRecord() {
                 </tr>
                 <tr className="text-xs">
                   <td className="bg-gray-900 px-3 py-1 text-gray-600"></td>
-                  <td className="bg-gray-900 px-3 py-1 italic text-gray-600 text-xs">Highest Possible Score</td>
+                  <td className="bg-gray-900 px-3 py-1 italic text-gray-600 text-xs">
+                    Highest Possible Score{savingHighest && <span className="text-blue-400 ml-1 not-italic">(saving…)</span>}
+                  </td>
                   {highest.ww.map((v,i)=>(
                     <td key={i} className="bg-gray-900 px-1 py-1 border-l border-gray-800">
                       <input type="number" value={v||''} onChange={e=>setHighest(p=>({...p,ww:p.ww.map((x,j)=>j===i?+e.target.value:x)}))}
