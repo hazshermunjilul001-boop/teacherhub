@@ -1240,6 +1240,7 @@ export default function ClassRecord() {
                   {highest.ww.map((v,i)=>(
                     <td key={i} className="bg-gray-900 px-1 py-1 border-l border-gray-800">
                       <input type="number" value={v||''} onChange={e=>setHighest(p=>({...p,ww:p.ww.map((x,j)=>j===i?+e.target.value:x)}))}
+                        onBlur={flushPendingHighestSave}
                         className="w-14 text-center bg-gray-800 border border-gray-700 rounded py-1 text-white text-xs"/>
                     </td>
                   ))}
@@ -1247,6 +1248,7 @@ export default function ClassRecord() {
                   {highest.pt.map((v,i)=>(
                     <td key={i} className="bg-gray-900 px-1 py-1 border-l border-gray-800">
                       <input type="number" value={v||''} onChange={e=>setHighest(p=>({...p,pt:p.pt.map((x,j)=>j===i?+e.target.value:x)}))}
+                        onBlur={flushPendingHighestSave}
                         className="w-14 text-center bg-gray-800 border border-gray-700 rounded py-1 text-white text-xs"/>
                     </td>
                   ))}
@@ -1255,11 +1257,13 @@ export default function ClassRecord() {
                     {highest.st.map((v,i)=>(
                       <td key={i} className="bg-gray-900 px-1 py-1 border-l border-gray-800">
                         <input type="number" value={v||''} onChange={e=>setHighest(p=>({...p,st:p.st.map((x,j)=>j===i?+e.target.value:x)}))}
+                          onBlur={flushPendingHighestSave}
                           className="w-14 text-center bg-gray-800 border border-gray-700 rounded py-1 text-white text-xs"/>
                       </td>
                     ))}
                     <td className="bg-gray-900 px-1 py-1 border-l border-gray-800">
                       <input type="number" value={highest.te||''} onChange={e=>setHighest(p=>({...p,te:+e.target.value}))}
+                        onBlur={flushPendingHighestSave}
                         className="w-14 text-center bg-gray-800 border border-gray-700 rounded py-1 text-white text-xs"/>
                     </td>
                     <td className="bg-gray-900 border-l border-gray-800 text-center text-gray-600 text-xs py-1">TA PS</td>
