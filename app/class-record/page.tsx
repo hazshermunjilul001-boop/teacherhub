@@ -897,6 +897,36 @@ export default function ClassRecord() {
   // whether any individual score has been entered yet.
   const skipHighestSave = useRef(true);
   const [savingHighest, setSavingHighest] = useState(false);
+  // Tracks an edit that hasn't been written to the DB yet, tagged with the subject/term it
+  // belongs to — so we can force-save it (flush) if the user switches away before the
+  // debounce timer fires, instead of losing it.
+  const pendingHighestSave = useRef<{ subject: string; term: number; highest: Highest } | null>(null);
+  const highestSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const doSaveHighest = useCallback(async (subj: string, trm: number, h: Highest) => {
+    if (students.length === 0) { pendingHighestSave.current = null; return; }
+    setSavingHighest(true);
+    const rows = students.map(st => {
+      const s = scores[st.id] || { ww:{}, pt:{}, st:{}, te:0 };
+      return {
+        student_id: st.id, term: trm, subject: subj,
+        written_scores: s.ww, pt_scores: s.pt, st_scores: s.st, te_score: s.te,
+        highest_ww: h.ww, highest_pt: h.pt, highest_st: h.st, highest_te: h.te,
+      };
+    });
+    const { error } = await supabase.from('grades').upsert(rows, { onConflict: 'student_id,term,subject' });
+    if (error) console.error('Failed saving highest scores', error);
+    setSavingHighest(false);
+    pendingHighestSave.current = null;
+  }, [students, scores]);
+
+  // If there's an unsaved highest edit pending, save it RIGHT NOW instead of waiting for the
+  // debounce — call this before switching subject/term so edits never silently get dropped.
+  const flushPendingHighestSave = useCallback(() => {
+    if (highestSaveTimer.current) { clearTimeout(highestSaveTimer.current); highestSaveTimer.current = null; }
+    const pending = pendingHighestSave.current;
+    if (pending) doSaveHighest(pending.subject, pending.term, pending.highest);
+  }, [doSaveHighest]);
 
   // Whenever subject/term changes, the *next* highest update will be the one coming from
   // the load effect above (not a user edit) — skip persisting that one.
@@ -907,22 +937,22 @@ export default function ClassRecord() {
   useEffect(() => {
     if (skipHighestSave.current) { skipHighestSave.current = false; return; }
     if (students.length === 0) return;
-    setSavingHighest(true);
-    const t = setTimeout(async () => {
-      for (const st of students) {
-        const s = scores[st.id] || { ww:{}, pt:{}, st:{}, te:0 };
-        const { error } = await supabase.from('grades').upsert({
-          student_id: st.id, term, subject,
-          written_scores: s.ww, pt_scores: s.pt, st_scores: s.st, te_score: s.te,
-          highest_ww: highest.ww, highest_pt: highest.pt, highest_st: highest.st, highest_te: highest.te,
-        }, { onConflict: 'student_id,term,subject' });
-        if (error) console.error('Failed saving highest for', st.full_name, error); // surface the real Postgres/PostgREST error instead of swallowing it
-      }
-      setSavingHighest(false);
+    pendingHighestSave.current = { subject, term, highest };
+    if (highestSaveTimer.current) clearTimeout(highestSaveTimer.current);
+    highestSaveTimer.current = setTimeout(() => {
+      flushPendingHighestSave();
     }, 600); // debounce so rapid typing doesn't fire a write per keystroke
-    return () => clearTimeout(t);
+    // No cleanup-based clearTimeout here on purpose — flushPendingHighestSave (called explicitly
+    // before subject/term switches, and on unmount below) is what guarantees the save still happens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highest]);
+
+  // Safety net: if the user navigates away/closes the tab entirely while an edit is still
+  // debouncing, save it immediately rather than losing it.
+  useEffect(() => {
+    return () => { flushPendingHighestSave(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const updateScore = useCallback(async(sid:string, cat:'ww'|'pt'|'st'|'te', idx:number|null, val:number)=>{
     setScores(prev=>{
@@ -1147,7 +1177,7 @@ export default function ClassRecord() {
 
         {/* Controls */}
         <div className="no-print px-6 py-4 flex flex-wrap gap-3 items-center">
-          <select value={subject} onChange={e=>setSubject(e.target.value)}
+          <select value={subject} onChange={e=>{flushPendingHighestSave();setSubject(e.target.value);}}
             className="bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500">
             {isSubjectTeacher ? (
               // Subject teacher — only show their assigned subjects
@@ -1161,7 +1191,7 @@ export default function ClassRecord() {
           </select>
           <div className="flex rounded-xl overflow-hidden border border-gray-700">
             {[1,2,3].map(t=>(
-              <button key={t} onClick={()=>setTerm(t)}
+              <button key={t} onClick={()=>{flushPendingHighestSave();setTerm(t);}}
                 className={`px-7 py-2.5 text-sm font-medium transition ${term===t?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>
                 Term {t}
               </button>
