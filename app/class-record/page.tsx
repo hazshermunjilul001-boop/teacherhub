@@ -909,14 +909,15 @@ export default function ClassRecord() {
     if (students.length === 0) return;
     setSavingHighest(true);
     const t = setTimeout(async () => {
-      await Promise.all(students.map(st => {
+      for (const st of students) {
         const s = scores[st.id] || { ww:{}, pt:{}, st:{}, te:0 };
-        return supabase.from('grades').upsert({
+        const { error } = await supabase.from('grades').upsert({
           student_id: st.id, term, subject,
           written_scores: s.ww, pt_scores: s.pt, st_scores: s.st, te_score: s.te,
           highest_ww: highest.ww, highest_pt: highest.pt, highest_st: highest.st, highest_te: highest.te,
         }, { onConflict: 'student_id,term,subject' });
-      }));
+        if (error) console.error('Failed saving highest for', st.full_name, error); // surface the real Postgres/PostgREST error instead of swallowing it
+      }
       setSavingHighest(false);
     }, 600); // debounce so rapid typing doesn't fire a write per keystroke
     return () => clearTimeout(t);
@@ -932,7 +933,7 @@ export default function ClassRecord() {
         student_id:sid,term,subject,
         written_scores:s.ww,pt_scores:s.pt,st_scores:s.st,te_score:s.te,
         highest_ww:highest.ww,highest_pt:highest.pt,highest_st:highest.st,highest_te:highest.te,
-      },{onConflict:'student_id,term,subject'}).then(()=>setSaving(null));
+      },{onConflict:'student_id,term,subject'}).then(({error})=>{ if(error) console.error('Failed saving score for',sid,error); setSaving(null); });
       return next;
     });
   },[term,subject,highest]);
