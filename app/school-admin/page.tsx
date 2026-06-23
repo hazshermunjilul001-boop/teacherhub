@@ -136,7 +136,7 @@ export default function SchoolAdminPage() {
         const expires = school.expires_at
           ?? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
 
-        await supabase.from('subscriptions').upsert({
+        const { error: subError } = await supabase.from('subscriptions').upsert({
           user_id:       userId,
           user_email:    email,
           plan_id:       'school',
@@ -147,9 +147,13 @@ export default function SchoolAdminPage() {
           expires_at:    expires,
         }, { onConflict: 'user_id' });
 
-        await supabase.from('school_invites')
-          .update({ claimed: true })
-          .eq('id', inviteRow.id);
+        if (subError) {
+          setAddError(`Added to list, but auto-activation failed: ${subError.message}. Use "Activate Now" to retry.`);
+        } else {
+          await supabase.from('school_invites')
+            .update({ claimed: true })
+            .eq('id', inviteRow.id);
+        }
       }
     } catch {
       // If the lookup fails, the invite still exists and will be claimed on next signup attempt
@@ -181,7 +185,7 @@ export default function SchoolAdminPage() {
       const expires = school.expires_at
         ?? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
 
-      await supabase.from('subscriptions').upsert({
+      const { error: subError } = await supabase.from('subscriptions').upsert({
         user_id:       userId,
         user_email:    invite.email,
         plan_id:       'school',
@@ -192,9 +196,19 @@ export default function SchoolAdminPage() {
         expires_at:    expires,
       }, { onConflict: 'user_id' });
 
-      await supabase.from('school_invites')
+      if (subError) {
+        alert('Failed to activate subscription: ' + subError.message);
+        setProcessing(null);
+        return;
+      }
+
+      const { error: claimError } = await supabase.from('school_invites')
         .update({ claimed: true })
         .eq('id', invite.id);
+
+      if (claimError) {
+        alert('Activated subscription, but failed to mark invite as claimed: ' + claimError.message);
+      }
 
       await loadAll(schoolId);
     } catch {
