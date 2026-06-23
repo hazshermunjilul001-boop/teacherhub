@@ -88,10 +88,10 @@ export default function SchoolAdminPage() {
     setInvites(inviteData ?? []);
   };
 
-  // Add a teacher email to the whitelist — works even if they haven't registered yet.
-  // When they sign up with this exact email, they're auto-activated to the School Plan.
+  // Add a teacher email to the whitelist. If the teacher already has an account,
+  // activate them immediately. Otherwise they'll be auto-activated when they sign up.
   const inviteTeacher = async () => {
-    if (!newEmail.trim() || !schoolId) return;
+    if (!newEmail.trim() || !schoolId || !school) return;
     setAdding(true);
     setAddError('');
 
@@ -111,19 +111,96 @@ export default function SchoolAdminPage() {
       return;
     }
 
-    const { error } = await supabase.from('school_invites').insert({
-      school_id: schoolId,
-      email,
-      claimed:   false,
-    });
+    const { data: inviteRow, error } = await supabase
+      .from('school_invites')
+      .insert({ school_id: schoolId, email, claimed: false })
+      .select()
+      .single();
 
     if (error) {
       setAddError('Error adding teacher: ' + error.message);
-    } else {
-      setNewEmail('');
-      await loadAll(schoolId);
+      setAdding(false);
+      return;
     }
+
+    // Check if this email already has an account — if so, activate them right now
+    try {
+      const res = await fetch('/api/find-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const { userId } = await res.json();
+
+      if (userId) {
+        const expires = school.expires_at
+          ?? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+
+        await supabase.from('subscriptions').upsert({
+          user_id:       userId,
+          user_email:    email,
+          plan_id:       'school',
+          status:        'active',
+          billing_cycle: 'yearly',
+          school_id:     schoolId,
+          started_at:    new Date().toISOString(),
+          expires_at:    expires,
+        }, { onConflict: 'user_id' });
+
+        await supabase.from('school_invites')
+          .update({ claimed: true })
+          .eq('id', inviteRow.id);
+      }
+    } catch {
+      // If the lookup fails, the invite still exists and will be claimed on next signup attempt
+    }
+
+    setNewEmail('');
+    await loadAll(schoolId);
     setAdding(false);
+  };
+
+  const retryActivation = async (invite: InviteRow) => {
+    if (!schoolId || !school) return;
+    setProcessing(invite.id);
+
+    try {
+      const res = await fetch('/api/find-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: invite.email }),
+      });
+      const { userId, error } = await res.json();
+
+      if (error || !userId) {
+        alert(`${invite.email} hasn't registered yet. They'll be activated automatically once they sign up.`);
+        setProcessing(null);
+        return;
+      }
+
+      const expires = school.expires_at
+        ?? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+
+      await supabase.from('subscriptions').upsert({
+        user_id:       userId,
+        user_email:    invite.email,
+        plan_id:       'school',
+        status:        'active',
+        billing_cycle: 'yearly',
+        school_id:     schoolId,
+        started_at:    new Date().toISOString(),
+        expires_at:    expires,
+      }, { onConflict: 'user_id' });
+
+      await supabase.from('school_invites')
+        .update({ claimed: true })
+        .eq('id', invite.id);
+
+      await loadAll(schoolId);
+    } catch {
+      alert('Something went wrong. Please try again.');
+    }
+    setProcessing(null);
   };
 
   const removeInvite = async (inviteId: string) => {
@@ -270,16 +347,28 @@ export default function SchoolAdminPage() {
                       Added {new Date(inv.created_at).toLocaleDateString('en-PH')}
                     </p>
                   </div>
-                  <button
-                    onClick={() => removeInvite(inv.id)}
-                    disabled={processing === inv.id}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-red-900/30 hover:bg-red-900/60 rounded-xl text-xs text-red-400 transition disabled:opacity-50"
-                  >
-                    {processing === inv.id
-                      ? <RefreshCw size={12} className="animate-spin" />
-                      : <XCircle size={12} />}
-                    Remove
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => retryActivation(inv)}
+                      disabled={processing === inv.id}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-teal-900/30 hover:bg-teal-900/60 rounded-xl text-xs text-teal-400 transition disabled:opacity-50"
+                    >
+                      {processing === inv.id
+                        ? <RefreshCw size={12} className="animate-spin" />
+                        : <CheckCircle size={12} />}
+                      Activate Now
+                    </button>
+                    <button
+                      onClick={() => removeInvite(inv.id)}
+                      disabled={processing === inv.id}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-red-900/30 hover:bg-red-900/60 rounded-xl text-xs text-red-400 transition disabled:opacity-50"
+                    >
+                      {processing === inv.id
+                        ? <RefreshCw size={12} className="animate-spin" />
+                        : <XCircle size={12} />}
+                      Remove
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
