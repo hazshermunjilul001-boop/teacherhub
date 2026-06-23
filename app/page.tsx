@@ -46,9 +46,45 @@ function LoginScreen() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) setError(error.message);
       } else {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) setError(error.message);
-        else setError('✓ Registered! Check your email to confirm, or sign in if confirmation is disabled.');
+        const { data: signUpData, error } = await supabase.auth.signUp({ email, password });
+        if (error) {
+          setError(error.message);
+        } else {
+          // Check if this email was pre-invited by a school admin
+          const userId = signUpData?.user?.id;
+          if (userId) {
+            const { data: invite } = await supabase
+              .from('school_invites')
+              .select('*')
+              .ilike('email', email.trim())
+              .eq('claimed', false)
+              .maybeSingle();
+
+            if (invite) {
+              const expires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+              await supabase.from('subscriptions').upsert({
+                user_id:       userId,
+                user_email:    email.trim(),
+                plan_id:       'school',
+                status:        'active',
+                billing_cycle: 'yearly',
+                school_id:     invite.school_id,
+                started_at:    new Date().toISOString(),
+                expires_at:    expires,
+              }, { onConflict: 'user_id' });
+
+              await supabase.from('school_invites')
+                .update({ claimed: true })
+                .eq('id', invite.id);
+
+              setError('✓ Registered! Your school already activated your Pro account — check your email to confirm, then sign in.');
+            } else {
+              setError('✓ Registered! Check your email to confirm, or sign in if confirmation is disabled.');
+            }
+          } else {
+            setError('✓ Registered! Check your email to confirm, or sign in if confirmation is disabled.');
+          }
+        }
       }
     } catch { setError('Unexpected error. Please try again.'); }
     setLoading(false);

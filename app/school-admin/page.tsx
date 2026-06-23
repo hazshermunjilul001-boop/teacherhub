@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   XCircle, Users, RefreshCw,
-  ArrowLeft, UserPlus, Shield,
+  ArrowLeft, UserPlus, Shield, Clock, CheckCircle,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
@@ -14,6 +14,13 @@ interface TeacherRow {
   plan_id:    string;
   status:     string;
   expires_at: string | null;
+}
+
+interface InviteRow {
+  id:         string;
+  email:      string;
+  claimed:    boolean;
+  created_at: string;
 }
 
 interface School {
@@ -30,6 +37,7 @@ export default function SchoolAdminPage() {
 
   const [school,     setSchool]     = useState<School | null>(null);
   const [teachers,   setTeachers]   = useState<TeacherRow[]>([]);
+  const [invites,    setInvites]    = useState<InviteRow[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [newEmail,   setNewEmail]   = useState('');
   const [adding,     setAdding]     = useState(false);
@@ -59,61 +67,71 @@ export default function SchoolAdminPage() {
         .single();
 
       setSchool(schoolData);
-      await loadTeachers(adminRow.school_id);
+      await loadAll(adminRow.school_id);
       setLoading(false);
     })();
   }, []);
 
-  const loadTeachers = async (sid: string) => {
-    const { data } = await supabase
+  const loadAll = async (sid: string) => {
+    const { data: teacherData } = await supabase
       .from('subscriptions')
       .select('user_id, user_email, plan_id, status, expires_at')
       .eq('school_id', sid)
       .eq('plan_id', 'school');
-    setTeachers(data ?? []);
+    setTeachers(teacherData ?? []);
+
+    const { data: inviteData } = await supabase
+      .from('school_invites')
+      .select('id, email, claimed, created_at')
+      .eq('school_id', sid)
+      .order('created_at', { ascending: false });
+    setInvites(inviteData ?? []);
   };
 
-  const activateTeacher = async () => {
-    if (!newEmail.trim() || !school || !schoolId) return;
+  // Add a teacher email to the whitelist — works even if they haven't registered yet.
+  // When they sign up with this exact email, they're auto-activated to the School Plan.
+  const inviteTeacher = async () => {
+    if (!newEmail.trim() || !schoolId) return;
     setAdding(true);
     setAddError('');
 
-    const res = await fetch('/api/find-user', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: newEmail.trim() }),
-    });
-    const { userId, error } = await res.json();
+    const email = newEmail.trim().toLowerCase();
 
-    if (error || !userId) {
-      setAddError(
-        `Teacher not found: ${newEmail}\nMake sure they registered first at teacherhub-one.vercel.app`
-      );
+    // Check if already invited
+    const { data: existing } = await supabase
+      .from('school_invites')
+      .select('id')
+      .ilike('email', email)
+      .eq('school_id', schoolId)
+      .maybeSingle();
+
+    if (existing) {
+      setAddError(`${email} is already on the list.`);
       setAdding(false);
       return;
     }
 
-    const expires = school.expires_at
-      ?? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+    const { error } = await supabase.from('school_invites').insert({
+      school_id: schoolId,
+      email,
+      claimed:   false,
+    });
 
-    const { error: subError } = await supabase.from('subscriptions').upsert({
-      user_id:       userId,
-      user_email:    newEmail.trim(),
-      plan_id:       'school',
-      status:        'active',
-      billing_cycle: 'yearly',
-      school_id:     schoolId,
-      started_at:    new Date().toISOString(),
-      expires_at:    expires,
-    }, { onConflict: 'user_id' });
-
-    if (subError) {
-      setAddError('Error activating teacher: ' + subError.message);
+    if (error) {
+      setAddError('Error adding teacher: ' + error.message);
     } else {
       setNewEmail('');
-      await loadTeachers(schoolId);
+      await loadAll(schoolId);
     }
     setAdding(false);
+  };
+
+  const removeInvite = async (inviteId: string) => {
+    if (!confirm('Remove this email from the list?')) return;
+    setProcessing(inviteId);
+    await supabase.from('school_invites').delete().eq('id', inviteId);
+    await loadAll(schoolId!);
+    setProcessing(null);
   };
 
   const removeTeacher = async (userId: string, email: string) => {
@@ -127,7 +145,7 @@ export default function SchoolAdminPage() {
       expires_at: null,
     }).eq('user_id', userId);
 
-    await loadTeachers(schoolId!);
+    await loadAll(schoolId!);
     setProcessing(null);
   };
 
@@ -136,6 +154,9 @@ export default function SchoolAdminPage() {
         (new Date(school.expires_at).getTime() - Date.now()) / 86400000
       ))
     : null;
+
+  // Pending invites = added to whitelist but haven't registered/claimed yet
+  const pendingInvites = invites.filter(i => !i.claimed);
 
   if (loading) return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center">
@@ -161,9 +182,17 @@ export default function SchoolAdminPage() {
             )}
           </p>
         </div>
-        <div className="ml-auto flex items-center gap-2 bg-teal-900/30 border border-teal-800 px-3 py-1.5 rounded-xl text-sm text-teal-400">
-          <Users size={14} />
-          <span>{teachers.length} teachers activated</span>
+        <div className="ml-auto flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-teal-900/30 border border-teal-800 px-3 py-1.5 rounded-xl text-sm text-teal-400">
+            <CheckCircle size={14} />
+            <span>{teachers.length} active</span>
+          </div>
+          {pendingInvites.length > 0 && (
+            <div className="flex items-center gap-2 bg-amber-900/30 border border-amber-800 px-3 py-1.5 rounded-xl text-sm text-amber-400">
+              <Clock size={14} />
+              <span>{pendingInvites.length} pending</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -187,44 +216,82 @@ export default function SchoolAdminPage() {
 
         {/* Add Teacher */}
         <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 mb-6">
-          <h2 className="text-lg font-bold mb-1">Activate a Teacher</h2>
+          <h2 className="text-lg font-bold mb-1">Add a Teacher</h2>
           <p className="text-gray-400 text-sm mb-4">
-            Teacher must have already registered at{' '}
-            <span className="text-blue-400">teacherhub-one.vercel.app</span> first.
+            Add the teacher's email even if they haven't registered yet. As soon as they
+            sign up at <span className="text-blue-400">teacherhub-one.vercel.app</span> with
+            this exact email, they'll be automatically upgraded to the School Plan.
           </p>
           <div className="flex gap-3">
             <input
               type="email"
               value={newEmail}
               onChange={e => { setNewEmail(e.target.value); setAddError(''); }}
-              onKeyDown={e => e.key === 'Enter' && activateTeacher()}
+              onKeyDown={e => e.key === 'Enter' && inviteTeacher()}
               placeholder="teacher@deped.gov.ph"
               className="flex-1 bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-teal-500 text-sm"
             />
             <button
-              onClick={activateTeacher}
+              onClick={inviteTeacher}
               disabled={adding || !newEmail.trim()}
               className="flex items-center gap-2 px-5 py-3 bg-teal-700 hover:bg-teal-600 rounded-xl text-sm font-semibold transition disabled:opacity-50"
             >
               {adding
                 ? <RefreshCw size={16} className="animate-spin" />
                 : <UserPlus size={16} />}
-              Activate
+              Add to List
             </button>
           </div>
           {addError && (
-            <p className="mt-3 text-red-400 text-xs bg-red-900/20 border border-red-800 rounded-xl px-3 py-2 whitespace-pre-line">
+            <p className="mt-3 text-amber-400 text-xs bg-amber-900/20 border border-amber-800 rounded-xl px-3 py-2 whitespace-pre-line">
               {addError}
             </p>
           )}
         </div>
 
-        {/* Teachers List */}
+        {/* Pending Invites */}
+        {pendingInvites.length > 0 && (
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl overflow-hidden mb-6">
+            <div className="px-6 py-4 border-b border-gray-800">
+              <h2 className="font-bold flex items-center gap-2">
+                <Clock size={16} className="text-amber-400" />
+                Waiting to Register ({pendingInvites.length})
+              </h2>
+              <p className="text-gray-500 text-xs mt-1">
+                These teachers were added but haven't created their account yet.
+              </p>
+            </div>
+            <div className="divide-y divide-gray-800">
+              {pendingInvites.map(inv => (
+                <div key={inv.id} className="px-6 py-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-white text-sm">{inv.email}</p>
+                    <p className="text-gray-500 text-xs">
+                      Added {new Date(inv.created_at).toLocaleDateString('en-PH')}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => removeInvite(inv.id)}
+                    disabled={processing === inv.id}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-red-900/30 hover:bg-red-900/60 rounded-xl text-xs text-red-400 transition disabled:opacity-50"
+                  >
+                    {processing === inv.id
+                      ? <RefreshCw size={12} className="animate-spin" />
+                      : <XCircle size={12} />}
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Active Teachers List */}
         <div className="bg-gray-900 border border-gray-700 rounded-2xl overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
-            <h2 className="font-bold">Activated Teachers</h2>
+            <h2 className="font-bold">Active Teachers</h2>
             <button
-              onClick={() => schoolId && loadTeachers(schoolId)}
+              onClick={() => schoolId && loadAll(schoolId)}
               className="text-gray-400 hover:text-white transition"
             >
               <RefreshCw size={16} />
@@ -236,7 +303,7 @@ export default function SchoolAdminPage() {
               <Users size={36} className="mx-auto mb-3 opacity-30" />
               <p className="text-sm">No teachers activated yet.</p>
               <p className="text-xs mt-1 text-gray-600">
-                Enter a teacher email above to get started.
+                Add a teacher email above to get started.
               </p>
             </div>
           ) : (
