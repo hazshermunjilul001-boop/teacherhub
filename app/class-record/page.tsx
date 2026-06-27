@@ -925,10 +925,10 @@ export default function ClassRecord() {
 
   // If there's an unsaved highest edit pending, save it RIGHT NOW instead of waiting for the
   // debounce — call this before switching subject/term so edits never silently get dropped.
-  const flushPendingHighestSave = useCallback(async () => {
+  const flushPendingHighestSave = useCallback(() => {
     if (highestSaveTimer.current) { clearTimeout(highestSaveTimer.current); highestSaveTimer.current = null; }
     const pending = pendingHighestSave.current;
-    if (pending) await doSaveHighest(pending.subject, pending.term, pending.highest);
+    if (pending) doSaveHighest(pending.subject, pending.term, pending.highest);
   }, [doSaveHighest]);
 
   // Whenever subject/term changes, the *next* highest update will be the one coming from
@@ -1180,7 +1180,7 @@ export default function ClassRecord() {
 
         {/* Controls */}
         <div className="no-print px-6 py-4 flex flex-wrap gap-3 items-center">
-          <select value={subject} onChange={async e=>{const next=e.target.value; await flushPendingHighestSave(); setSubject(next);}}
+          <select value={subject} onChange={e=>{flushPendingHighestSave();setSubject(e.target.value);}}
             className="bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500">
             {isSubjectTeacher ? (
               // Subject teacher — only show their assigned subjects
@@ -1194,7 +1194,7 @@ export default function ClassRecord() {
           </select>
           <div className="flex rounded-xl overflow-hidden border border-gray-700">
             {[1,2,3].map(t=>(
-              <button key={t} onClick={async ()=>{await flushPendingHighestSave(); setTerm(t);}}
+              <button key={t} onClick={()=>{flushPendingHighestSave();setTerm(t);}}
                 className={`px-7 py-2.5 text-sm font-medium transition ${term===t?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>
                 Term {t}
               </button>
