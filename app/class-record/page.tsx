@@ -877,24 +877,29 @@ export default function ClassRecord() {
   },[sectionId]);
 
   useEffect(()=>{
+    if (students.length === 0) return; // wait until the roster is loaded so we know who to scope to
     let cancelled = false;
     (async()=>{
-      const {data}=await supabase.from('grades').select('*').eq('subject',subject).eq('term',term).order('updated_at',{ascending:false});
+      const studentIds = students.map(s=>s.id);
+      // CRITICAL: scope to only this teacher's own roster. Without .in('student_id', studentIds),
+      // this would return every teacher's rows for the same subject/term across the whole school —
+      // which is what was causing HPS to look random/overwritten, since whichever teacher anywhere
+      // saved most recently would "win" and bleed into everyone else's view.
+      const {data}=await supabase.from('grades').select('*').eq('subject',subject).eq('term',term).in('student_id', studentIds).order('updated_at',{ascending:false});
       if(cancelled) return; // ignore stale responses if subject/term changed again before this resolved
       const m:Record<string,Scores>={};
       let h:Highest = {ww:[100,100,100,100,100],pt:[100,100,100],st:[50,50],te:100};
       if(data){
         data.forEach((r:any)=>{ m[r.student_id]={ww:r.written_scores||{},pt:r.pt_scores||{},st:r.st_scores||{},te:r.te_score||0}; });
-        // Rows are ordered most-recently-updated first, so data[0] reflects the latest save —
-        // not an arbitrary row. This matters because highest is (unfortunately) stored per
-        // student row rather than once per subject/term, so older rows can carry stale values.
+        // Rows are ordered most-recently-updated first, so data[0] reflects this teacher's own
+        // latest save — not an arbitrary row, and not another teacher's section anymore.
         if(data[0]?.highest_ww) h={ww:data[0].highest_ww,pt:data[0].highest_pt,st:data[0].highest_st||[50,50],te:data[0].highest_te||100};
       }
       setScores(m);
       setHighest(h); // always reset — prevents the previous subject's "Highest Possible Score" row from bleeding into this one
     })();
     return () => { cancelled = true; };
-  },[subject,term]);
+  },[subject,term,students]);
 
   // Persist "Highest Possible Score" edits on their own, per subject/term — independent of
   // whether any individual score has been entered yet.
