@@ -256,27 +256,43 @@ export default function BehaviorPage() {
   }, [sectionId]);
 
   // ── Load records + conduct ─────────────────────────────────────────────────
+  // IMPORTANT: behavior_records / conduct_records have no section_id column,
+  // so we MUST scope every query to the current section's student IDs.
+  // Without the .in('student_id', studentIds) filter below, this query would
+  // return records for ALL students across ALL teachers/sections/schools that
+  // happen to share the same `term` number — which is the bug that caused
+  // other teachers' behavior logs to show up here.
   useEffect(() => {
+    if (!sectionId || students.length === 0) {
+      setRecords([]);
+      setConduct({});
+      setLoading(false);
+      return;
+    }
     (async () => {
       setLoading(true);
+      const studentIds = students.map(s => s.id);
+
       const { data: recs } = await supabase
         .from('behavior_records')
         .select('*')
         .eq('term', term)
+        .in('student_id', studentIds)
         .order('date', { ascending: false });
       setRecords(recs ?? []);
 
       const { data: cond } = await supabase
         .from('conduct_records')
         .select('*')
-        .eq('term', term);
+        .eq('term', term)
+        .in('student_id', studentIds);
       const map: Record<string, ConductRecord> = {};
       cond?.forEach((r: any) => { map[r.student_id] = r; });
       setConduct(map);
 
       setLoading(false);
     })();
-  }, [term]);
+  }, [term, sectionId, students]);
 
   // ── Update conduct rating ──────────────────────────────────────────────────
   const updateConduct = async (studentId: string, behavior: string, rating: ConductRating) => {
