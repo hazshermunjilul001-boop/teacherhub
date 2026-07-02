@@ -608,10 +608,10 @@ export default function AttendancePage() {
         </div>
 
         {/* Main attendance table */}
-        <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8px'}}>
+        <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8px', tableLayout:'fixed'}}>
           <thead>
             <tr>
-              <th style={{...th, textAlign:'left', minWidth:'160px', width:'160px'}} rowSpan={2}>
+              <th style={{...th, textAlign:'left', width:'145px'}} rowSpan={2}>
                 LEARNER'S NAME<br/>
                 <span style={{fontWeight:'normal', fontSize:'7px'}}>(Last Name, First Name, Middle Name)</span>
               </th>
@@ -620,15 +620,15 @@ export default function AttendancePage() {
                 const bg = kind==='weekend' ? '#374151' : kind==='holiday' ? '#fde68a' : '#f3f4f6';
                 const fg = kind==='weekend' ? '#e5e7eb' : '#111827';
                 return (
-                  <th key={ds} style={{...thC, background:bg, color:fg, width: kind==='school' ? '18px' : '10px',
-                    minWidth: kind==='school' ? '18px' : '10px', padding:'1px 0', fontSize:'7px'}}>
+                  <th key={ds} style={{...thC, background:bg, color:fg, width: kind==='school' ? '20px' : '9px',
+                    padding:'1px 0', fontSize:'7px'}}>
                     <div>{d.getDate()}</div>
                     {kind==='school' && <div style={{fontSize:'6px'}}>{['SU','M','T','W','TH','F','S'][d.getDay()]}</div>}
                   </th>
                 );
               })}
-              <th style={{...thC, minWidth:'30px', fontSize:'7px'}} colSpan={2}>Total for the Month</th>
-              <th style={{...thC, minWidth:'90px', fontSize:'7px'}}>
+              <th style={{...thC, fontSize:'7px'}} colSpan={2}>Total for the Month</th>
+              <th style={{...thC, width:'62px', fontSize:'6px', lineHeight:'1.25', whiteSpace:'normal', wordBreak:'break-word'}}>
                 REMARKS (If DROPPED OUT, state reason from legend 2. If TRANSFERRED IN/OUT, write name of School.)
               </th>
             </tr>
@@ -638,8 +638,8 @@ export default function AttendancePage() {
                 const bg = kind==='weekend' ? '#374151' : kind==='holiday' ? '#fde68a' : undefined;
                 return <th key={fmt(d)} style={{...thC, background:bg, padding:'0', fontSize:'7px'}}></th>;
               })}
-              <th style={{...thC, fontSize:'7px'}}>ABSENT</th>
-              <th style={{...thC, fontSize:'7px'}}>PRESENT</th>
+              <th style={{...thC, width:'20px', fontSize:'7px'}}>ABSENT</th>
+              <th style={{...thC, width:'20px', fontSize:'7px'}}>PRESENT</th>
               <th style={th}></th>
             </tr>
           </thead>
@@ -656,12 +656,12 @@ export default function AttendancePage() {
                 {calendarDays.map(d => {
                   const ds = fmt(d); const kind = dayKind(d, holidays);
                   if (kind === 'weekend') {
-                    return <td key={ds} style={{...tdC, width:'10px', padding:0, background:'#374151'}}/>;
+                    return <td key={ds} style={{...tdC, width:'9px', padding:0, background:'#374151'}}/>;
                   }
                   if (kind === 'holiday') {
                     if (idx !== 0) return null; // covered by the merged cell below
                     return (
-                      <td key={ds} rowSpan={males.length + 1} style={{...tdC, width:'10px', padding:'2px 0',
+                      <td key={ds} rowSpan={males.length + 1} style={{...tdC, width:'9px', padding:'2px 0',
                         background:'#fde68a', writingMode:'vertical-rl' as any, textOrientation:'mixed' as any,
                         fontSize:'6.5px', fontWeight:'bold', letterSpacing:'0.3px'}}>
                         {holidayReasons[ds] || 'No Classes'}
@@ -670,7 +670,7 @@ export default function AttendancePage() {
                   }
                   const st = records[student.id]?.[ds];
                   return (
-                    <td key={ds} style={{...tdC, width:'18px', padding:'0', fontWeight:'bold', fontSize:'8px',
+                    <td key={ds} style={{...tdC, width:'20px', padding:'0', fontWeight:'bold', fontSize:'8px',
                       background: st==='A'?'#fee2e2' : st==='L'?'#fef9c3' : 'white'}}>
                       {statusPrintChar(st)}
                     </td>
@@ -692,7 +692,7 @@ export default function AttendancePage() {
                 if (kind === 'holiday') {
                   if (males.length !== 0) return null; // already merged into the (only) student row above
                   return (
-                    <td key={ds} rowSpan={1} style={{...tdC, width:'10px', padding:'2px 0', background:'#fde68a',
+                    <td key={ds} rowSpan={1} style={{...tdC, width:'9px', padding:'2px 0', background:'#fde68a',
                       writingMode:'vertical-rl' as any, textOrientation:'mixed' as any, fontSize:'6.5px', fontWeight:'bold'}}>
                       {holidayReasons[ds] || 'No Classes'}
                     </td>
@@ -718,12 +718,12 @@ export default function AttendancePage() {
                 {calendarDays.map(d => {
                   const ds = fmt(d); const kind = dayKind(d, holidays);
                   if (kind === 'weekend') {
-                    return <td key={ds} style={{...tdC, width:'10px', padding:0, background:'#374151'}}/>;
+                    return <td key={ds} style={{...tdC, width:'9px', padding:0, background:'#374151'}}/>;
                   }
                   if (kind === 'holiday') {
                     if (idx !== 0) return null;
                     return (
-                      <td key={ds} rowSpan={females.length + 1} style={{...tdC, width:'10px', padding:'2px 0',
+                      <td key={ds} rowSpan={females.length + 1} style={{...tdC, width:'9px', padding:'2px 0',
                         background:'#fde68a', writingMode:'vertical-rl' as any, textOrientation:'mixed' as any,
                         fontSize:'6.5px', fontWeight:'bold', letterSpacing:'0.3px'}}>
                         {holidayReasons[ds] || 'No Classes'}
@@ -732,7 +732,7 @@ export default function AttendancePage() {
                   }
                   const st = records[student.id]?.[ds];
                   return (
-                    <td key={ds} style={{...tdC, width:'18px', padding:'0', fontWeight:'bold', fontSize:'8px',
+                    <td key={ds} style={{...tdC, width:'20px', padding:'0', fontWeight:'bold', fontSize:'8px',
                       background: st==='A'?'#fee2e2' : st==='L'?'#fef9c3' : 'white'}}>
                       {statusPrintChar(st)}
                     </td>
@@ -754,7 +754,7 @@ export default function AttendancePage() {
                 if (kind === 'holiday') {
                   if (females.length !== 0) return null;
                   return (
-                    <td key={ds} rowSpan={1} style={{...tdC, width:'10px', padding:'2px 0', background:'#fde68a',
+                    <td key={ds} rowSpan={1} style={{...tdC, width:'9px', padding:'2px 0', background:'#fde68a',
                       writingMode:'vertical-rl' as any, textOrientation:'mixed' as any, fontSize:'6.5px', fontWeight:'bold'}}>
                       {holidayReasons[ds] || 'No Classes'}
                     </td>
