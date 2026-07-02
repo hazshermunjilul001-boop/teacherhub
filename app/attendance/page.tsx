@@ -670,16 +670,24 @@ export default function AttendancePage() {
                   if (kind === 'holiday') {
                     // Independent per-row cell (NOT rowSpan) so the print engine can break the
                     // page between any two student rows. Borders between consecutive holiday
-                    // cells are hidden so the column still reads as one continuous bar.
+                    // cells are hidden so the column still reads as one continuous bar. The
+                    // label text is an absolutely-positioned overlay (not normal cell content)
+                    // so it doesn't force the first row to grow taller than the rest.
                     const isFirst = idx === 0;
                     const isLast = idx === males.length - 1;
                     return (
-                      <td key={ds} style={{...tdC, width:'9px', padding:'2px 0',
-                        background:'#fde68a', writingMode:'vertical-rl' as any, textOrientation:'mixed' as any,
-                        fontSize:'6.5px', fontWeight:'bold', letterSpacing:'0.3px',
+                      <td key={ds} style={{...tdC, width:'9px', padding:0, position:'relative',
+                        background:'#fde68a',
                         borderTop: isFirst ? b.border : 'hidden',
                         borderBottom: isLast ? b.border : 'hidden'}}>
-                        {isFirst ? (holidayReasons[ds] || 'No Classes') : ''}
+                        {isFirst && (
+                          <div style={{position:'absolute', top:2, left:0, width:'100%',
+                            writingMode:'vertical-rl' as any, textOrientation:'mixed' as any,
+                            fontSize:'6.5px', fontWeight:'bold', letterSpacing:'0.3px',
+                            whiteSpace:'nowrap', zIndex:5}}>
+                            {holidayReasons[ds] || 'No Classes'}
+                          </div>
+                        )}
                       </td>
                     );
                   }
@@ -734,16 +742,24 @@ export default function AttendancePage() {
                   if (kind === 'holiday') {
                     // Independent per-row cell (NOT rowSpan) so the print engine can break the
                     // page between any two student rows. Borders between consecutive holiday
-                    // cells are hidden so the column still reads as one continuous bar.
+                    // cells are hidden so the column still reads as one continuous bar. The
+                    // label text is an absolutely-positioned overlay (not normal cell content)
+                    // so it doesn't force the first row to grow taller than the rest.
                     const isFirst = idx === 0;
                     const isLast = idx === females.length - 1;
                     return (
-                      <td key={ds} style={{...tdC, width:'9px', padding:'2px 0',
-                        background:'#fde68a', writingMode:'vertical-rl' as any, textOrientation:'mixed' as any,
-                        fontSize:'6.5px', fontWeight:'bold', letterSpacing:'0.3px',
+                      <td key={ds} style={{...tdC, width:'9px', padding:0, position:'relative',
+                        background:'#fde68a',
                         borderTop: isFirst ? b.border : 'hidden',
                         borderBottom: isLast ? b.border : 'hidden'}}>
-                        {isFirst ? (holidayReasons[ds] || 'No Classes') : ''}
+                        {isFirst && (
+                          <div style={{position:'absolute', top:2, left:0, width:'100%',
+                            writingMode:'vertical-rl' as any, textOrientation:'mixed' as any,
+                            fontSize:'6.5px', fontWeight:'bold', letterSpacing:'0.3px',
+                            whiteSpace:'nowrap', zIndex:5}}>
+                            {holidayReasons[ds] || 'No Classes'}
+                          </div>
+                        )}
                       </td>
                     );
                   }
