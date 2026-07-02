@@ -668,12 +668,18 @@ export default function AttendancePage() {
                     return <td key={ds} style={{...tdC, width:'9px', padding:0, background:'#374151'}}/>;
                   }
                   if (kind === 'holiday') {
-                    if (idx !== 0) return null; // covered by the merged cell below
+                    // Independent per-row cell (NOT rowSpan) so the print engine can break the
+                    // page between any two student rows. Borders between consecutive holiday
+                    // cells are hidden so the column still reads as one continuous bar.
+                    const isFirst = idx === 0;
+                    const isLast = idx === males.length - 1;
                     return (
-                      <td key={ds} rowSpan={males.length + 1} style={{...tdC, width:'9px', padding:'2px 0',
+                      <td key={ds} style={{...tdC, width:'9px', padding:'2px 0',
                         background:'#fde68a', writingMode:'vertical-rl' as any, textOrientation:'mixed' as any,
-                        fontSize:'6.5px', fontWeight:'bold', letterSpacing:'0.3px'}}>
-                        {holidayReasons[ds] || 'No Classes'}
+                        fontSize:'6.5px', fontWeight:'bold', letterSpacing:'0.3px',
+                        borderTop: isFirst ? b.border : 'hidden',
+                        borderBottom: isLast ? b.border : 'hidden'}}>
+                        {isFirst ? (holidayReasons[ds] || 'No Classes') : ''}
                       </td>
                     );
                   }
@@ -730,12 +736,18 @@ export default function AttendancePage() {
                     return <td key={ds} style={{...tdC, width:'9px', padding:0, background:'#374151'}}/>;
                   }
                   if (kind === 'holiday') {
-                    if (idx !== 0) return null;
+                    // Independent per-row cell (NOT rowSpan) so the print engine can break the
+                    // page between any two student rows. Borders between consecutive holiday
+                    // cells are hidden so the column still reads as one continuous bar.
+                    const isFirst = idx === 0;
+                    const isLast = idx === females.length - 1;
                     return (
-                      <td key={ds} rowSpan={females.length + 1} style={{...tdC, width:'9px', padding:'2px 0',
+                      <td key={ds} style={{...tdC, width:'9px', padding:'2px 0',
                         background:'#fde68a', writingMode:'vertical-rl' as any, textOrientation:'mixed' as any,
-                        fontSize:'6.5px', fontWeight:'bold', letterSpacing:'0.3px'}}>
-                        {holidayReasons[ds] || 'No Classes'}
+                        fontSize:'6.5px', fontWeight:'bold', letterSpacing:'0.3px',
+                        borderTop: isFirst ? b.border : 'hidden',
+                        borderBottom: isLast ? b.border : 'hidden'}}>
+                        {isFirst ? (holidayReasons[ds] || 'No Classes') : ''}
                       </td>
                     );
                   }
@@ -1073,8 +1085,8 @@ export default function AttendancePage() {
           .sf2-modal-content { display: block !important; }
           /* SF2 content */
           .sf2-print { padding: 4mm !important; display: block !important; overflow: visible !important; }
-          .sf2-print table { page-break-inside: auto; width: 100%; }
-          .sf2-print tr { page-break-inside: avoid; page-break-after: auto; }
+          .sf2-print table { page-break-inside: auto; break-inside: auto; width: 100%; }
+          .sf2-print tr { page-break-inside: avoid; break-inside: avoid; page-break-after: auto; }
           .sf2-print thead { display: table-header-group; }
           .sf2-summary { page-break-before: auto !important; margin-top: 4px !important; }
           @page { size: landscape; margin: 8mm; }
