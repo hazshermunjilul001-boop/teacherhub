@@ -705,13 +705,9 @@ export default function AttendancePage() {
                 const ds = fmt(d); const kind = dayKind(d, holidays);
                 if (kind === 'weekend') return <td key={ds} style={{...tdC, padding:0, background:'#374151'}}/>;
                 if (kind === 'holiday') {
-                  if (males.length !== 0) return null; // already merged into the (only) student row above
-                  return (
-                    <td key={ds} rowSpan={1} style={{...tdC, width:'9px', padding:'2px 0', background:'#fde68a',
-                      writingMode:'vertical-rl' as any, textOrientation:'mixed' as any, fontSize:'6.5px', fontWeight:'bold'}}>
-                      {holidayReasons[ds] || 'No Classes'}
-                    </td>
-                  );
+                  // Always render this cell — never skip it — so the subtotal row has exactly
+                  // the same number of <td> columns as every student row and the header.
+                  return <td key={ds} style={{...tdC, width:'9px', padding:0, background:'#fde68a'}}/>;
                 }
                 const p = males.filter(s => { const st=records[s.id]?.[ds]; return st==='P'||st==='L'||st===undefined; }).length;
                 return <td key={ds} style={{...tdC, fontWeight:'bold', fontSize:'7px'}}>{p}</td>;
@@ -773,13 +769,9 @@ export default function AttendancePage() {
                 const ds = fmt(d); const kind = dayKind(d, holidays);
                 if (kind === 'weekend') return <td key={ds} style={{...tdC, padding:0, background:'#374151'}}/>;
                 if (kind === 'holiday') {
-                  if (females.length !== 0) return null;
-                  return (
-                    <td key={ds} rowSpan={1} style={{...tdC, width:'9px', padding:'2px 0', background:'#fde68a',
-                      writingMode:'vertical-rl' as any, textOrientation:'mixed' as any, fontSize:'6.5px', fontWeight:'bold'}}>
-                      {holidayReasons[ds] || 'No Classes'}
-                    </td>
-                  );
+                  // Always render this cell — never skip it — so the subtotal row has exactly
+                  // the same number of <td> columns as every student row and the header.
+                  return <td key={ds} style={{...tdC, width:'9px', padding:0, background:'#fde68a'}}/>;
                 }
                 const p = females.filter(s => { const st=records[s.id]?.[ds]; return st==='P'||st==='L'||st===undefined; }).length;
                 return <td key={ds} style={{...tdC, fontWeight:'bold', fontSize:'7px'}}>{p}</td>;
