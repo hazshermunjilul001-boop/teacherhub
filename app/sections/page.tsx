@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { parseSF1, type SF1ParseResult } from '../../lib/parseSF1';
+import { parseMasterlist, type MasterlistParseResult } from '../../lib/parseMasterlist';
 import { useSection, type Section } from '../../context/SectionContext';
 import { useSubscription } from '../../lib/useSubscription';
 import * as XLSX from 'xlsx';
@@ -609,6 +610,233 @@ function ImportModal({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// IMPORT REGULAR MASTERLIST MODAL (no LRN — for when LIS/SF1 isn't available)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ImportMasterlistModal({
+  onClose, onImported,
+}: { onClose: () => void; onImported: (section: Section) => void }) {
+  const [stage,    setStage]    = useState<'upload'|'preview'|'saving'>('upload');
+  const [result,   setResult]   = useState<MasterlistParseResult | null>(null);
+  const [adviser,  setAdviser]  = useState('');
+  const [schoolHead, setSchoolHead] = useState('');
+  const [editSch,  setEditSch]  = useState({ name:'', id:'', section:'', grade:'', sy:'2025 - 2026', region:'', division:'', district:'', school_head:'' });
+  const [progress, setProgress] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setStage('preview');
+    const buf = await file.arrayBuffer();
+    const parsed = parseMasterlist(buf);
+    setResult(parsed);
+    setAdviser(parsed.school.adviser);
+    setEditSch(prev => ({
+      ...prev,
+      name:    parsed.school.school_name,
+      section: parsed.school.section,
+      grade:   parsed.school.grade_level,
+    }));
+  };
+
+  const handleSave = async () => {
+    if (!result) return;
+    setStage('saving');
+    setProgress('Getting user account…');
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { alert('Not logged in.'); setStage('preview'); return; }
+
+    const gradeNum = parseInt(editSch.grade.match(/\d+/)?.[0] ?? '', 10) || result.school.grade_number;
+
+    const sectionData = {
+      teacher_id:   user.id,
+      name:         editSch.section || result.school.section,
+      grade_level:  editSch.grade   || result.school.grade_level,
+      grade_number: gradeNum,
+      school_year:  editSch.sy      || result.school.school_year,
+      school_name:  editSch.name    || result.school.school_name,
+      school_id:    editSch.id      || result.school.school_id,
+      division:     editSch.division|| result.school.division,
+      region:       editSch.region  || result.school.region,
+      adviser:      (adviser ?? '').trim(),
+      school_head:  (schoolHead ?? '').trim(),
+      district:     (editSch.district ?? '').trim(),
+    };
+
+    setProgress('Creating section…');
+    const { data: newSection, error: secErr } = await supabase
+      .from('sections')
+      .insert(sectionData)
+      .select()
+      .single();
+
+    if (secErr || !newSection) {
+      alert('Error creating section: ' + secErr?.message);
+      setStage('preview');
+      return;
+    }
+
+    setProgress(`Importing ${result.students.length} students…`);
+    const studentRows = result.students.map(s => ({
+      id:         crypto.randomUUID(),
+      section_id: newSection.id,
+      lrn:        s.lrn,
+      full_name:  s.full_name,
+      sex:        s.sex,
+      birthdate:  s.birthdate ?? null,
+    }));
+
+    for (let i = 0; i < studentRows.length; i += 50) {
+      const chunk = studentRows.slice(i, i + 50);
+      const { error } = await supabase.from('students').insert(chunk);
+      if (error) console.error('Student insert error:', error);
+      setProgress(`Imported ${Math.min(i + 50, studentRows.length)} of ${studentRows.length} students…`);
+    }
+
+    setProgress('Done!');
+    onImported({ ...newSection, student_count: result.students.length });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-900 rounded-2xl w-full max-w-2xl border border-gray-700 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-gray-800">
+          <h3 className="text-xl font-bold flex items-center gap-2">
+            <Upload size={20} className="text-emerald-400"/> Import Class List
+          </h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition"><X size={20}/></button>
+        </div>
+
+        <div className="p-6">
+          {stage === 'upload' && (
+            <div>
+              <p className="text-gray-400 text-sm mb-2">
+                Upload a regular class masterlist Excel file — the kind with MALE / FEMALE
+                headers and numbered names, no LRN column. Use this while LIS SF1 export isn't available.
+              </p>
+              <div className="bg-amber-950/30 border border-amber-800 rounded-xl p-3 mb-6 text-amber-300 text-xs">
+                This format has no LRN, so each student gets a placeholder LRN (TEMP-0001, …).
+                You can update real LRNs later from the section's roster editor.
+              </div>
+              <div
+                onClick={() => fileRef.current?.click()}
+                className="border-2 border-dashed border-gray-600 hover:border-emerald-500 rounded-2xl p-12 text-center cursor-pointer transition-all group">
+                <Upload size={40} className="mx-auto mb-3 text-gray-500 group-hover:text-emerald-400 transition"/>
+                <p className="text-white font-semibold">Click to upload masterlist Excel file</p>
+                <p className="text-gray-500 text-sm mt-1">Supports .xls and .xlsx</p>
+                <input ref={fileRef} type="file" accept=".xls,.xlsx" onChange={handleFile} className="hidden"/>
+              </div>
+            </div>
+          )}
+
+          {stage === 'preview' && result && (
+            <div className="space-y-5">
+              {result.errors.length > 0 && (
+                <div className="bg-yellow-950/40 border border-yellow-700 rounded-xl p-4">
+                  <div className="flex items-center gap-2 text-yellow-400 font-semibold mb-2">
+                    <AlertTriangle size={16}/> Some fields need review:
+                  </div>
+                  {result.errors.map((e, i) => <p key={i} className="text-yellow-300 text-sm">{e}</p>)}
+                </div>
+              )}
+              <div>
+                <h4 className="font-semibold text-white mb-3">📍 School Information <span className="text-gray-500 text-xs font-normal">(edit if incorrect)</span></h4>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label:'School Name',  key:'name',     full: true },
+                    { label:'School ID',    key:'id',       full: false },
+                    { label:'Section',      key:'section',  full: false },
+                    { label:'Grade Level',  key:'grade',    full: false },
+                    { label:'School Year',  key:'sy',       full: false },
+                    { label:'Region',       key:'region',   full: false },
+                    { label:'Division',     key:'division', full: false },
+                    { label:'District',     key:'district', full: false },
+                  ].map(f => (
+                    <div key={f.key} className={f.full ? 'col-span-2' : ''}>
+                      <label className="block text-xs text-gray-400 mb-1">{f.label}</label>
+                      <input
+                        value={(editSch as any)[f.key]}
+                        onChange={e => setEditSch(prev => ({ ...prev, [f.key]: e.target.value }))}
+                        className="w-full bg-gray-800 border border-gray-600 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"/>
+                    </div>
+                  ))}
+                  <div className="col-span-2">
+                    <label className="block text-xs text-gray-400 mb-1">Adviser / Teacher Name</label>
+                    <input value={adviser} onChange={e => setAdviser(e.target.value)}
+                      placeholder="e.g. HAZSHER MUNJILUL"
+                      className="w-full bg-gray-800 border border-gray-600 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"/>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">School Head / Principal Name</label>
+                <input value={schoolHead} onChange={e => setSchoolHead(e.target.value)}
+                  placeholder="e.g. REUEL ALIPIO ALVAREZ"
+                  className="w-full bg-gray-800 border border-gray-600 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"/>
+              </div>
+              <div>
+                <h4 className="font-semibold text-white mb-3">
+                  👥 Students Found: <span className="text-emerald-400">{result.students.length}</span>
+                  <span className="text-gray-500 text-xs font-normal ml-2">
+                    ({result.students.filter(s=>s.sex==='M').length}M · {result.students.filter(s=>s.sex==='F').length}F)
+                  </span>
+                </h4>
+                <div className="bg-gray-800 rounded-xl overflow-hidden max-h-52 overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <thead className="sticky top-0 bg-gray-700">
+                      <tr>
+                        <th className="text-left px-3 py-2">#</th>
+                        <th className="text-left px-3 py-2">Full Name</th>
+                        <th className="text-center px-3 py-2">Sex</th>
+                        <th className="text-left px-3 py-2">LRN</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {result.students.map((s, i) => (
+                        <tr key={s.lrn} className="border-t border-gray-700 hover:bg-gray-700/50">
+                          <td className="px-3 py-1.5 text-gray-500">{i+1}</td>
+                          <td className="px-3 py-1.5 text-white font-medium">{s.full_name}</td>
+                          <td className="px-3 py-1.5 text-center">
+                            <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${s.sex==='M'?'bg-blue-900 text-blue-300':'bg-pink-900 text-pink-300'}`}>
+                              {s.sex}
+                            </span>
+                          </td>
+                          <td className="px-3 py-1.5 font-mono text-amber-400">{s.lrn}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => { setStage('upload'); setResult(null); }}
+                  className="flex-1 py-3 rounded-xl border border-gray-600 hover:bg-gray-800 transition text-sm">
+                  ← Upload Different File
+                </button>
+                <button onClick={handleSave}
+                  className="flex-2 flex-grow-[2] py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 font-semibold transition text-sm flex items-center justify-center gap-2">
+                  <Save size={16}/> Create Section & Import {result.students.length} Students
+                </button>
+              </div>
+            </div>
+          )}
+
+          {stage === 'saving' && (
+            <div className="text-center py-12">
+              <RefreshCw size={40} className="animate-spin text-emerald-400 mx-auto mb-4"/>
+              <p className="text-white font-semibold text-lg">{progress}</p>
+              <p className="text-gray-400 text-sm mt-2">Please wait, do not close this window…</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // CREATE MANUAL SECTION MODAL
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -769,6 +997,7 @@ export default function SectionsPage() {
   const { isFree, maxSections } = useSubscription();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showImport,   setShowImport]   = useState(false);
+  const [showImportMasterlist, setShowImportMasterlist] = useState(false);
   const [showManual,   setShowManual]   = useState(false);
   const [showEdit,     setShowEdit]     = useState(false);
   const [editTarget,   setEditTarget]   = useState<Section | null>(null);
@@ -805,6 +1034,12 @@ export default function SectionsPage() {
     await loadSections();
     setActiveSection(section);
     setShowImport(false);
+  };
+
+  const handleImportedMasterlist = async (section: Section) => {
+    await loadSections();
+    setActiveSection(section);
+    setShowImportMasterlist(false);
   };
 
   const handleCreated = async (section: Section) => {
@@ -849,6 +1084,13 @@ export default function SectionsPage() {
               }}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl text-sm font-semibold transition">
               <Upload size={16}/> Import SF1 from LIS
+            </button>
+            <button onClick={() => {
+                if (isFree && sections.length >= maxSections) setShowUpgradeModal(true);
+                else setShowImportMasterlist(true);
+              }}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 px-4 py-2 rounded-xl text-sm font-semibold transition">
+              <Upload size={16}/> Import Class List
             </button>
           </div>
         </div>
@@ -895,7 +1137,14 @@ export default function SectionsPage() {
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-2xl font-semibold transition">
                   <Upload size={18}/> Import SF1 from LIS
                 </button>
+                <button onClick={() => { if (isFree && sections.length >= maxSections) setShowUpgradeModal(true); else setShowImportMasterlist(true); }}
+                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 px-6 py-3 rounded-2xl font-semibold transition">
+                  <Upload size={18}/> Import Class List
+                </button>
               </div>
+              <p className="text-gray-600 text-xs mt-4">
+                LIS SF1 export down? Use "Import Class List" for a regular MALE/FEMALE masterlist — no LRN needed to start.
+              </p>
             </div>
           ) : (
             <div>
@@ -968,19 +1217,26 @@ export default function SectionsPage() {
                 })}
 
                 {/* Add more card */}
-                <button onClick={() => {
-                    if (isFree && sections.length >= maxSections) setShowUpgradeModal(true);
-                    else setShowImport(true);
-                  }}
-                  className="rounded-2xl border-2 border-dashed border-gray-700 hover:border-blue-600 p-5 flex flex-col items-center justify-center gap-3 text-gray-500 hover:text-blue-400 transition-all min-h-[180px]">
-                  <Upload size={28}/>
-                  <span className="text-sm font-medium">
-                    {isFree && sections.length >= maxSections ? 'Upgrade to Add More' : 'Import Another SF1'}
-                  </span>
-                  {isFree && sections.length >= maxSections && (
+                {isFree && sections.length >= maxSections ? (
+                  <button onClick={() => setShowUpgradeModal(true)}
+                    className="rounded-2xl border-2 border-dashed border-gray-700 hover:border-blue-600 p-5 flex flex-col items-center justify-center gap-3 text-gray-500 hover:text-blue-400 transition-all min-h-[180px]">
+                    <Upload size={28}/>
+                    <span className="text-sm font-medium">Upgrade to Add More</span>
                     <span className="text-xs bg-amber-900/50 text-amber-400 px-2 py-1 rounded-full">Free plan: 1 section only</span>
-                  )}
-                </button>
+                  </button>
+                ) : (
+                  <div className="rounded-2xl border-2 border-dashed border-gray-700 p-5 flex flex-col items-center justify-center gap-2 min-h-[180px]">
+                    <Upload size={24} className="text-gray-500 mb-1"/>
+                    <button onClick={() => setShowImport(true)}
+                      className="w-full text-center text-sm font-medium text-gray-400 hover:text-blue-400 transition py-1.5">
+                      Import Another SF1
+                    </button>
+                    <button onClick={() => setShowImportMasterlist(true)}
+                      className="w-full text-center text-sm font-medium text-gray-400 hover:text-emerald-400 transition py-1.5">
+                      Import Class List (no LRN)
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -989,6 +1245,7 @@ export default function SectionsPage() {
 
       {/* Modals */}
       {showImport   && <ImportModal onClose={() => setShowImport(false)} onImported={handleImported}/>}
+      {showImportMasterlist && <ImportMasterlistModal onClose={() => setShowImportMasterlist(false)} onImported={handleImportedMasterlist}/>}
       {showManual   && <CreateManualModal onClose={() => setShowManual(false)} onCreated={handleCreated}/>}
       {rosterSection && <StudentRosterModal section={rosterSection} onClose={() => { setRosterSection(null); loadSections(); }}/>}
 
