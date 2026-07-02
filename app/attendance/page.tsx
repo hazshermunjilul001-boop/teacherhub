@@ -609,9 +609,19 @@ export default function AttendancePage() {
 
         {/* Main attendance table */}
         <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8px', tableLayout:'fixed'}}>
+          <colgroup>
+            <col style={{width:'145px'}} />
+            {calendarDays.map(d => {
+              const kind = dayKind(d, holidays);
+              return <col key={fmt(d)} style={{width: kind==='school' ? '20px' : '9px'}} />;
+            })}
+            <col style={{width:'26px'}} />
+            <col style={{width:'26px'}} />
+            <col style={{width:'70px'}} />
+          </colgroup>
           <thead>
             <tr>
-              <th style={{...th, textAlign:'left', width:'145px'}} rowSpan={2}>
+              <th style={{...th, textAlign:'left'}} rowSpan={2}>
                 LEARNER'S NAME<br/>
                 <span style={{fontWeight:'normal', fontSize:'7px'}}>(Last Name, First Name, Middle Name)</span>
               </th>
@@ -620,15 +630,14 @@ export default function AttendancePage() {
                 const bg = kind==='weekend' ? '#374151' : kind==='holiday' ? '#fde68a' : '#f3f4f6';
                 const fg = kind==='weekend' ? '#e5e7eb' : '#111827';
                 return (
-                  <th key={ds} style={{...thC, background:bg, color:fg, width: kind==='school' ? '20px' : '9px',
-                    padding:'1px 0', fontSize:'7px'}}>
+                  <th key={ds} style={{...thC, background:bg, color:fg, padding:'1px 0', fontSize:'7px'}}>
                     <div>{d.getDate()}</div>
                     {kind==='school' && <div style={{fontSize:'6px'}}>{['SU','M','T','W','TH','F','S'][d.getDay()]}</div>}
                   </th>
                 );
               })}
               <th style={{...thC, fontSize:'7px'}} colSpan={2}>Total for the Month</th>
-              <th style={{...thC, width:'62px', fontSize:'6px', lineHeight:'1.25', whiteSpace:'normal', wordBreak:'break-word'}}>
+              <th style={{...thC, fontSize:'6px', lineHeight:'1.25', whiteSpace:'normal', wordBreak:'break-word'}}>
                 REMARKS (If DROPPED OUT, state reason from legend 2. If TRANSFERRED IN/OUT, write name of School.)
               </th>
             </tr>
@@ -638,8 +647,8 @@ export default function AttendancePage() {
                 const bg = kind==='weekend' ? '#374151' : kind==='holiday' ? '#fde68a' : undefined;
                 return <th key={fmt(d)} style={{...thC, background:bg, padding:'0', fontSize:'7px'}}></th>;
               })}
-              <th style={{...thC, width:'20px', fontSize:'7px'}}>ABSENT</th>
-              <th style={{...thC, width:'20px', fontSize:'7px'}}>PRESENT</th>
+              <th style={{...thC, fontSize:'7px'}}>ABSENT</th>
+              <th style={{...thC, fontSize:'7px'}}>PRESENT</th>
               <th style={th}></th>
             </tr>
           </thead>
