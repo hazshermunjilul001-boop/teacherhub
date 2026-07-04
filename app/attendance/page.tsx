@@ -551,9 +551,6 @@ export default function AttendancePage() {
 
   // ── SF2 PRINT VIEW ─────────────────────────────────────────────────────────
   const SF2View = () => {
-    const totalDailyAttendance = schoolDays.reduce((sum,d) => sum + dayPresents(fmt(d)), 0);
-    const ada  = totalSchoolDays > 0 ? (totalDailyAttendance / totalSchoolDays) : 0;
-    const poa  = totalEnrollment > 0 ? (ada / totalEnrollment) * 100 : 0;
     const consecutiveCount = activeStudents.filter(s => hasConsecAbsences(s.id)).length;
 
     const droppedStudents      = inactiveStudents.filter(s => s.status === 'dropped');
@@ -580,10 +577,15 @@ export default function AttendancePage() {
     // Per-gender breakdowns for the summary box (Percentage of Enrolment, ADA, Percentage of Attendance)
     const totalDailyAttendanceM = males.reduce((s,st) => s + getPresents(st.id), 0);
     const totalDailyAttendanceF = females.reduce((s,st) => s + getPresents(st.id), 0);
-    const adaM = totalSchoolDays > 0 ? (totalDailyAttendanceM / totalSchoolDays) : 0;
-    const adaF = totalSchoolDays > 0 ? (totalDailyAttendanceF / totalSchoolDays) : 0;
+    // ADA is displayed as a whole number, so the percentage-of-attendance math below uses
+    // that same rounded whole number — otherwise 17 present out of 17 registered would show
+    // as something like 97% instead of the expected 100%.
+    const adaM = totalSchoolDays > 0 ? Math.round(totalDailyAttendanceM / totalSchoolDays) : 0;
+    const adaF = totalSchoolDays > 0 ? Math.round(totalDailyAttendanceF / totalSchoolDays) : 0;
+    const ada  = adaM + adaF; // total ADA = sum of the whole-numbered M and F figures
     const poaM = regEndM > 0 ? (adaM / regEndM) * 100 : 0;
     const poaF = regEndF > 0 ? (adaF / regEndF) * 100 : 0;
+    const poa  = regEnd  > 0 ? (ada  / regEnd)  * 100 : 0;
     const pctEnrolM = initEnrollM > 0 ? (regEndM / initEnrollM) * 100 : 0;
     const pctEnrolF = initEnrollF > 0 ? (regEndF / initEnrollF) * 100 : 0;
 
@@ -706,26 +708,18 @@ export default function AttendancePage() {
                 {sf2Days.map(d => {
                   const ds = fmt(d); const isHol = holidays.includes(ds);
                   if (isHol) {
-                    // Independent per-row cell (NOT rowSpan) so the print engine can break the
-                    // page between any two student rows. Borders between consecutive holiday
-                    // cells are hidden so the column still reads as one continuous bar. The
-                    // label text is an absolutely-positioned overlay (not normal cell content)
-                    // so it doesn't force the first row to grow taller than the rest.
-                    const isFirst = idx === 0;
-                    const isLast = idx === males.length - 1;
+                    // Real rowSpan — the standards-correct way to merge cells, so borders are
+                    // handled natively by the browser instead of manually hidden per row.
+                    if (idx !== 0) return null; // covered by the rowSpan cell rendered on row 1
                     return (
-                      <td key={ds} style={{...tdC, width:'20px', padding:0, position:'relative',
-                        background:'#e5e7eb',
-                        borderTop: isFirst ? b.border : 'hidden',
-                        borderBottom: isLast ? b.border : 'hidden'}}>
-                        {isFirst && (
-                          <div style={{position:'absolute', top:2, left:0, width:'100%',
-                            writingMode:'vertical-rl' as any, textOrientation:'mixed' as any,
-                            fontSize:'6.5px', fontWeight:'bold', letterSpacing:'0.3px',
-                            whiteSpace:'nowrap', zIndex:5}}>
-                            {holidayReasons[ds] || 'No Classes'}
-                          </div>
-                        )}
+                      <td key={ds} rowSpan={males.length + 1} style={{...tdC, width:'20px', padding:'2px 0',
+                        position:'relative', background:'#e5e7eb'}}>
+                        <div style={{position:'absolute', top:2, left:0, width:'100%',
+                          writingMode:'vertical-rl' as any, textOrientation:'mixed' as any,
+                          fontSize:'6.5px', fontWeight:'bold', letterSpacing:'0.3px',
+                          whiteSpace:'nowrap', zIndex:5}}>
+                          {holidayReasons[ds] || 'No Classes'}
+                        </div>
                       </td>
                     );
                   }
@@ -750,8 +744,9 @@ export default function AttendancePage() {
               {sf2Days.map(d => {
                 const ds = fmt(d); const isHol = holidays.includes(ds);
                 if (isHol) {
-                  // Always render this cell — never skip it — so the subtotal row has exactly
-                  // the same number of <td> columns as every student row and the header.
+                  // Normally covered by the rowSpan from the first student row — skip it here.
+                  // Only render it if there were zero male students to carry the rowSpan.
+                  if (males.length !== 0) return null;
                   return <td key={ds} style={{...tdC, width:'20px', padding:0, background:'#e5e7eb'}}/>;
                 }
                 const p = males.filter(s => { const st=records[s.id]?.[ds]; return st==='P'||st==='L'||st===undefined; }).length;
@@ -775,21 +770,16 @@ export default function AttendancePage() {
                 {sf2Days.map(d => {
                   const ds = fmt(d); const isHol = holidays.includes(ds);
                   if (isHol) {
-                    const isFirst = idx === 0;
-                    const isLast = idx === females.length - 1;
+                    if (idx !== 0) return null; // covered by the rowSpan cell rendered on row 1
                     return (
-                      <td key={ds} style={{...tdC, width:'20px', padding:0, position:'relative',
-                        background:'#e5e7eb',
-                        borderTop: isFirst ? b.border : 'hidden',
-                        borderBottom: isLast ? b.border : 'hidden'}}>
-                        {isFirst && (
-                          <div style={{position:'absolute', top:2, left:0, width:'100%',
-                            writingMode:'vertical-rl' as any, textOrientation:'mixed' as any,
-                            fontSize:'6.5px', fontWeight:'bold', letterSpacing:'0.3px',
-                            whiteSpace:'nowrap', zIndex:5}}>
-                            {holidayReasons[ds] || 'No Classes'}
-                          </div>
-                        )}
+                      <td key={ds} rowSpan={females.length + 1} style={{...tdC, width:'20px', padding:'2px 0',
+                        position:'relative', background:'#e5e7eb'}}>
+                        <div style={{position:'absolute', top:2, left:0, width:'100%',
+                          writingMode:'vertical-rl' as any, textOrientation:'mixed' as any,
+                          fontSize:'6.5px', fontWeight:'bold', letterSpacing:'0.3px',
+                          whiteSpace:'nowrap', zIndex:5}}>
+                          {holidayReasons[ds] || 'No Classes'}
+                        </div>
                       </td>
                     );
                   }
@@ -814,6 +804,7 @@ export default function AttendancePage() {
               {sf2Days.map(d => {
                 const ds = fmt(d); const isHol = holidays.includes(ds);
                 if (isHol) {
+                  if (females.length !== 0) return null; // covered by the rowSpan above
                   return <td key={ds} style={{...tdC, width:'20px', padding:0, background:'#e5e7eb'}}/>;
                 }
                 const p = females.filter(s => { const st=records[s.id]?.[ds]; return st==='P'||st==='L'||st===undefined; }).length;
@@ -1033,9 +1024,9 @@ export default function AttendancePage() {
                   </tr>
                   <tr>
                     <td colSpan={2} style={{...td, fontStyle:'italic', fontSize:'7px'}}>Average Daily Attendance</td>
-                    <td style={tdC}>{Math.round(adaM)}</td>
-                    <td style={tdC}>{Math.round(adaF)}</td>
-                    <td style={{...tdC, fontWeight:'bold'}}>{ada.toFixed(2)}</td>
+                    <td style={tdC}>{adaM}</td>
+                    <td style={tdC}>{adaF}</td>
+                    <td style={{...tdC, fontWeight:'bold'}}>{ada}</td>
                   </tr>
                   <tr>
                     <td colSpan={2} style={{...td, fontStyle:'italic', fontSize:'7px'}}>Percentage of Attendance for the month</td>
