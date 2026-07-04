@@ -1099,6 +1099,11 @@ export default function AttendancePage() {
     <>
       <style>{`
         @media print {
+          html, body, .sf2-print, .sf2-print * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
           body { background: white !important; margin: 0 !important; }
           .no-print { display: none !important; }
           /* Hide main page, show SF2 modal only */
