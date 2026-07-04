@@ -708,18 +708,24 @@ export default function AttendancePage() {
                 {sf2Days.map(d => {
                   const ds = fmt(d); const isHol = holidays.includes(ds);
                   if (isHol) {
-                    // Real rowSpan — the standards-correct way to merge cells, so borders are
-                    // handled natively by the browser instead of manually hidden per row.
-                    if (idx !== 0) return null; // covered by the rowSpan cell rendered on row 1
+                    // Independent per-row cell — NOT rowSpan. A rowSpan cell can't be split
+                    // across a print page, so if the page break falls partway through a
+                    // 15-20 row roster the browser is forced to push the *entire* block to
+                    // the next page, leaving a blank gap. Every row gets its own normal,
+                    // fully-bordered cell (same border on all sides as any other cell) so
+                    // nothing needs special-casing and pages break wherever they naturally
+                    // would. The reason text is only drawn on row 1 as an overlay so the
+                    // column still reads as one continuous shaded bar.
                     return (
-                      <td key={ds} rowSpan={males.length + 1} style={{...tdC, width:'20px', padding:'2px 0',
-                        position:'relative', background:'#e5e7eb'}}>
-                        <div style={{position:'absolute', top:2, left:0, width:'100%',
-                          writingMode:'vertical-rl' as any, textOrientation:'mixed' as any,
-                          fontSize:'6.5px', fontWeight:'bold', letterSpacing:'0.3px',
-                          whiteSpace:'nowrap', zIndex:5}}>
-                          {holidayReasons[ds] || 'No Classes'}
-                        </div>
+                      <td key={ds} style={{...tdC, width:'20px', padding:'2px 0', position:'relative', background:'#e5e7eb'}}>
+                        {idx === 0 && (
+                          <div style={{position:'absolute', top:2, left:0, width:'100%',
+                            writingMode:'vertical-rl' as any, textOrientation:'mixed' as any,
+                            fontSize:'6.5px', fontWeight:'bold', letterSpacing:'0.3px',
+                            whiteSpace:'nowrap', zIndex:5}}>
+                            {holidayReasons[ds] || 'No Classes'}
+                          </div>
+                        )}
                       </td>
                     );
                   }
@@ -744,9 +750,6 @@ export default function AttendancePage() {
               {sf2Days.map(d => {
                 const ds = fmt(d); const isHol = holidays.includes(ds);
                 if (isHol) {
-                  // Normally covered by the rowSpan from the first student row — skip it here.
-                  // Only render it if there were zero male students to carry the rowSpan.
-                  if (males.length !== 0) return null;
                   return <td key={ds} style={{...tdC, width:'20px', padding:0, background:'#e5e7eb'}}/>;
                 }
                 const p = males.filter(s => { const st=records[s.id]?.[ds]; return st==='P'||st==='L'||st===undefined; }).length;
@@ -770,16 +773,16 @@ export default function AttendancePage() {
                 {sf2Days.map(d => {
                   const ds = fmt(d); const isHol = holidays.includes(ds);
                   if (isHol) {
-                    if (idx !== 0) return null; // covered by the rowSpan cell rendered on row 1
                     return (
-                      <td key={ds} rowSpan={females.length + 1} style={{...tdC, width:'20px', padding:'2px 0',
-                        position:'relative', background:'#e5e7eb'}}>
-                        <div style={{position:'absolute', top:2, left:0, width:'100%',
-                          writingMode:'vertical-rl' as any, textOrientation:'mixed' as any,
-                          fontSize:'6.5px', fontWeight:'bold', letterSpacing:'0.3px',
-                          whiteSpace:'nowrap', zIndex:5}}>
-                          {holidayReasons[ds] || 'No Classes'}
-                        </div>
+                      <td key={ds} style={{...tdC, width:'20px', padding:'2px 0', position:'relative', background:'#e5e7eb'}}>
+                        {idx === 0 && (
+                          <div style={{position:'absolute', top:2, left:0, width:'100%',
+                            writingMode:'vertical-rl' as any, textOrientation:'mixed' as any,
+                            fontSize:'6.5px', fontWeight:'bold', letterSpacing:'0.3px',
+                            whiteSpace:'nowrap', zIndex:5}}>
+                            {holidayReasons[ds] || 'No Classes'}
+                          </div>
+                        )}
                       </td>
                     );
                   }
@@ -804,7 +807,6 @@ export default function AttendancePage() {
               {sf2Days.map(d => {
                 const ds = fmt(d); const isHol = holidays.includes(ds);
                 if (isHol) {
-                  if (females.length !== 0) return null; // covered by the rowSpan above
                   return <td key={ds} style={{...tdC, width:'20px', padding:0, background:'#e5e7eb'}}/>;
                 }
                 const p = females.filter(s => { const st=records[s.id]?.[ds]; return st==='P'||st==='L'||st===undefined; }).length;
