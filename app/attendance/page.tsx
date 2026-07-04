@@ -551,8 +551,6 @@ export default function AttendancePage() {
 
   // ── SF2 PRINT VIEW ─────────────────────────────────────────────────────────
   const SF2View = () => {
-    const consecutiveCount = activeStudents.filter(s => hasConsecAbsences(s.id)).length;
-
     const droppedStudents      = inactiveStudents.filter(s => s.status === 'dropped');
     const transferredOutStudents = inactiveStudents.filter(s => s.status === 'transferred_out');
     const transferredInStudents  = inactiveStudents.filter(s => s.status === 'transferred_in');
@@ -563,6 +561,50 @@ export default function AttendancePage() {
     const fTransOut = transferredOutStudents.filter(s => s.sex === 'F').length;
     const mTransIn  = transferredInStudents.filter(s => s.sex === 'M').length;
     const fTransIn  = transferredInStudents.filter(s => s.sex === 'F').length;
+
+    // The SF2 print form keeps dropped/transferred students in the roster (not hidden away in
+    // a separate list) — but their day-by-day marks only count while they were actually
+    // enrolled: a dropped/transferred-out student stops counting from their status date
+    // onward; a transferred-in student only starts counting from their status date onward.
+    const sf2Males   = students.filter(s => s.sex === 'M');
+    const sf2Females = students.filter(s => s.sex === 'F');
+
+    const isCountedOn = (student: Student, ds: string): boolean => {
+      if (!student.status || student.status === 'active') return true;
+      if (!student.status_date) return true; // no date on record — don't silently blank out history
+      if (student.status === 'transferred_in') return ds >= student.status_date;
+      return ds < student.status_date; // dropped / transferred_out
+    };
+    const sf2GetAbsents = (student: Student) => schoolDays.filter(d => {
+      const ds = fmt(d);
+      return isCountedOn(student, ds) && records[student.id]?.[ds] === 'A';
+    }).length;
+    const sf2GetPresents = (student: Student) => schoolDays.filter(d => {
+      const ds = fmt(d);
+      if (!isCountedOn(student, ds)) return false;
+      const st = records[student.id]?.[ds];
+      return st === 'P' || st === 'L' || st === undefined;
+    }).length;
+    const sf2HasConsecAbsences = (student: Student) => {
+      let count = 0;
+      for (const d of schoolDays) {
+        const ds = fmt(d);
+        if (!isCountedOn(student, ds)) { count = 0; continue; }
+        if (records[student.id]?.[ds] === 'A') { count++; if (count >= 5) return true; }
+        else count = 0;
+      }
+      return false;
+    };
+    const statusRemark = (student: Student) => {
+      if (!student.status || student.status === 'active') return '';
+      const label = student.status === 'dropped' ? 'DROPPED OUT'
+                  : student.status === 'transferred_out' ? 'TRANSFERRED OUT' : 'TRANSFERRED IN';
+      return `${label}${student.status_date ? ` (${student.status_date})` : ''}${student.status_note ? ` — ${student.status_note}` : ''}`;
+    };
+
+    const sf2ConsecM = sf2Males.filter(s => sf2HasConsecAbsences(s)).length;
+    const sf2ConsecF = sf2Females.filter(s => sf2HasConsecAbsences(s)).length;
+    const sf2ConsecTotal = sf2ConsecM + sf2ConsecF;
 
     // Registered learners at end of month = active + transferred in
     const regEndM = mEnroll + mTransIn;
@@ -575,8 +617,10 @@ export default function AttendancePage() {
     const initEnroll  = initEnrollM + initEnrollF;
 
     // Per-gender breakdowns for the summary box (Percentage of Enrolment, ADA, Percentage of Attendance)
-    const totalDailyAttendanceM = males.reduce((s,st) => s + getPresents(st.id), 0);
-    const totalDailyAttendanceF = females.reduce((s,st) => s + getPresents(st.id), 0);
+    // Uses the full roster (sf2Males/sf2Females) so partial-month presence from dropped,
+    // transferred-out, and transferred-in students is folded in for the days they were enrolled.
+    const totalDailyAttendanceM = sf2Males.reduce((s,st) => s + sf2GetPresents(st), 0);
+    const totalDailyAttendanceF = sf2Females.reduce((s,st) => s + sf2GetPresents(st), 0);
     // ADA is displayed as a whole number, so the percentage-of-attendance math below uses
     // that same rounded whole number — otherwise 17 present out of 17 registered would show
     // as something like 97% instead of the expected 100%.
@@ -701,7 +745,7 @@ export default function AttendancePage() {
                 MALE
               </td>
             </tr>
-            {males.map((student, idx) => (
+            {sf2Males.map((student, idx) => (
               <tr key={student.id}>
                 <td style={{...tdC}}>{idx+1}</td>
                 <td style={{...td, textAlign:'left'}}>{student.full_name}</td>
@@ -716,7 +760,7 @@ export default function AttendancePage() {
                     // instead of a grid — but because each row is still independent, the page
                     // can break at any row without leaving a blank gap.
                     const isFirst = idx === 0;
-                    const isLast  = idx === males.length - 1;
+                    const isLast  = idx === sf2Males.length - 1;
                     return (
                       <td key={ds} style={{...tdC, width:'20px', padding:'2px 0', position:'relative',
                         background:'#e5e7eb',
@@ -733,6 +777,11 @@ export default function AttendancePage() {
                       </td>
                     );
                   }
+                  if (!isCountedOn(student, ds)) {
+                    // Not yet enrolled (before a transfer-in date) or no longer enrolled
+                    // (on/after a dropped/transferred-out date) — plain blank cell, no mark.
+                    return <td key={ds} style={{...tdC, width:'20px', padding:0, background:'#f9fafb'}}/>;
+                  }
                   const st = records[student.id]?.[ds];
                   return (
                     <td key={ds} style={{...tdC, width:'20px', padding:0, position:'relative',
@@ -741,10 +790,10 @@ export default function AttendancePage() {
                     </td>
                   );
                 })}
-                <td style={{...tdC, fontWeight:'bold'}}>{getAbsents(student.id)||''}</td>
-                <td style={{...tdC, fontWeight:'bold'}}>{getPresents(student.id)||''}</td>
+                <td style={{...tdC, fontWeight:'bold'}}>{sf2GetAbsents(student)||''}</td>
+                <td style={{...tdC, fontWeight:'bold'}}>{sf2GetPresents(student)||''}</td>
                 <td style={{...td, fontSize:'7px', fontStyle:'italic'}}>
-                  {hasConsecAbsences(student.id) ? '5+ consecutive absences' : ''}
+                  {statusRemark(student) || (sf2HasConsecAbsences(student) ? '5+ consecutive absences' : '')}
                 </td>
               </tr>
             ))}
@@ -756,11 +805,14 @@ export default function AttendancePage() {
                 if (isHol) {
                   return <td key={ds} style={{...tdC, width:'20px', padding:0, background:'#e5e7eb'}}/>;
                 }
-                const p = males.filter(s => { const st=records[s.id]?.[ds]; return st==='P'||st==='L'||st===undefined; }).length;
+                const p = sf2Males.filter(s => {
+                  if (!isCountedOn(s, ds)) return false;
+                  const st = records[s.id]?.[ds]; return st==='P'||st==='L'||st===undefined;
+                }).length;
                 return <td key={ds} style={{...tdC, fontWeight:'bold', fontSize:'7px'}}>{p}</td>;
               })}
-              <td style={{...tdC, fontWeight:'bold'}}>{mAbsents}</td>
-              <td style={{...tdC, fontWeight:'bold'}}>{males.reduce((s,st)=>s+getPresents(st.id),0)}</td>
+              <td style={{...tdC, fontWeight:'bold'}}>{sf2Males.reduce((s,st)=>s+sf2GetAbsents(st),0)}</td>
+              <td style={{...tdC, fontWeight:'bold'}}>{sf2Males.reduce((s,st)=>s+sf2GetPresents(st),0)}</td>
               <td style={td}></td>
             </tr>
 
@@ -770,7 +822,7 @@ export default function AttendancePage() {
                 FEMALE
               </td>
             </tr>
-            {females.map((student, idx) => (
+            {sf2Females.map((student, idx) => (
               <tr key={student.id}>
                 <td style={{...tdC}}>{idx+1}</td>
                 <td style={{...td, textAlign:'left'}}>{student.full_name}</td>
@@ -778,7 +830,7 @@ export default function AttendancePage() {
                   const ds = fmt(d); const isHol = holidays.includes(ds);
                   if (isHol) {
                     const isFirst = idx === 0;
-                    const isLast  = idx === females.length - 1;
+                    const isLast  = idx === sf2Females.length - 1;
                     return (
                       <td key={ds} style={{...tdC, width:'20px', padding:'2px 0', position:'relative',
                         background:'#e5e7eb',
@@ -795,6 +847,9 @@ export default function AttendancePage() {
                       </td>
                     );
                   }
+                  if (!isCountedOn(student, ds)) {
+                    return <td key={ds} style={{...tdC, width:'20px', padding:0, background:'#f9fafb'}}/>;
+                  }
                   const st = records[student.id]?.[ds];
                   return (
                     <td key={ds} style={{...tdC, width:'20px', padding:0, position:'relative',
@@ -803,10 +858,10 @@ export default function AttendancePage() {
                     </td>
                   );
                 })}
-                <td style={{...tdC, fontWeight:'bold'}}>{getAbsents(student.id)||''}</td>
-                <td style={{...tdC, fontWeight:'bold'}}>{getPresents(student.id)||''}</td>
+                <td style={{...tdC, fontWeight:'bold'}}>{sf2GetAbsents(student)||''}</td>
+                <td style={{...tdC, fontWeight:'bold'}}>{sf2GetPresents(student)||''}</td>
                 <td style={{...td, fontSize:'7px', fontStyle:'italic'}}>
-                  {hasConsecAbsences(student.id) ? '5+ consecutive absences' : ''}
+                  {statusRemark(student) || (sf2HasConsecAbsences(student) ? '5+ consecutive absences' : '')}
                 </td>
               </tr>
             ))}
@@ -818,11 +873,14 @@ export default function AttendancePage() {
                 if (isHol) {
                   return <td key={ds} style={{...tdC, width:'20px', padding:0, background:'#e5e7eb'}}/>;
                 }
-                const p = females.filter(s => { const st=records[s.id]?.[ds]; return st==='P'||st==='L'||st===undefined; }).length;
+                const p = sf2Females.filter(s => {
+                  if (!isCountedOn(s, ds)) return false;
+                  const st = records[s.id]?.[ds]; return st==='P'||st==='L'||st===undefined;
+                }).length;
                 return <td key={ds} style={{...tdC, fontWeight:'bold', fontSize:'7px'}}>{p}</td>;
               })}
-              <td style={{...tdC, fontWeight:'bold'}}>{fAbsents}</td>
-              <td style={{...tdC, fontWeight:'bold'}}>{females.reduce((s,st)=>s+getPresents(st.id),0)}</td>
+              <td style={{...tdC, fontWeight:'bold'}}>{sf2Females.reduce((s,st)=>s+sf2GetAbsents(st),0)}</td>
+              <td style={{...tdC, fontWeight:'bold'}}>{sf2Females.reduce((s,st)=>s+sf2GetPresents(st),0)}</td>
               <td style={td}></td>
             </tr>
 
@@ -832,57 +890,22 @@ export default function AttendancePage() {
               {sf2Days.map(d => {
                 const ds = fmt(d); const isHol = holidays.includes(ds);
                 if (isHol) return <td key={ds} style={{...tdC, width:'20px', padding:0, background:'#e5e7eb'}}/>;
-                const p = activeStudents.filter(s => { const st=records[s.id]?.[ds]; return st==='P'||st==='L'||st===undefined; }).length;
+                const p = students.filter(s => {
+                  if (!isCountedOn(s, ds)) return false;
+                  const st = records[s.id]?.[ds]; return st==='P'||st==='L'||st===undefined;
+                }).length;
                 return <td key={ds} style={{...tdC, fontWeight:'bold', fontSize:'7px'}}>{p}</td>;
               })}
-              <td style={{...tdC, fontWeight:'bold'}}>{mAbsents+fAbsents}</td>
-              <td style={{...tdC, fontWeight:'bold'}}>{activeStudents.reduce((s,st)=>s+getPresents(st.id),0)}</td>
+              <td style={{...tdC, fontWeight:'bold'}}>
+                {sf2Males.reduce((s,st)=>s+sf2GetAbsents(st),0) + sf2Females.reduce((s,st)=>s+sf2GetAbsents(st),0)}
+              </td>
+              <td style={{...tdC, fontWeight:'bold'}}>
+                {sf2Males.reduce((s,st)=>s+sf2GetPresents(st),0) + sf2Females.reduce((s,st)=>s+sf2GetPresents(st),0)}
+              </td>
               <td style={td}></td>
             </tr>
           </tbody>
         </table>
-
-        {/* NLS section for dropped/transferred students */}
-        {inactiveStudents.length > 0 && (
-          <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8px', marginTop:'4px', tableLayout:'fixed'}}>
-            <colgroup>
-              <col style={{width:'20px'}} />
-              <col style={{width:'125px'}} />
-              {sf2Days.map(d => <col key={fmt(d)} style={{width:'20px'}} />)}
-              <col style={{width:'26px'}} />
-              <col style={{width:'26px'}} />
-              <col style={{width:'70px'}} />
-            </colgroup>
-            <thead>
-              <tr>
-                <th style={{...th, textAlign:'left'}} colSpan={sf2Days.length + sf2ColSpanExtra}>
-                  NLS (No Longer in School) — shown for record purposes only, excluded from attendance counts
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {inactiveStudents.map((student, idx) => (
-                <tr key={student.id} style={{background:'#f9fafb', color:'#6b7280'}}>
-                  <td style={{...tdC, color:'#9ca3af'}}>{idx+1}</td>
-                  <td style={{...td, minWidth:'125px', textDecoration:'line-through', color:'#9ca3af'}}>
-                    {student.full_name}
-                  </td>
-                  {sf2Days.map(d => {
-                    const ds = fmt(d); const isHol = holidays.includes(ds);
-                    return <td key={ds} style={{...tdC, background: isHol ? '#e5e7eb' : '#f3f4f6', fontSize:'7px'}}></td>;
-                  })}
-                  <td style={{...tdC}}>—</td>
-                  <td style={{...tdC}}>—</td>
-                  <td style={{...td, fontSize:'7px', fontStyle:'italic', color:'#6b7280'}}>
-                    {student.status === 'dropped' ? 'DROPPED OUT' : student.status === 'transferred_out' ? 'TRANSFERRED OUT' : 'TRANSFERRED IN'}
-                    {student.status_date ? ` (${student.status_date})` : ''}
-                    {student.status_note ? ` — ${student.status_note}` : ''}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
 
         {/* ══ GUIDELINES + CODES + SUMMARY ══ */}
         <div className="sf2-summary" style={{marginTop:'4px'}}>
@@ -1047,10 +1070,10 @@ export default function AttendancePage() {
                   </tr>
                   <tr>
                     <td colSpan={2} style={{...td, fontStyle:'italic', fontSize:'7px'}}>Number of students with 5 consecutive days of absences:</td>
-                    <td style={tdC}></td>
-                    <td style={tdC}></td>
-                    <td style={{...tdC, fontWeight:'bold', color: consecutiveCount > 0 ? 'red' : 'inherit'}}>
-                      {consecutiveCount || ''}
+                    <td style={{...tdC, color: sf2ConsecM > 0 ? 'red' : 'inherit'}}>{sf2ConsecM}</td>
+                    <td style={{...tdC, color: sf2ConsecF > 0 ? 'red' : 'inherit'}}>{sf2ConsecF}</td>
+                    <td style={{...tdC, fontWeight:'bold', color: sf2ConsecTotal > 0 ? 'red' : 'inherit'}}>
+                      {sf2ConsecTotal}
                     </td>
                   </tr>
                   <tr>
