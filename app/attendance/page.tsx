@@ -84,21 +84,28 @@ function statusPrintChar(s?: Status) {
   if (s === 'A') return 'X';
   return '';
 }
-// The official form pre-prints every day cell with a diagonal hatch so blank vs.
-// unmarked is never ambiguous. Present = a light single-direction hatch (increasing
-// diagonals, no fill). Absent = a bold crossed hatch (both diagonals). Late = the
-// same light hatch with a solid black triangle shading the upper half.
-const HATCH_PRESENT = 'repeating-linear-gradient(45deg, #444 0px, #444 0.6px, transparent 0.6px, transparent 4px)';
-const HATCH_ABSENT  = 'repeating-linear-gradient(45deg, #000 0px, #000 1.1px, transparent 1.1px, transparent 4px), '
-                     + 'repeating-linear-gradient(-45deg, #000 0px, #000 1.1px, transparent 1.1px, transparent 4px)';
-function attendanceCellBg(s?: Status) {
-  if (s === 'A') return HATCH_ABSENT;
-  return HATCH_PRESENT; // present and late both show the light hatch as their base
+// One diagonal line per cell — not a repeating hatch. Built as an inline SVG so the
+// line always runs exact corner-to-corner regardless of the cell's actual pixel size.
+// Present = a single "/" diagonal. Absent = both diagonals crossing to form one X.
+function svgLineBg(linesMarkup: string) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" preserveAspectRatio="none">${linesMarkup}</svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") center / 100% 100% no-repeat`;
 }
-// Half-shaded diagonal triangle overlay for "Late" per the official SF2 legend
-// (upper triangle shaded = Late Comer). Sits on top of the present-style hatch.
+const PRESENT_BG = svgLineBg('<line x1="100" y1="0" x2="0" y2="100" stroke="#333" stroke-width="6"/>');
+const ABSENT_BG  = svgLineBg(
+  '<line x1="100" y1="0" x2="0" y2="100" stroke="#000" stroke-width="6"/>' +
+  '<line x1="0" y1="0" x2="100" y2="100" stroke="#000" stroke-width="6"/>'
+);
+function attendanceCellBg(s?: Status) {
+  if (s === 'A') return ABSENT_BG;
+  if (s === 'L') return 'white'; // late shows a plain half-shaded triangle instead, no extra line
+  return PRESENT_BG;
+}
+// Half-shaded diagonal triangle for "Late" per the official SF2 legend (upper
+// triangle shaded = Late Comer). The diagonal edge of the triangle IS the line,
+// so no separate hatch is drawn underneath it.
 function LateTriangle() {
-  return <div style={{position:'absolute', inset:0, clipPath:'polygon(0 0, 100% 0, 100% 100%)', background:'#000'}}/>;
+  return <div style={{position:'absolute', inset:0, clipPath:'polygon(0 0, 100% 0, 0 100%)', background:'#000'}}/>;
 }
 
 // ── STUDENT STATUS MODAL ──────────────────────────────────────────────────────
