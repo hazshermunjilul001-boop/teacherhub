@@ -709,16 +709,20 @@ export default function AttendancePage() {
                   const ds = fmt(d); const isHol = holidays.includes(ds);
                   if (isHol) {
                     // Independent per-row cell — NOT rowSpan. A rowSpan cell can't be split
-                    // across a print page, so if the page break falls partway through a
-                    // 15-20 row roster the browser is forced to push the *entire* block to
-                    // the next page, leaving a blank gap. Every row gets its own normal,
-                    // fully-bordered cell (same border on all sides as any other cell) so
-                    // nothing needs special-casing and pages break wherever they naturally
-                    // would. The reason text is only drawn on row 1 as an overlay so the
-                    // column still reads as one continuous shaded bar.
+                    // across a print page (see the big comment further down / chat history),
+                    // so every row still gets its own <td>. What's different from a plain cell
+                    // is that the top/bottom borders between consecutive holiday rows are
+                    // suppressed, so the whole column still reads as one continuous shaded bar
+                    // instead of a grid — but because each row is still independent, the page
+                    // can break at any row without leaving a blank gap.
+                    const isFirst = idx === 0;
+                    const isLast  = idx === males.length - 1;
                     return (
-                      <td key={ds} style={{...tdC, width:'20px', padding:'2px 0', position:'relative', background:'#e5e7eb'}}>
-                        {idx === 0 && (
+                      <td key={ds} style={{...tdC, width:'20px', padding:'2px 0', position:'relative',
+                        background:'#e5e7eb',
+                        borderTop: isFirst ? b.border : 'none',
+                        borderBottom: isLast ? b.border : 'none'}}>
+                        {isFirst && (
                           <div style={{position:'absolute', top:2, left:0, width:'100%',
                             writingMode:'vertical-rl' as any, textOrientation:'mixed' as any,
                             fontSize:'6.5px', fontWeight:'bold', letterSpacing:'0.3px',
@@ -773,9 +777,14 @@ export default function AttendancePage() {
                 {sf2Days.map(d => {
                   const ds = fmt(d); const isHol = holidays.includes(ds);
                   if (isHol) {
+                    const isFirst = idx === 0;
+                    const isLast  = idx === females.length - 1;
                     return (
-                      <td key={ds} style={{...tdC, width:'20px', padding:'2px 0', position:'relative', background:'#e5e7eb'}}>
-                        {idx === 0 && (
+                      <td key={ds} style={{...tdC, width:'20px', padding:'2px 0', position:'relative',
+                        background:'#e5e7eb',
+                        borderTop: isFirst ? b.border : 'none',
+                        borderBottom: isLast ? b.border : 'none'}}>
+                        {isFirst && (
                           <div style={{position:'absolute', top:2, left:0, width:'100%',
                             writingMode:'vertical-rl' as any, textOrientation:'mixed' as any,
                             fontSize:'6.5px', fontWeight:'bold', letterSpacing:'0.3px',
