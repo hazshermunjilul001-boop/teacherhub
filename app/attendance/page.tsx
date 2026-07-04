@@ -82,8 +82,16 @@ function statusColor(s?: Status) {
 }
 function statusPrintChar(s?: Status) {
   if (s === 'A') return 'X';
-  if (s === 'L') return '/';
   return '';
+}
+// Half-shaded diagonal triangle for "Late" per the official SF2 legend
+// (upper triangle shaded = Late Comer). Rendered instead of text.
+function LateTriangle() {
+  return (
+    <div style={{position:'relative', width:'100%', height:'11px'}}>
+      <div style={{position:'absolute', inset:0, clipPath:'polygon(0 0, 100% 0, 100% 100%)', background:'#000'}}/>
+    </div>
+  );
 }
 
 // ── STUDENT STATUS MODAL ──────────────────────────────────────────────────────
@@ -561,16 +569,27 @@ export default function AttendancePage() {
     const tdC = {...td, textAlign:'center' as const};
     const thC = {...th, textAlign:'center' as const};
 
+    // Weekdays only — weekends are dropped from SF2 entirely. Holiday weekdays stay in
+    // the list but render as a merged/shaded column with the reason instead of marks.
+    const sf2Days = calendarDays.filter(d => d.getDay() !== 0 && d.getDay() !== 6);
+    const sf2ColSpanExtra = 5; // No. + Name + Absent + Present + Remarks
+
     return (
       <div className="sf2-print bg-white text-black" style={{fontFamily:'Arial, sans-serif', fontSize:'9px', padding:'6mm', overflow:'visible'}}>
 
         {/* ══ PAGE 1: ATTENDANCE TABLE ══════════════════════════════════════ */}
 
         {/* Title */}
-        <div style={{textAlign:'center', marginBottom:'4px'}}>
-          <div style={{fontWeight:'bold', fontSize:'12px'}}>School Form 2 (SF2)</div>
-          <div style={{fontWeight:'bold', fontSize:'10px'}}>Daily Attendance Report of Learners</div>
-          <div style={{fontSize:'7.5px', color:'#555'}}>(This replaces Form 1, Form 2 &amp; STS Form 4 — Absenteeism and Dropping Out)</div>
+        <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'12px', marginBottom:'4px'}}>
+          <img src="/deped-seal.png" alt="" style={{height:'52px', width:'52px', objectFit:'contain'}}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}/>
+          <div style={{textAlign:'center'}}>
+            <div style={{fontWeight:'bold', fontSize:'12px'}}>School Form 2 (SF2)</div>
+            <div style={{fontWeight:'bold', fontSize:'10px'}}>Daily Attendance Report of Learners</div>
+            <div style={{fontSize:'7.5px', color:'#555'}}>(This replaces Form 1, Form 2 &amp; STS Form 4 — Absenteeism and Dropping Out)</div>
+          </div>
+          <img src="/deped-logo.png" alt="" style={{height:'52px', objectFit:'contain'}}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}/>
         </div>
 
         {/* School info header */}
@@ -595,79 +614,74 @@ export default function AttendancePage() {
           </tbody>
         </table>
 
-        {/* Legend for shaded columns */}
+        {/* Legend for the merged holiday column */}
         <div style={{display:'flex', gap:'10px', alignItems:'center', fontSize:'7px', marginBottom:'2px'}}>
           <span style={{display:'inline-flex', alignItems:'center', gap:'3px'}}>
-            <span style={{width:'9px', height:'9px', background:'#374151', display:'inline-block', border:'1px solid #000'}}/>
-            Weekend (not counted)
-          </span>
-          <span style={{display:'inline-flex', alignItems:'center', gap:'3px'}}>
-            <span style={{width:'9px', height:'9px', background:'#fde68a', display:'inline-block', border:'1px solid #000'}}/>
-            Holiday / No Classes (not counted; reason shown in the merged column)
+            <span style={{width:'9px', height:'9px', background:'#e5e7eb', display:'inline-block', border:'1px solid #000'}}/>
+            Holiday / No Classes on a weekday (not counted; reason shown in the shaded column)
           </span>
         </div>
 
         {/* Main attendance table */}
         <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8px', tableLayout:'fixed'}}>
           <colgroup>
-            <col style={{width:'145px'}} />
-            {calendarDays.map(d => {
-              const kind = dayKind(d, holidays);
-              return <col key={fmt(d)} style={{width: kind==='school' ? '20px' : '9px'}} />;
-            })}
+            <col style={{width:'20px'}} />
+            <col style={{width:'125px'}} />
+            {sf2Days.map(d => <col key={fmt(d)} style={{width:'20px'}} />)}
             <col style={{width:'26px'}} />
             <col style={{width:'26px'}} />
             <col style={{width:'70px'}} />
           </colgroup>
           <thead>
             <tr>
-              <th style={{...th, textAlign:'left'}} rowSpan={2}>
-                LEARNER'S NAME<br/>
+              <th style={th} rowSpan={3}>No.</th>
+              <th style={{...th, textAlign:'left'}} rowSpan={3}>
+                NAME<br/>
                 <span style={{fontWeight:'normal', fontSize:'7px'}}>(Last Name, First Name, Middle Name)</span>
               </th>
-              {calendarDays.map(d => {
-                const ds = fmt(d); const kind = dayKind(d, holidays);
-                const bg = kind==='weekend' ? '#374151' : kind==='holiday' ? '#fde68a' : '#f3f4f6';
-                const fg = kind==='weekend' ? '#e5e7eb' : '#111827';
-                return (
-                  <th key={ds} style={{...thC, background:bg, color:fg, padding:'1px 0', fontSize:'7px'}}>
-                    <div>{d.getDate()}</div>
-                    {kind==='school' && <div style={{fontSize:'6px'}}>{['SU','M','T','W','TH','F','S'][d.getDay()]}</div>}
-                  </th>
-                );
-              })}
+              <th style={{...thC, fontSize:'7.5px'}} colSpan={sf2Days.length}>{month.toUpperCase()} {MONTH_YEAR[month]}</th>
               <th style={{...thC, fontSize:'7px'}} colSpan={2}>Total for the Month</th>
-              <th style={{...thC, fontSize:'6px', lineHeight:'1.25', whiteSpace:'normal', wordBreak:'break-word'}}>
+              <th style={{...thC, fontSize:'6px', lineHeight:'1.25', whiteSpace:'normal', wordBreak:'break-word'}} rowSpan={3}>
                 REMARKS (If DROPPED OUT, state reason from legend 2. If TRANSFERRED IN/OUT, write name of School.)
               </th>
             </tr>
             <tr>
-              {calendarDays.map(d => {
-                const kind = dayKind(d, holidays);
-                const bg = kind==='weekend' ? '#374151' : kind==='holiday' ? '#fde68a' : undefined;
-                return <th key={fmt(d)} style={{...thC, background:bg, padding:'0', fontSize:'7px'}}></th>;
+              {sf2Days.map(d => {
+                const ds = fmt(d); const isHol = holidays.includes(ds);
+                return (
+                  <th key={ds} style={{...thC, background: isHol ? '#e5e7eb' : '#f3f4f6', padding:'1px 0', fontSize:'7px'}}>
+                    {d.getDate().toString().padStart(2,'0')}
+                  </th>
+                );
               })}
-              <th style={{...thC, fontSize:'7px'}}>ABSENT</th>
-              <th style={{...thC, fontSize:'7px'}}>PRESENT</th>
-              <th style={th}></th>
+              <th style={{...thC, fontSize:'7px'}} rowSpan={2}>ABSENT</th>
+              <th style={{...thC, fontSize:'7px'}} rowSpan={2}>PRESENT</th>
+            </tr>
+            <tr>
+              {sf2Days.map(d => {
+                const ds = fmt(d); const isHol = holidays.includes(ds);
+                return (
+                  <th key={ds} style={{...thC, background: isHol ? '#e5e7eb' : undefined, padding:'0', fontSize:'6.5px'}}>
+                    {isHol ? '' : ['SU','M','T','W','TH','F','S'][d.getDay()]}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
             {/* ── MALE ── */}
             <tr>
-              <td colSpan={calendarDays.length + 4} style={{...td, fontWeight:'bold', background:'#dbeafe', textAlign:'left'}}>
+              <td colSpan={sf2Days.length + sf2ColSpanExtra} style={{...td, fontWeight:'bold', background:'#dbeafe', textAlign:'left'}}>
                 MALE
               </td>
             </tr>
             {males.map((student, idx) => (
               <tr key={student.id}>
-                <td style={{...td, textAlign:'left'}}>{idx+1}. {student.full_name}</td>
-                {calendarDays.map(d => {
-                  const ds = fmt(d); const kind = dayKind(d, holidays);
-                  if (kind === 'weekend') {
-                    return <td key={ds} style={{...tdC, width:'9px', padding:0, background:'#374151'}}/>;
-                  }
-                  if (kind === 'holiday') {
+                <td style={{...tdC}}>{idx+1}</td>
+                <td style={{...td, textAlign:'left'}}>{student.full_name}</td>
+                {sf2Days.map(d => {
+                  const ds = fmt(d); const isHol = holidays.includes(ds);
+                  if (isHol) {
                     // Independent per-row cell (NOT rowSpan) so the print engine can break the
                     // page between any two student rows. Borders between consecutive holiday
                     // cells are hidden so the column still reads as one continuous bar. The
@@ -676,8 +690,8 @@ export default function AttendancePage() {
                     const isFirst = idx === 0;
                     const isLast = idx === males.length - 1;
                     return (
-                      <td key={ds} style={{...tdC, width:'9px', padding:0, position:'relative',
-                        background:'#fde68a',
+                      <td key={ds} style={{...tdC, width:'20px', padding:0, position:'relative',
+                        background:'#e5e7eb',
                         borderTop: isFirst ? b.border : 'hidden',
                         borderBottom: isLast ? b.border : 'hidden'}}>
                         {isFirst && (
@@ -693,9 +707,8 @@ export default function AttendancePage() {
                   }
                   const st = records[student.id]?.[ds];
                   return (
-                    <td key={ds} style={{...tdC, width:'20px', padding:'0', fontWeight:'bold', fontSize:'8px',
-                      background: st==='A'?'#fee2e2' : st==='L'?'#fef9c3' : 'white'}}>
-                      {statusPrintChar(st)}
+                    <td key={ds} style={{...tdC, width:'20px', padding:'0', fontWeight:'bold', fontSize:'8px', background:'white'}}>
+                      {st === 'L' ? <LateTriangle/> : statusPrintChar(st)}
                     </td>
                   );
                 })}
@@ -708,14 +721,13 @@ export default function AttendancePage() {
             ))}
             {/* Male subtotal */}
             <tr style={{background:'#eff6ff'}}>
-              <td style={{...td, fontStyle:'italic', textAlign:'right', fontWeight:'bold', fontSize:'7px'}}>Male Subtotal</td>
-              {calendarDays.map(d => {
-                const ds = fmt(d); const kind = dayKind(d, holidays);
-                if (kind === 'weekend') return <td key={ds} style={{...tdC, padding:0, background:'#374151'}}/>;
-                if (kind === 'holiday') {
+              <td colSpan={2} style={{...td, fontStyle:'italic', textAlign:'right', fontWeight:'bold', fontSize:'7px'}}>Male Subtotal</td>
+              {sf2Days.map(d => {
+                const ds = fmt(d); const isHol = holidays.includes(ds);
+                if (isHol) {
                   // Always render this cell — never skip it — so the subtotal row has exactly
                   // the same number of <td> columns as every student row and the header.
-                  return <td key={ds} style={{...tdC, width:'9px', padding:0, background:'#fde68a'}}/>;
+                  return <td key={ds} style={{...tdC, width:'20px', padding:0, background:'#e5e7eb'}}/>;
                 }
                 const p = males.filter(s => { const st=records[s.id]?.[ds]; return st==='P'||st==='L'||st===undefined; }).length;
                 return <td key={ds} style={{...tdC, fontWeight:'bold', fontSize:'7px'}}>{p}</td>;
@@ -727,29 +739,22 @@ export default function AttendancePage() {
 
             {/* ── FEMALE ── */}
             <tr>
-              <td colSpan={calendarDays.length + 4} style={{...td, fontWeight:'bold', background:'#fce7f3', textAlign:'left'}}>
+              <td colSpan={sf2Days.length + sf2ColSpanExtra} style={{...td, fontWeight:'bold', background:'#fce7f3', textAlign:'left'}}>
                 FEMALE
               </td>
             </tr>
             {females.map((student, idx) => (
               <tr key={student.id}>
-                <td style={{...td, textAlign:'left'}}>{idx+1}. {student.full_name}</td>
-                {calendarDays.map(d => {
-                  const ds = fmt(d); const kind = dayKind(d, holidays);
-                  if (kind === 'weekend') {
-                    return <td key={ds} style={{...tdC, width:'9px', padding:0, background:'#374151'}}/>;
-                  }
-                  if (kind === 'holiday') {
-                    // Independent per-row cell (NOT rowSpan) so the print engine can break the
-                    // page between any two student rows. Borders between consecutive holiday
-                    // cells are hidden so the column still reads as one continuous bar. The
-                    // label text is an absolutely-positioned overlay (not normal cell content)
-                    // so it doesn't force the first row to grow taller than the rest.
+                <td style={{...tdC}}>{idx+1}</td>
+                <td style={{...td, textAlign:'left'}}>{student.full_name}</td>
+                {sf2Days.map(d => {
+                  const ds = fmt(d); const isHol = holidays.includes(ds);
+                  if (isHol) {
                     const isFirst = idx === 0;
                     const isLast = idx === females.length - 1;
                     return (
-                      <td key={ds} style={{...tdC, width:'9px', padding:0, position:'relative',
-                        background:'#fde68a',
+                      <td key={ds} style={{...tdC, width:'20px', padding:0, position:'relative',
+                        background:'#e5e7eb',
                         borderTop: isFirst ? b.border : 'hidden',
                         borderBottom: isLast ? b.border : 'hidden'}}>
                         {isFirst && (
@@ -765,9 +770,8 @@ export default function AttendancePage() {
                   }
                   const st = records[student.id]?.[ds];
                   return (
-                    <td key={ds} style={{...tdC, width:'20px', padding:'0', fontWeight:'bold', fontSize:'8px',
-                      background: st==='A'?'#fee2e2' : st==='L'?'#fef9c3' : 'white'}}>
-                      {statusPrintChar(st)}
+                    <td key={ds} style={{...tdC, width:'20px', padding:'0', fontWeight:'bold', fontSize:'8px', background:'white'}}>
+                      {st === 'L' ? <LateTriangle/> : statusPrintChar(st)}
                     </td>
                   );
                 })}
@@ -780,14 +784,11 @@ export default function AttendancePage() {
             ))}
             {/* Female subtotal */}
             <tr style={{background:'#fdf2f8'}}>
-              <td style={{...td, fontStyle:'italic', textAlign:'right', fontWeight:'bold', fontSize:'7px'}}>Female Subtotal</td>
-              {calendarDays.map(d => {
-                const ds = fmt(d); const kind = dayKind(d, holidays);
-                if (kind === 'weekend') return <td key={ds} style={{...tdC, padding:0, background:'#374151'}}/>;
-                if (kind === 'holiday') {
-                  // Always render this cell — never skip it — so the subtotal row has exactly
-                  // the same number of <td> columns as every student row and the header.
-                  return <td key={ds} style={{...tdC, width:'9px', padding:0, background:'#fde68a'}}/>;
+              <td colSpan={2} style={{...td, fontStyle:'italic', textAlign:'right', fontWeight:'bold', fontSize:'7px'}}>Female Subtotal</td>
+              {sf2Days.map(d => {
+                const ds = fmt(d); const isHol = holidays.includes(ds);
+                if (isHol) {
+                  return <td key={ds} style={{...tdC, width:'20px', padding:0, background:'#e5e7eb'}}/>;
                 }
                 const p = females.filter(s => { const st=records[s.id]?.[ds]; return st==='P'||st==='L'||st===undefined; }).length;
                 return <td key={ds} style={{...tdC, fontWeight:'bold', fontSize:'7px'}}>{p}</td>;
@@ -799,11 +800,10 @@ export default function AttendancePage() {
 
             {/* Combined total */}
             <tr style={{background:'#f3f4f6'}}>
-              <td style={{...td, fontWeight:'bold', textAlign:'right', fontSize:'7px'}}>COMBINED TOTAL Per Day</td>
-              {calendarDays.map(d => {
-                const ds = fmt(d); const kind = dayKind(d, holidays);
-                if (kind === 'weekend') return <td key={ds} style={{...tdC, padding:0, background:'#374151'}}/>;
-                if (kind === 'holiday') return <td key={ds} style={{...tdC, padding:0, background:'#fde68a'}}/>;
+              <td colSpan={2} style={{...td, fontWeight:'bold', textAlign:'right', fontSize:'7px'}}>COMBINED TOTAL Per Day</td>
+              {sf2Days.map(d => {
+                const ds = fmt(d); const isHol = holidays.includes(ds);
+                if (isHol) return <td key={ds} style={{...tdC, width:'20px', padding:0, background:'#e5e7eb'}}/>;
                 const p = activeStudents.filter(s => { const st=records[s.id]?.[ds]; return st==='P'||st==='L'||st===undefined; }).length;
                 return <td key={ds} style={{...tdC, fontWeight:'bold', fontSize:'7px'}}>{p}</td>;
               })}
@@ -816,10 +816,18 @@ export default function AttendancePage() {
 
         {/* NLS section for dropped/transferred students */}
         {inactiveStudents.length > 0 && (
-          <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8px', marginTop:'4px'}}>
+          <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8px', marginTop:'4px', tableLayout:'fixed'}}>
+            <colgroup>
+              <col style={{width:'20px'}} />
+              <col style={{width:'125px'}} />
+              {sf2Days.map(d => <col key={fmt(d)} style={{width:'20px'}} />)}
+              <col style={{width:'26px'}} />
+              <col style={{width:'26px'}} />
+              <col style={{width:'70px'}} />
+            </colgroup>
             <thead>
               <tr>
-                <th style={{...th, textAlign:'left'}} colSpan={calendarDays.length + 4}>
+                <th style={{...th, textAlign:'left'}} colSpan={sf2Days.length + sf2ColSpanExtra}>
                   NLS (No Longer in School) — shown for record purposes only, excluded from attendance counts
                 </th>
               </tr>
@@ -827,13 +835,13 @@ export default function AttendancePage() {
             <tbody>
               {inactiveStudents.map((student, idx) => (
                 <tr key={student.id} style={{background:'#f9fafb', color:'#6b7280'}}>
-                  <td style={{...td, minWidth:'160px', textDecoration:'line-through', color:'#9ca3af'}}>
-                    {idx+1}. {student.full_name}
+                  <td style={{...tdC, color:'#9ca3af'}}>{idx+1}</td>
+                  <td style={{...td, minWidth:'125px', textDecoration:'line-through', color:'#9ca3af'}}>
+                    {student.full_name}
                   </td>
-                  {calendarDays.map(d => {
-                    const kind = dayKind(d, holidays);
-                    const bg = kind==='weekend' ? '#374151' : kind==='holiday' ? '#fde68a' : '#f3f4f6';
-                    return <td key={fmt(d)} style={{...tdC, background:bg, fontSize:'7px'}}></td>;
+                  {sf2Days.map(d => {
+                    const ds = fmt(d); const isHol = holidays.includes(ds);
+                    return <td key={ds} style={{...tdC, background: isHol ? '#e5e7eb' : '#f3f4f6', fontSize:'7px'}}></td>;
                   })}
                   <td style={{...tdC}}>—</td>
                   <td style={{...tdC}}>—</td>
