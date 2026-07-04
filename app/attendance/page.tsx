@@ -577,6 +577,16 @@ export default function AttendancePage() {
     const initEnrollF = fEnroll + fDropped + fTransOut;
     const initEnroll  = initEnrollM + initEnrollF;
 
+    // Per-gender breakdowns for the summary box (Percentage of Enrolment, ADA, Percentage of Attendance)
+    const totalDailyAttendanceM = males.reduce((s,st) => s + getPresents(st.id), 0);
+    const totalDailyAttendanceF = females.reduce((s,st) => s + getPresents(st.id), 0);
+    const adaM = totalSchoolDays > 0 ? (totalDailyAttendanceM / totalSchoolDays) : 0;
+    const adaF = totalSchoolDays > 0 ? (totalDailyAttendanceF / totalSchoolDays) : 0;
+    const poaM = regEndM > 0 ? (adaM / regEndM) * 100 : 0;
+    const poaF = regEndF > 0 ? (adaF / regEndF) * 100 : 0;
+    const pctEnrolM = initEnrollM > 0 ? (regEndM / initEnrollM) * 100 : 0;
+    const pctEnrolF = initEnrollF > 0 ? (regEndF / initEnrollF) * 100 : 0;
+
     const b = {border:'1px solid #000'} as React.CSSProperties;
     const td = {...b, padding:'2px 4px', fontSize:'8px', verticalAlign:'top'} as React.CSSProperties;
     const th = {...td, background:'#f3f4f6', fontWeight:'bold', textAlign:'center' as const};
@@ -1015,22 +1025,22 @@ export default function AttendancePage() {
                   </tr>
                   <tr>
                     <td colSpan={2} style={{...td, fontStyle:'italic', fontSize:'7px'}}>Percentage of Enrolment as of <strong>end of the month</strong></td>
-                    <td style={tdC}></td>
-                    <td style={tdC}></td>
+                    <td style={tdC}>{initEnrollM > 0 ? pctEnrolM.toFixed(2) + '%' : ''}</td>
+                    <td style={tdC}>{initEnrollF > 0 ? pctEnrolF.toFixed(2) + '%' : ''}</td>
                     <td style={{...tdC, fontWeight:'bold'}}>
                       {initEnroll > 0 ? ((regEnd / initEnroll) * 100).toFixed(2) + '%' : ''}
                     </td>
                   </tr>
                   <tr>
                     <td colSpan={2} style={{...td, fontStyle:'italic', fontSize:'7px'}}>Average Daily Attendance</td>
-                    <td style={tdC}></td>
-                    <td style={tdC}></td>
+                    <td style={tdC}>{Math.round(adaM)}</td>
+                    <td style={tdC}>{Math.round(adaF)}</td>
                     <td style={{...tdC, fontWeight:'bold'}}>{ada.toFixed(2)}</td>
                   </tr>
                   <tr>
                     <td colSpan={2} style={{...td, fontStyle:'italic', fontSize:'7px'}}>Percentage of Attendance for the month</td>
-                    <td style={tdC}></td>
-                    <td style={tdC}></td>
+                    <td style={tdC}>{regEndM > 0 ? poaM.toFixed(2) + '%' : ''}</td>
+                    <td style={tdC}>{regEndF > 0 ? poaF.toFixed(2) + '%' : ''}</td>
                     <td style={{...tdC, fontWeight:'bold'}}>{poa.toFixed(2)}%</td>
                   </tr>
                   <tr>
