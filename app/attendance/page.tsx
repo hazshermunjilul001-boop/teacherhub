@@ -1015,9 +1015,9 @@ export default function AttendancePage() {
                   </tr>
                   <tr>
                     <td colSpan={2} style={{...td, fontStyle:'italic', fontSize:'7px'}}>Late Enrollment <strong>during the month</strong> (beyond cut-off)</td>
-                    <td style={tdC}>{mTransIn || ''}</td>
-                    <td style={tdC}>{fTransIn || ''}</td>
-                    <td style={{...tdC, fontWeight:'bold'}}>{(mTransIn + fTransIn) || ''}</td>
+                    <td style={tdC}>{mTransIn}</td>
+                    <td style={tdC}>{fTransIn}</td>
+                    <td style={{...tdC, fontWeight:'bold'}}>{mTransIn + fTransIn}</td>
                   </tr>
                   <tr>
                     <td colSpan={2} style={{...td, fontStyle:'italic', fontSize:'7px'}}>Registered Learner as of <strong>end of the month</strong></td>
@@ -1055,21 +1055,21 @@ export default function AttendancePage() {
                   </tr>
                   <tr>
                     <td colSpan={2} style={{...td, fontWeight:'bold', textAlign:'center', fontSize:'7.5px'}}>Drop out</td>
-                    <td style={tdC}>{mDropped || ''}</td>
-                    <td style={tdC}>{fDropped || ''}</td>
-                    <td style={{...tdC, fontWeight:'bold'}}>{(mDropped + fDropped) || ''}</td>
+                    <td style={tdC}>{mDropped}</td>
+                    <td style={tdC}>{fDropped}</td>
+                    <td style={{...tdC, fontWeight:'bold'}}>{mDropped + fDropped}</td>
                   </tr>
                   <tr>
                     <td colSpan={2} style={{...td, fontWeight:'bold', textAlign:'center', fontSize:'7.5px'}}>Transferred out</td>
-                    <td style={tdC}>{mTransOut || ''}</td>
-                    <td style={tdC}>{fTransOut || ''}</td>
-                    <td style={{...tdC, fontWeight:'bold'}}>{(mTransOut + fTransOut) || ''}</td>
+                    <td style={tdC}>{mTransOut}</td>
+                    <td style={tdC}>{fTransOut}</td>
+                    <td style={{...tdC, fontWeight:'bold'}}>{mTransOut + fTransOut}</td>
                   </tr>
                   <tr>
                     <td colSpan={2} style={{...td, fontWeight:'bold', textAlign:'center', fontSize:'7.5px'}}>Transferred in</td>
-                    <td style={tdC}>{mTransIn || ''}</td>
-                    <td style={tdC}>{fTransIn || ''}</td>
-                    <td style={{...tdC, fontWeight:'bold'}}>{(mTransIn + fTransIn) || ''}</td>
+                    <td style={tdC}>{mTransIn}</td>
+                    <td style={tdC}>{fTransIn}</td>
+                    <td style={{...tdC, fontWeight:'bold'}}>{mTransIn + fTransIn}</td>
                   </tr>
                 </tbody>
               </table>
