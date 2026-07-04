@@ -84,14 +84,21 @@ function statusPrintChar(s?: Status) {
   if (s === 'A') return 'X';
   return '';
 }
-// Half-shaded diagonal triangle for "Late" per the official SF2 legend
-// (upper triangle shaded = Late Comer). Rendered instead of text.
+// The official form pre-prints every day cell with a diagonal hatch so blank vs.
+// unmarked is never ambiguous. Present = a light single-direction hatch (increasing
+// diagonals, no fill). Absent = a bold crossed hatch (both diagonals). Late = the
+// same light hatch with a solid black triangle shading the upper half.
+const HATCH_PRESENT = 'repeating-linear-gradient(45deg, #444 0px, #444 0.6px, transparent 0.6px, transparent 4px)';
+const HATCH_ABSENT  = 'repeating-linear-gradient(45deg, #000 0px, #000 1.1px, transparent 1.1px, transparent 4px), '
+                     + 'repeating-linear-gradient(-45deg, #000 0px, #000 1.1px, transparent 1.1px, transparent 4px)';
+function attendanceCellBg(s?: Status) {
+  if (s === 'A') return HATCH_ABSENT;
+  return HATCH_PRESENT; // present and late both show the light hatch as their base
+}
+// Half-shaded diagonal triangle overlay for "Late" per the official SF2 legend
+// (upper triangle shaded = Late Comer). Sits on top of the present-style hatch.
 function LateTriangle() {
-  return (
-    <div style={{position:'relative', width:'100%', height:'11px'}}>
-      <div style={{position:'absolute', inset:0, clipPath:'polygon(0 0, 100% 0, 100% 100%)', background:'#000'}}/>
-    </div>
-  );
+  return <div style={{position:'absolute', inset:0, clipPath:'polygon(0 0, 100% 0, 100% 100%)', background:'#000'}}/>;
 }
 
 // ── STUDENT STATUS MODAL ──────────────────────────────────────────────────────
@@ -707,8 +714,9 @@ export default function AttendancePage() {
                   }
                   const st = records[student.id]?.[ds];
                   return (
-                    <td key={ds} style={{...tdC, width:'20px', padding:'0', fontWeight:'bold', fontSize:'8px', background:'white'}}>
-                      {st === 'L' ? <LateTriangle/> : statusPrintChar(st)}
+                    <td key={ds} style={{...tdC, width:'20px', padding:0, position:'relative',
+                      background: attendanceCellBg(st)}}>
+                      {st === 'L' && <LateTriangle/>}
                     </td>
                   );
                 })}
@@ -770,8 +778,9 @@ export default function AttendancePage() {
                   }
                   const st = records[student.id]?.[ds];
                   return (
-                    <td key={ds} style={{...tdC, width:'20px', padding:'0', fontWeight:'bold', fontSize:'8px', background:'white'}}>
-                      {st === 'L' ? <LateTriangle/> : statusPrintChar(st)}
+                    <td key={ds} style={{...tdC, width:'20px', padding:0, position:'relative',
+                      background: attendanceCellBg(st)}}>
+                      {st === 'L' && <LateTriangle/>}
                     </td>
                   );
                 })}
@@ -966,13 +975,13 @@ export default function AttendancePage() {
               <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8px', marginBottom:'6px'}}>
                 <thead>
                   <tr>
-                    <th style={{...th, textAlign:'left', fontSize:'8px'}}>Month: {month} {MONTH_YEAR[month]}</th>
-                    <th style={{...thC, fontSize:'7px'}}>No. of Days of Classes:</th>
+                    <th style={{...th, textAlign:'left', fontSize:'7.5px'}} colSpan={2} rowSpan={2}>
+                      Month: {month} {MONTH_YEAR[month]}<br/>
+                      No. of Days of Classes: <strong style={{fontSize:'9px'}}>{totalSchoolDays}</strong>
+                    </th>
                     <th style={{...thC, fontSize:'8px', background:'#e5e7eb'}} colSpan={3}>Summary for the Month</th>
                   </tr>
                   <tr>
-                    <th style={{...th, textAlign:'left', fontSize:'7px'}}></th>
-                    <th style={{...thC, fontWeight:'bold', fontSize:'9px'}}>{totalSchoolDays}</th>
                     <th style={{...thC, fontSize:'7px'}}>M</th>
                     <th style={{...thC, fontSize:'7px'}}>F</th>
                     <th style={{...thC, fontSize:'7px'}}>TOTAL</th>
@@ -980,29 +989,25 @@ export default function AttendancePage() {
                 </thead>
                 <tbody>
                   <tr>
-                    <td style={{...td, fontStyle:'italic', fontSize:'7px'}}>* Enrolment as of (1st Friday of June)</td>
-                    <td style={tdC}></td>
+                    <td colSpan={2} style={{...td, fontStyle:'italic', fontSize:'7px'}}>* Enrolment as of (1st Friday of June)</td>
                     <td style={tdC}>{initEnrollM || ''}</td>
                     <td style={tdC}>{initEnrollF || ''}</td>
                     <td style={{...tdC, fontWeight:'bold'}}>{initEnroll || ''}</td>
                   </tr>
                   <tr>
-                    <td style={{...td, fontStyle:'italic', fontSize:'7px'}}>Late Enrollment <strong>during the month</strong> (beyond cut-off)</td>
-                    <td style={tdC}></td>
+                    <td colSpan={2} style={{...td, fontStyle:'italic', fontSize:'7px'}}>Late Enrollment <strong>during the month</strong> (beyond cut-off)</td>
                     <td style={tdC}>{mTransIn || ''}</td>
                     <td style={tdC}>{fTransIn || ''}</td>
                     <td style={{...tdC, fontWeight:'bold'}}>{(mTransIn + fTransIn) || ''}</td>
                   </tr>
                   <tr>
-                    <td style={{...td, fontStyle:'italic', fontSize:'7px'}}>Registered Learner as of <strong>end of the month</strong></td>
-                    <td style={tdC}></td>
+                    <td colSpan={2} style={{...td, fontStyle:'italic', fontSize:'7px'}}>Registered Learner as of <strong>end of the month</strong></td>
                     <td style={tdC}>{regEndM || ''}</td>
                     <td style={tdC}>{regEndF || ''}</td>
                     <td style={{...tdC, fontWeight:'bold'}}>{regEnd || ''}</td>
                   </tr>
                   <tr>
-                    <td style={{...td, fontStyle:'italic', fontSize:'7px'}}>Percentage of Enrolment as of <strong>end of the month</strong></td>
-                    <td style={tdC}></td>
+                    <td colSpan={2} style={{...td, fontStyle:'italic', fontSize:'7px'}}>Percentage of Enrolment as of <strong>end of the month</strong></td>
                     <td style={tdC}></td>
                     <td style={tdC}></td>
                     <td style={{...tdC, fontWeight:'bold'}}>
@@ -1010,22 +1015,19 @@ export default function AttendancePage() {
                     </td>
                   </tr>
                   <tr>
-                    <td style={{...td, fontStyle:'italic', fontSize:'7px'}}>Average Daily Attendance</td>
-                    <td style={tdC}></td>
+                    <td colSpan={2} style={{...td, fontStyle:'italic', fontSize:'7px'}}>Average Daily Attendance</td>
                     <td style={tdC}></td>
                     <td style={tdC}></td>
                     <td style={{...tdC, fontWeight:'bold'}}>{ada.toFixed(2)}</td>
                   </tr>
                   <tr>
-                    <td style={{...td, fontStyle:'italic', fontSize:'7px'}}>Percentage of Attendance for the month</td>
-                    <td style={tdC}></td>
+                    <td colSpan={2} style={{...td, fontStyle:'italic', fontSize:'7px'}}>Percentage of Attendance for the month</td>
                     <td style={tdC}></td>
                     <td style={tdC}></td>
                     <td style={{...tdC, fontWeight:'bold'}}>{poa.toFixed(2)}%</td>
                   </tr>
                   <tr>
-                    <td style={{...td, fontStyle:'italic', fontSize:'7px'}}>Number of students with 5 consecutive days of absences:</td>
-                    <td style={tdC}></td>
+                    <td colSpan={2} style={{...td, fontStyle:'italic', fontSize:'7px'}}>Number of students with 5 consecutive days of absences:</td>
                     <td style={tdC}></td>
                     <td style={tdC}></td>
                     <td style={{...tdC, fontWeight:'bold', color: consecutiveCount > 0 ? 'red' : 'inherit'}}>
@@ -1033,22 +1035,19 @@ export default function AttendancePage() {
                     </td>
                   </tr>
                   <tr>
-                    <td style={{...td, fontWeight:'bold', textAlign:'center', fontSize:'7.5px'}}>Drop out</td>
-                    <td style={tdC}></td>
+                    <td colSpan={2} style={{...td, fontWeight:'bold', textAlign:'center', fontSize:'7.5px'}}>Drop out</td>
                     <td style={tdC}>{mDropped || ''}</td>
                     <td style={tdC}>{fDropped || ''}</td>
                     <td style={{...tdC, fontWeight:'bold'}}>{(mDropped + fDropped) || ''}</td>
                   </tr>
                   <tr>
-                    <td style={{...td, fontWeight:'bold', textAlign:'center', fontSize:'7.5px'}}>Transferred out</td>
-                    <td style={tdC}></td>
+                    <td colSpan={2} style={{...td, fontWeight:'bold', textAlign:'center', fontSize:'7.5px'}}>Transferred out</td>
                     <td style={tdC}>{mTransOut || ''}</td>
                     <td style={tdC}>{fTransOut || ''}</td>
                     <td style={{...tdC, fontWeight:'bold'}}>{(mTransOut + fTransOut) || ''}</td>
                   </tr>
                   <tr>
-                    <td style={{...td, fontWeight:'bold', textAlign:'center', fontSize:'7.5px'}}>Transferred in</td>
-                    <td style={tdC}></td>
+                    <td colSpan={2} style={{...td, fontWeight:'bold', textAlign:'center', fontSize:'7.5px'}}>Transferred in</td>
                     <td style={tdC}>{mTransIn || ''}</td>
                     <td style={tdC}>{fTransIn || ''}</td>
                     <td style={{...tdC, fontWeight:'bold'}}>{(mTransIn + fTransIn) || ''}</td>
