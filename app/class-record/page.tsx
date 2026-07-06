@@ -1,11 +1,48 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ArrowLeft, Plus, Printer, Users, RefreshCw, FileText, X, UserX, ArrowRightLeft, UserCheck, UserPlus } from 'lucide-react';
+import { ArrowLeft, Plus, Printer, Users, RefreshCw, FileText, X, UserX, ArrowRightLeft, UserCheck, UserPlus, Download } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useActiveSection } from '../../lib/useActiveSection';
 import { useSubscription } from '../../lib/useSubscription';
 import { useSection } from '../../context/SectionContext';
+
+// ── EXCEL EXPORT HELPERS ───────────────────────────────────────────────────
+// Shared by EClassRecordView and SummaryOfGradesView so the downloaded .xlsx
+// mirrors the same layout/labels shown in the print preview.
+async function saveWorkbook(workbook: any, filename: string) {
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+const XLSX_BORDER = { style: 'thin' as const, color: { argb: 'FF999999' } };
+const XLSX_ALL_BORDERS = { top: XLSX_BORDER, left: XLSX_BORDER, bottom: XLSX_BORDER, right: XLSX_BORDER };
+
+function setCell(
+  ws: any, row: number, col: number, value: any,
+  opts: { bold?: boolean; fill?: string; align?: 'left'|'center'; size?: number; color?: string } = {}
+) {
+  const cell = ws.getCell(row, col);
+  cell.value = value;
+  cell.border = XLSX_ALL_BORDERS;
+  cell.alignment = { horizontal: opts.align ?? 'center', vertical: 'middle', wrapText: true };
+  cell.font = { bold: !!opts.bold, size: opts.size ?? 9, ...(opts.color ? { color: { argb: opts.color } } : {}) };
+  if (opts.fill) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: opts.fill } };
+  return cell;
+}
+
+async function loadExcelJS(): Promise<any> {
+  const mod: any = await import('exceljs');
+  return mod.default ?? mod;
+}
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 const SUBJECTS_JHS = [
@@ -370,6 +407,80 @@ function SummaryOfGradesView({
     </>
   );
 
+  // ── Excel export — mirrors the print preview above exactly ────────────────
+  const downloadExcel = async () => {
+    const ExcelJS = await loadExcelJS();
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Summary of Grades');
+    const totalCols = 8;
+    let r = 1;
+
+    setCell(ws, r, 1, 'SUMMARY OF GRADES', { bold:true, size:13 }); ws.mergeCells(r,1,r,totalCols); r++;
+    setCell(ws, r, 1, `${subject} — ${schoolYear}`, { size:9, color:'FF555555' }); ws.mergeCells(r,1,r,totalCols); r++;
+    r++;
+
+    setCell(ws,r,1,'Region:',{bold:true,align:'left'});   setCell(ws,r,2,region,{align:'left'});
+    setCell(ws,r,3,'Division:',{bold:true,align:'left'}); setCell(ws,r,4,division,{align:'left'});
+    setCell(ws,r,5,'School ID:',{bold:true,align:'left'});setCell(ws,r,6,schoolId,{align:'left'});
+    setCell(ws,r,7,'School Year:',{bold:true,align:'left'});setCell(ws,r,8,schoolYear,{align:'left'});
+    r++;
+    setCell(ws,r,1,'School:',{bold:true,align:'left'});   setCell(ws,r,2,schoolName,{align:'left'});
+    setCell(ws,r,3,'Grade & Section:',{bold:true,align:'left'}); setCell(ws,r,4,`${gradeLevel} — ${sectionName}`,{align:'left'});
+    setCell(ws,r,6,'Subject:',{bold:true,align:'left'});  setCell(ws,r,7,subject,{align:'left'});
+    r++;
+    setCell(ws,r,1,'Teacher:',{bold:true,align:'left'});  setCell(ws,r,2,adviser?.toUpperCase()||'',{align:'left'});
+    setCell(ws,r,4,'Total Active Learners:',{bold:true,align:'left'});
+    setCell(ws,r,5,`${activeStudents.length} (${males.length}M / ${females.length}F)`,{align:'left'});
+    r++; r++;
+
+    const hdrRow = r;
+    ['#',"LEARNER'S NAME",'TERM 1','TERM 2','TERM 3','FINAL GRADE','DESCRIPTOR','REMARKS'].forEach((label,i)=>{
+      setCell(ws,hdrRow,i+1,label,{bold:true,fill:i===5?'FFD1FAE5':'FFE8E8E8',size:9,align:i===1?'left':'center'});
+    });
+    r++;
+
+    const writeGroup = (group: Student[], label: string) => {
+      if (group.length === 0) return;
+      setCell(ws,r,1,label,{bold:true,fill:label==='MALE'?'FFDBEAFE':'FFFCE7F3',align:'left',size:9});
+      ws.mergeCells(r,1,r,totalCols); r++;
+      group.forEach((student, idx) => {
+        const t1 = computeTerm(student.id, 1);
+        const t2 = computeTerm(student.id, 2);
+        const t3 = computeTerm(student.id, 3);
+        const valid = [t1,t2,t3].filter(v=>v>0);
+        const final = valid.length>0 ? Math.round(valid.reduce((a,b)=>a+b,0)/valid.length) : 0;
+        const desc = descriptor(final);
+        const remarks = final>=75 ? 'PASSED' : final>0 ? 'FAILED' : '';
+        setCell(ws,r,1,idx+1,{size:9});
+        setCell(ws,r,2,student.full_name,{size:9,align:'left'});
+        setCell(ws,r,3,t1||'',{size:9});
+        setCell(ws,r,4,t2||'',{size:9});
+        setCell(ws,r,5,t3||'',{size:9});
+        setCell(ws,r,6,final||'',{bold:true,size:10,color:final>=75?'FF166534':'FF991B1B'});
+        setCell(ws,r,7,final?desc.short:'',{size:8});
+        setCell(ws,r,8,remarks,{bold:true,color:final>=75?'FF166534':'FF991B1B',size:9});
+        r++;
+      });
+    };
+    writeGroup(males, 'MALE');
+    writeGroup(females, 'FEMALE');
+
+    r++;
+    setCell(ws,r,1,adviser?.toUpperCase()||'',{bold:true,align:'left',size:9});
+    setCell(ws,r,4,schoolHead?.toUpperCase()||'________________________________',{bold:true,align:'left',size:9});
+    setCell(ws,r,7,'________________________________',{align:'left',size:9});
+    r++;
+    setCell(ws,r,1,'Subject Teacher',{align:'left',size:9});
+    setCell(ws,r,4,'School Head',{align:'left',size:9});
+    setCell(ws,r,7,'Date',{align:'left',size:9});
+
+    ws.getColumn(1).width = 5;
+    ws.getColumn(2).width = 28;
+    for (let c=3;c<=8;c++) ws.getColumn(c).width = 13;
+
+    await saveWorkbook(wb, `SummaryOfGrades_${subject.replace(/[^a-zA-Z0-9]+/g,'_')}.xlsx`);
+  };
+
   return (
     <div className="eclass-modal-overlay fixed inset-0 bg-black/80 z-50 overflow-auto">
       <div className="no-print sticky top-0 bg-gray-900 border-b border-gray-700 px-6 py-3 flex items-center justify-between z-10">
@@ -379,6 +490,9 @@ function SummaryOfGradesView({
           <span className="text-gray-400 text-sm">{sectionName} &middot; {schoolYear}</span>
         </div>
         <div className="flex gap-3">
+          <button onClick={downloadExcel} className="flex items-center gap-2 bg-green-700 hover:bg-green-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
+            <Download size={16}/> Download Excel
+          </button>
           <button onClick={() => window.print()} className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
             <Printer size={16}/> Print
           </button>
@@ -601,6 +715,152 @@ function EClassRecordView({
     </table>
   );
 
+  // ── Excel export — mirrors the print preview above exactly ────────────────
+  const downloadExcel = async () => {
+    const ExcelJS = await loadExcelJS();
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet(`Term ${currentTerm}`);
+
+    const wwStart = 3, wwEnd = 7, psWW = 8;
+    const ptStart = 9, ptEnd = 11, psPT = 12;
+    const stStart = 13, stEnd = 14, teCol = 15, psTA = 16;
+    const initialCol = hasTA ? 17 : 13;
+    const tgCol = initialCol + 1;
+    const descCol = tgCol + 1;
+    const totalCols = descCol;
+
+    let r = 1;
+
+    setCell(ws, r, 1, `CLASS RECORD — TERM ${currentTerm}`, { bold:true, size:13 }); ws.mergeCells(r,1,r,totalCols); r++;
+    setCell(ws, r, 1, `${subject} — ${schoolYear}`, { size:9, color:'FF555555' }); ws.mergeCells(r,1,r,totalCols); r++;
+    r++;
+
+    setCell(ws,r,1,'Region:',{bold:true,align:'left'});   setCell(ws,r,2,region,{align:'left'});
+    setCell(ws,r,3,'Division:',{bold:true,align:'left'}); setCell(ws,r,4,division,{align:'left'});
+    setCell(ws,r,5,'School ID:',{bold:true,align:'left'});setCell(ws,r,6,schoolId,{align:'left'});
+    setCell(ws,r,7,'School Year:',{bold:true,align:'left'});setCell(ws,r,8,schoolYear,{align:'left'});
+    r++;
+    setCell(ws,r,1,'School:',{bold:true,align:'left'});   setCell(ws,r,2,schoolName,{align:'left'});
+    setCell(ws,r,3,'Grade & Section:',{bold:true,align:'left'}); setCell(ws,r,4,`${gradeLevel} — ${sectionName}`,{align:'left'});
+    setCell(ws,r,6,'Subject:',{bold:true,align:'left'});  setCell(ws,r,7,subject,{align:'left'});
+    r++;
+    setCell(ws,r,1,'Teacher:',{bold:true,align:'left'});  setCell(ws,r,2,adviser?.toUpperCase()||'',{align:'left'});
+    setCell(ws,r,4,'Weights:',{bold:true,align:'left'});
+    setCell(ws,r,5, `WW ${(weights.ww*100).toFixed(0)}% | PT ${(weights.pt*100).toFixed(0)}%${hasTA?` | TA ${((weights.ta??0)*100).toFixed(0)}%`:''}`, {align:'left'});
+    r++; r++;
+
+    setCell(ws,r,1,`TERM ${currentTerm} CLASS RECORD`,{bold:true,size:9,color:'FFFFFFFF',fill:'FF1E3A5F',align:'left'});
+    ws.mergeCells(r,1,r,totalCols); r++;
+
+    const hdr1 = r, hdr2 = r+1;
+    setCell(ws,hdr1,1,'#',{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr1,1,hdr2,1);
+    setCell(ws,hdr1,2,"LEARNER'S NAME",{bold:true,fill:'FFE8E8E8',size:8,align:'left'}); ws.mergeCells(hdr1,2,hdr2,2);
+    setCell(ws,hdr1,wwStart,`WRITTEN WORKS (${(weights.ww*100).toFixed(0)}%)`,{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr1,wwStart,hdr1,wwEnd);
+    setCell(ws,hdr1,psWW,'PS',{bold:true,fill:'FFDBEAFE',size:8}); ws.mergeCells(hdr1,psWW,hdr2,psWW);
+    setCell(ws,hdr1,ptStart,`PERFORMANCE TASKS (${(weights.pt*100).toFixed(0)}%)`,{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr1,ptStart,hdr1,ptEnd);
+    setCell(ws,hdr1,psPT,'PS',{bold:true,fill:'FFEDE9FE',size:8}); ws.mergeCells(hdr1,psPT,hdr2,psPT);
+    if (hasTA) {
+      setCell(ws,hdr1,stStart,`SUMMATIVE TESTS (${((weights.ta??0)*100).toFixed(0)}%)`,{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr1,stStart,hdr1,stEnd);
+      setCell(ws,hdr1,teCol,'TERM EXAM',{bold:true,fill:'FFE8E8E8',size:8});
+      setCell(ws,hdr1,psTA,'TA PS',{bold:true,fill:'FFFEF3C7',size:8}); ws.mergeCells(hdr1,psTA,hdr2,psTA);
+    }
+    setCell(ws,hdr1,initialCol,'Initial',{bold:true,fill:'FFF0FDF4',size:8}); ws.mergeCells(hdr1,initialCol,hdr2,initialCol);
+    setCell(ws,hdr1,tgCol,'TG',{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr1,tgCol,hdr2,tgCol);
+    setCell(ws,hdr1,descCol,'Descriptor',{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr1,descCol,hdr2,descCol);
+
+    highest.ww.forEach((v,i)=>setCell(ws,hdr2,wwStart+i,v||i+1,{bold:true,fill:'FFE8E8E8',size:8}));
+    highest.pt.forEach((v,i)=>setCell(ws,hdr2,ptStart+i,v||i+1,{bold:true,fill:'FFE8E8E8',size:8}));
+    if (hasTA) {
+      highest.st.forEach((v,i)=>setCell(ws,hdr2,stStart+i,v||i+1,{bold:true,fill:'FFE8E8E8',size:8}));
+      setCell(ws,hdr2,teCol,highest.te||100,{bold:true,fill:'FFE8E8E8',size:8});
+    }
+    r = hdr2 + 1;
+
+    const writeGroup = (group: Student[], label: string, fill: string) => {
+      if (group.length === 0) return;
+      setCell(ws,r,1,label,{bold:true,fill,align:'left',size:8});
+      ws.mergeCells(r,1,r,totalCols); r++;
+      group.forEach((student, idx) => {
+        const c = computeTerm(student.id);
+        const desc = descriptor(c.transmuted);
+        const zebra = idx%2===1 ? 'FFF9FAFB' : undefined;
+        setCell(ws,r,1,idx+1,{size:8,fill:zebra});
+        setCell(ws,r,2,student.full_name,{size:8,align:'left',fill:zebra});
+        c.ww.forEach((v,i)=>setCell(ws,r,wwStart+i,v||'',{size:8,fill:zebra}));
+        setCell(ws,r,psWW,Number(c.avgWW.toFixed(1)),{size:8,fill:'FFDBEAFE'});
+        c.pt.forEach((v,i)=>setCell(ws,r,ptStart+i,v||'',{size:8,fill:zebra}));
+        setCell(ws,r,psPT,Number(c.avgPT.toFixed(1)),{size:8,fill:'FFEDE9FE'});
+        if (hasTA) {
+          c.st.forEach((v,i)=>setCell(ws,r,stStart+i,v||'',{size:8,fill:zebra}));
+          setCell(ws,r,teCol,c.te||'',{size:8,fill:zebra});
+          setCell(ws,r,psTA,Number(c.avgTA.toFixed(1)),{size:8,fill:'FFFEF3C7'});
+        }
+        setCell(ws,r,initialCol,Number(c.initial.toFixed(2)),{size:8,fill:'FFF0FDF4'});
+        setCell(ws,r,tgCol,c.transmuted||'',{bold:true,size:9,color:c.transmuted>=75?'FF166534':'FF991B1B',fill:zebra});
+        setCell(ws,r,descCol,desc.short,{size:7,fill:zebra});
+        r++;
+      });
+    };
+    writeGroup(males, 'MALE', 'FFDBEAFE');
+    writeGroup(females, 'FEMALE', 'FFFCE7F3');
+
+    if (hasTA) {
+      r++;
+      setCell(ws,r,1,`TEST / EXAM RESULT ANALYSIS — TERM ${currentTerm}`,{bold:true,size:9,color:'FFFFFFFF',fill:'FF1E3A5F',align:'left'});
+      ws.mergeCells(r,1,r,totalCols); r++;
+
+      const addMiniTable = (title: string, rows: [string, ...(string|number)[]][]) => {
+        if (title) { setCell(ws,r,1,title,{bold:true,align:'left',size:8}); ws.mergeCells(r,1,r,4); r++; }
+        setCell(ws,r,1,'',{bold:true,fill:'FFE8E8E8',size:8});
+        stats.forEach((s,i)=>setCell(ws,r,2+i,s.label,{bold:true,fill:'FFE8E8E8',size:8}));
+        r++;
+        rows.forEach(([label, ...vals]) => {
+          setCell(ws,r,1,label,{align:'left',size:8});
+          vals.forEach((v,i)=>setCell(ws,r,2+i,v,{size:8}));
+          r++;
+        });
+        r++;
+      };
+
+      addMiniTable('', [
+        ['Number of Examinees:', ...stats.map(s=>s.scores.length||n)],
+        ['Highest Possible Score:', ...stats.map(s=>s.high)],
+      ]);
+      addMiniTable('CRITERION-REFERENCED', [
+        ['Got 75% & above', ...stats.map(s=>above75(s.scores,s.high))],
+        ['Percentage', ...stats.map(s=>s.scores.length>0?((above75(s.scores,s.high)/s.scores.length)*100).toFixed(2)+'%':'0.00%')],
+        ['Got below 75%', ...stats.map(s=>below75(s.scores,s.high))],
+        ['Percentage', ...stats.map(s=>s.scores.length>0?((below75(s.scores,s.high)/s.scores.length)*100).toFixed(2)+'%':'0.00%')],
+      ]);
+      addMiniTable('NORM-REFERENCED', [
+        ['Mean', ...stats.map(s=>s.scores.length>0?mean(s.scores).toFixed(2):'')],
+        ['Median', ...stats.map(s=>s.scores.length>0?median(s.scores).toFixed(2):'')],
+        ['SD', ...stats.map(s=>s.scores.length>0?sd(s.scores).toFixed(2):'')],
+        ['MPS/PL', ...stats.map(s=>s.scores.length>0?mps(s.scores,[s.high]).toFixed(2)+'%':'')],
+      ]);
+      addMiniTable('OTHER INFO', [
+        ['Highest Score', ...stats.map(s=>s.scores.length>0?Math.max(...s.scores):'')],
+        ['Lowest Score', ...stats.map(s=>s.scores.length>0?Math.min(...s.scores):'')],
+        ['Total Score', ...stats.map(s=>s.scores.length>0?s.scores.reduce((a,b)=>a+b,0):'')],
+      ]);
+    }
+
+    r++;
+    setCell(ws,r,1,adviser?.toUpperCase()||'',{bold:true,align:'left',size:8});
+    setCell(ws,r,4,schoolHead?.toUpperCase()||'________________________________',{bold:true,align:'left',size:8});
+    setCell(ws,r,7,'________________________________',{align:'left',size:8});
+    r++;
+    setCell(ws,r,1,'Subject Teacher',{align:'left',size:8});
+    setCell(ws,r,4,'School Head',{align:'left',size:8});
+    setCell(ws,r,7,'Date',{align:'left',size:8});
+
+    ws.getColumn(1).width = 5;
+    ws.getColumn(2).width = 26;
+    for (let c=3;c<=totalCols;c++) ws.getColumn(c).width = 9;
+
+    await saveWorkbook(wb, `EClassRecord_Term${currentTerm}_${subject.replace(/[^a-zA-Z0-9]+/g,'_')}.xlsx`);
+  };
+
   return (
     <div className="eclass-modal-overlay fixed inset-0 bg-black/80 z-50 overflow-auto">
       <div className="no-print sticky top-0 bg-gray-900 border-b border-gray-700 px-6 py-3 flex items-center justify-between z-10">
@@ -610,6 +870,9 @@ function EClassRecordView({
           <span className="text-gray-400 text-sm">{sectionName} &middot; {schoolYear}</span>
         </div>
         <div className="flex gap-3">
+          <button onClick={downloadExcel} className="flex items-center gap-2 bg-green-700 hover:bg-green-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
+            <Download size={16}/> Download Excel
+          </button>
           <button onClick={() => window.print()} className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
             <Printer size={16}/> Print
           </button>
@@ -1177,9 +1440,6 @@ export default function ClassRecord() {
               className="flex items-center gap-2 bg-violet-700 hover:bg-violet-600 px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-60">
               {loadingSummary ? <RefreshCw size={16} className="animate-spin"/> : <FileText size={16}/>}
               Summary of Grades
-            </button>
-            <button onClick={()=>window.print()} className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
-              <Printer size={16}/>Print
             </button>
           </div>
         </div>
