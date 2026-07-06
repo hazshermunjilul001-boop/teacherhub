@@ -16,7 +16,7 @@ const SUBJECTS_JHS = [
 ];
 const SUBJECTS_SHS = [
   'SHS Core Subject', 'SHS Applied Track', 'SHS Specialized Subject',
-  'SHS Work Immersion', 'SHS Research / Capstone',
+  'SHS Work Immersion', 'SHS Research / Capstone', '21st Century Literature form the Philippines and the World',
 ];
 const SUBJECT_WEIGHTS: Record<string, { ww: number; pt: number; ta: number }> = {
   'Filipino':                                       { ww: 0.20, pt: 0.50, ta: 0.30 },
@@ -33,6 +33,7 @@ const SUBJECT_WEIGHTS: Record<string, { ww: number; pt: number; ta: number }> = 
   'SHS Specialized Subject':                        { ww: 0.20, pt: 0.60, ta: 0.20 },
   'SHS Work Immersion':                             { ww: 0.20, pt: 0.80, ta: 0.00 },
   'SHS Research / Capstone':                        { ww: 0.40, pt: 0.60, ta: 0.00 },
+  '21st Century Literature form the Philippines and the World':     { ww: 0.25, pt: 0.50, ta: 0.25 },
 };
 const TRANSMUTATION = [
   { min:99.50,max:100,trans:100},{min:97.50,max:99.49,trans:99},{min:96.00,max:97.49,trans:98},
