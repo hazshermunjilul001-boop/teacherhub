@@ -44,6 +44,34 @@ async function loadExcelJS(): Promise<any> {
   return mod.default ?? mod;
 }
 
+// Splits `total` columns into `parts` as-equal-as-possible chunks (remainder
+// goes to the last chunk) — used to lay out the info header the same way the
+// print preview's 4-column table does, instead of cramming a label into a
+// single narrow column (which was wrapping into "Regio / n:").
+function splitCols(total: number, parts: number): number[] {
+  const base = Math.floor(total / parts);
+  const rem = total - base * parts;
+  return Array.from({ length: parts }, (_, i) => base + (i === parts - 1 ? rem : 0));
+}
+
+// Writes a "Label: Value" cell merged across [colStart, colEnd] so the label
+// always has room to sit on one line, with the label bold and value regular —
+// matching the <strong>Label:</strong> Value styling in the HTML print preview.
+function setLabelValue(
+  ws: any, row: number, colStart: number, colEnd: number,
+  label: string, value: string, opts: { size?: number } = {}
+) {
+  for (let c = colStart; c <= colEnd; c++) ws.getCell(row, c).border = XLSX_ALL_BORDERS;
+  if (colEnd > colStart) ws.mergeCells(row, colStart, row, colEnd);
+  const size = opts.size ?? 9;
+  const master = ws.getCell(row, colStart);
+  master.value = { richText: [
+    { font: { bold: true, size }, text: `${label}: ` },
+    { font: { size }, text: value ?? '' },
+  ]};
+  master.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+}
+
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 const SUBJECTS_JHS = [
   'Filipino', 'English', 'Mathematics', 'Science',
@@ -419,18 +447,25 @@ function SummaryOfGradesView({
     setCell(ws, r, 1, `${subject} — ${schoolYear}`, { size:9, color:'FF555555' }); ws.mergeCells(r,1,r,totalCols); r++;
     r++;
 
-    setCell(ws,r,1,'Region:',{bold:true,align:'left'});   setCell(ws,r,2,region,{align:'left'});
-    setCell(ws,r,3,'Division:',{bold:true,align:'left'}); setCell(ws,r,4,division,{align:'left'});
-    setCell(ws,r,5,'School ID:',{bold:true,align:'left'});setCell(ws,r,6,schoolId,{align:'left'});
-    setCell(ws,r,7,'School Year:',{bold:true,align:'left'});setCell(ws,r,8,schoolYear,{align:'left'});
+    // 4-column info grid — same proportions as the print preview's header table
+    // (a "unit" of totalCols/4 columns; School/Teacher rows take 2 units each).
+    const [u1, u2, u3, u4] = splitCols(totalCols, 4);
+    const c1 = 1, c1End = u1;
+    const c2 = c1End + 1, c2End = c1End + u2;
+    const c3 = c2End + 1, c3End = c2End + u3;
+    const c4 = c3End + 1, c4End = totalCols;
+
+    setLabelValue(ws, r, c1, c1End, 'Region', region);
+    setLabelValue(ws, r, c2, c2End, 'Division', division);
+    setLabelValue(ws, r, c3, c3End, 'School ID', schoolId);
+    setLabelValue(ws, r, c4, c4End, 'School Year', schoolYear);
     r++;
-    setCell(ws,r,1,'School:',{bold:true,align:'left'});   setCell(ws,r,2,schoolName,{align:'left'});
-    setCell(ws,r,3,'Grade & Section:',{bold:true,align:'left'}); setCell(ws,r,4,`${gradeLevel} — ${sectionName}`,{align:'left'});
-    setCell(ws,r,6,'Subject:',{bold:true,align:'left'});  setCell(ws,r,7,subject,{align:'left'});
+    setLabelValue(ws, r, c1, c2End, 'School', schoolName);
+    setLabelValue(ws, r, c3, c3End, 'Grade & Section', `${gradeLevel} — ${sectionName}`);
+    setLabelValue(ws, r, c4, c4End, 'Subject', subject);
     r++;
-    setCell(ws,r,1,'Teacher:',{bold:true,align:'left'});  setCell(ws,r,2,adviser?.toUpperCase()||'',{align:'left'});
-    setCell(ws,r,4,'Total Active Learners:',{bold:true,align:'left'});
-    setCell(ws,r,5,`${activeStudents.length} (${males.length}M / ${females.length}F)`,{align:'left'});
+    setLabelValue(ws, r, c1, c2End, 'Teacher', adviser?.toUpperCase() || '');
+    setLabelValue(ws, r, c3, c4End, 'Total Active Learners', `${activeStudents.length} (${males.length}M / ${females.length}F)`);
     r++; r++;
 
     const hdrRow = r;
@@ -735,18 +770,26 @@ function EClassRecordView({
     setCell(ws, r, 1, `${subject} — ${schoolYear}`, { size:9, color:'FF555555' }); ws.mergeCells(r,1,r,totalCols); r++;
     r++;
 
-    setCell(ws,r,1,'Region:',{bold:true,align:'left'});   setCell(ws,r,2,region,{align:'left'});
-    setCell(ws,r,3,'Division:',{bold:true,align:'left'}); setCell(ws,r,4,division,{align:'left'});
-    setCell(ws,r,5,'School ID:',{bold:true,align:'left'});setCell(ws,r,6,schoolId,{align:'left'});
-    setCell(ws,r,7,'School Year:',{bold:true,align:'left'});setCell(ws,r,8,schoolYear,{align:'left'});
+    // 4-column info grid — same proportions as the print preview's header table
+    // (a "unit" of totalCols/4 columns; School/Teacher rows take 2 units each).
+    const [u1, u2, u3, u4] = splitCols(totalCols, 4);
+    const ic1 = 1, ic1End = u1;
+    const ic2 = ic1End + 1, ic2End = ic1End + u2;
+    const ic3 = ic2End + 1, ic3End = ic2End + u3;
+    const ic4 = ic3End + 1, ic4End = totalCols;
+
+    setLabelValue(ws, r, ic1, ic1End, 'Region', region);
+    setLabelValue(ws, r, ic2, ic2End, 'Division', division);
+    setLabelValue(ws, r, ic3, ic3End, 'School ID', schoolId);
+    setLabelValue(ws, r, ic4, ic4End, 'School Year', schoolYear);
     r++;
-    setCell(ws,r,1,'School:',{bold:true,align:'left'});   setCell(ws,r,2,schoolName,{align:'left'});
-    setCell(ws,r,3,'Grade & Section:',{bold:true,align:'left'}); setCell(ws,r,4,`${gradeLevel} — ${sectionName}`,{align:'left'});
-    setCell(ws,r,6,'Subject:',{bold:true,align:'left'});  setCell(ws,r,7,subject,{align:'left'});
+    setLabelValue(ws, r, ic1, ic2End, 'School', schoolName);
+    setLabelValue(ws, r, ic3, ic3End, 'Grade & Section', `${gradeLevel} — ${sectionName}`);
+    setLabelValue(ws, r, ic4, ic4End, 'Subject', subject);
     r++;
-    setCell(ws,r,1,'Teacher:',{bold:true,align:'left'});  setCell(ws,r,2,adviser?.toUpperCase()||'',{align:'left'});
-    setCell(ws,r,4,'Weights:',{bold:true,align:'left'});
-    setCell(ws,r,5, `WW ${(weights.ww*100).toFixed(0)}% | PT ${(weights.pt*100).toFixed(0)}%${hasTA?` | TA ${((weights.ta??0)*100).toFixed(0)}%`:''}`, {align:'left'});
+    setLabelValue(ws, r, ic1, ic2End, 'Teacher', adviser?.toUpperCase() || '');
+    setLabelValue(ws, r, ic3, ic4End, 'Weights',
+      `WW ${(weights.ww*100).toFixed(0)}% | PT ${(weights.pt*100).toFixed(0)}%${hasTA?` | TA ${((weights.ta??0)*100).toFixed(0)}%`:''}`);
     r++; r++;
 
     setCell(ws,r,1,`TERM ${currentTerm} CLASS RECORD`,{bold:true,size:9,color:'FFFFFFFF',fill:'FF1E3A5F',align:'left'});
@@ -806,43 +849,60 @@ function EClassRecordView({
 
     if (hasTA) {
       r++;
+      const analysisWidth = Math.max(totalCols, 23);
       setCell(ws,r,1,`TEST / EXAM RESULT ANALYSIS — TERM ${currentTerm}`,{bold:true,size:9,color:'FFFFFFFF',fill:'FF1E3A5F',align:'left'});
-      ws.mergeCells(r,1,r,totalCols); r++;
+      ws.mergeCells(r,1,r,analysisWidth); r++;
 
-      const addMiniTable = (title: string, rows: [string, ...(string|number)[]][]) => {
-        if (title) { setCell(ws,r,1,title,{bold:true,align:'left',size:8}); ws.mergeCells(r,1,r,4); r++; }
-        setCell(ws,r,1,'',{bold:true,fill:'FFE8E8E8',size:8});
-        stats.forEach((s,i)=>setCell(ws,r,2+i,s.label,{bold:true,fill:'FFE8E8E8',size:8}));
-        r++;
+      // Four mini-tables side by side, each 5 cols wide (2 for the label + ST1/ST2/TE)
+      // with a 1-col gap — mirrors the flex-row layout in the print preview instead
+      // of stacking every table underneath the last one.
+      const analysisTop = r;
+      const blockStarts = [1, 7, 13, 19];
+      let analysisBottom = analysisTop;
+
+      const writeStatBlock = (startCol: number, title: string, rows: [string, ...(string|number)[]][]) => {
+        let rr = analysisTop;
+        if (title) {
+          setCell(ws, rr, startCol, title, { bold:true, align:'left', size:8 });
+          ws.mergeCells(rr, startCol, rr, startCol+4);
+          rr++;
+        }
+        setCell(ws, rr, startCol, '', { bold:true, fill:'FFE8E8E8', size:8 });
+        ws.mergeCells(rr, startCol, rr, startCol+1);
+        stats.forEach((s,i)=>setCell(ws, rr, startCol+2+i, s.label, { bold:true, fill:'FFE8E8E8', size:8 }));
+        rr++;
         rows.forEach(([label, ...vals]) => {
-          setCell(ws,r,1,label,{align:'left',size:8});
-          vals.forEach((v,i)=>setCell(ws,r,2+i,v,{size:8}));
-          r++;
+          setCell(ws, rr, startCol, label, { align:'left', size:8 });
+          ws.mergeCells(rr, startCol, rr, startCol+1);
+          vals.forEach((v,i)=>setCell(ws, rr, startCol+2+i, v, { size:8 }));
+          rr++;
         });
-        r++;
+        analysisBottom = Math.max(analysisBottom, rr);
       };
 
-      addMiniTable('', [
+      writeStatBlock(blockStarts[0], '', [
         ['Number of Examinees:', ...stats.map(s=>s.scores.length||n)],
         ['Highest Possible Score:', ...stats.map(s=>s.high)],
       ]);
-      addMiniTable('CRITERION-REFERENCED', [
+      writeStatBlock(blockStarts[1], 'CRITERION-REFERENCED', [
         ['Got 75% & above', ...stats.map(s=>above75(s.scores,s.high))],
         ['Percentage', ...stats.map(s=>s.scores.length>0?((above75(s.scores,s.high)/s.scores.length)*100).toFixed(2)+'%':'0.00%')],
         ['Got below 75%', ...stats.map(s=>below75(s.scores,s.high))],
         ['Percentage', ...stats.map(s=>s.scores.length>0?((below75(s.scores,s.high)/s.scores.length)*100).toFixed(2)+'%':'0.00%')],
       ]);
-      addMiniTable('NORM-REFERENCED', [
+      writeStatBlock(blockStarts[2], 'NORM-REFERENCED', [
         ['Mean', ...stats.map(s=>s.scores.length>0?mean(s.scores).toFixed(2):'')],
         ['Median', ...stats.map(s=>s.scores.length>0?median(s.scores).toFixed(2):'')],
         ['SD', ...stats.map(s=>s.scores.length>0?sd(s.scores).toFixed(2):'')],
         ['MPS/PL', ...stats.map(s=>s.scores.length>0?mps(s.scores,[s.high]).toFixed(2)+'%':'')],
       ]);
-      addMiniTable('OTHER INFO', [
+      writeStatBlock(blockStarts[3], 'OTHER INFO', [
         ['Highest Score', ...stats.map(s=>s.scores.length>0?Math.max(...s.scores):'')],
         ['Lowest Score', ...stats.map(s=>s.scores.length>0?Math.min(...s.scores):'')],
         ['Total Score', ...stats.map(s=>s.scores.length>0?s.scores.reduce((a,b)=>a+b,0):'')],
       ]);
+
+      r = analysisBottom + 1;
     }
 
     r++;
@@ -856,7 +916,8 @@ function EClassRecordView({
 
     ws.getColumn(1).width = 5;
     ws.getColumn(2).width = 26;
-    for (let c=3;c<=totalCols;c++) ws.getColumn(c).width = 9;
+    const widthCols = hasTA ? Math.max(totalCols, 23) : totalCols;
+    for (let c=3;c<=widthCols;c++) ws.getColumn(c).width = 9;
 
     await saveWorkbook(wb, `EClassRecord_Term${currentTerm}_${subject.replace(/[^a-zA-Z0-9]+/g,'_')}.xlsx`);
   };
