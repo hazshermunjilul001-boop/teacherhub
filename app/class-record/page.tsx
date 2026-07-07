@@ -72,6 +72,21 @@ function setLabelValue(
   master.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
 }
 
+// Plain merged text cell (no bold label prefix) — used for signature names/lines
+// so a long teacher/school-head name gets a wide enough span instead of being
+// crammed into one narrow column.
+function setMergedText(
+  ws: any, row: number, colStart: number, colEnd: number, value: any,
+  opts: { bold?: boolean; align?: 'left'|'center'; size?: number; color?: string } = {}
+) {
+  for (let c = colStart; c <= colEnd; c++) ws.getCell(row, c).border = XLSX_ALL_BORDERS;
+  if (colEnd > colStart) ws.mergeCells(row, colStart, row, colEnd);
+  const cell = ws.getCell(row, colStart);
+  cell.value = value;
+  cell.font = { bold: !!opts.bold, size: opts.size ?? 9, ...(opts.color ? { color: { argb: opts.color } } : {}) };
+  cell.alignment = { horizontal: opts.align ?? 'center', vertical: 'middle', wrapText: true };
+}
+
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 const SUBJECTS_JHS = [
   'Filipino', 'English', 'Mathematics', 'Science',
@@ -501,13 +516,17 @@ function SummaryOfGradesView({
     writeGroup(females, 'FEMALE');
 
     r++;
-    setCell(ws,r,1,adviser?.toUpperCase()||'',{bold:true,align:'left',size:9});
-    setCell(ws,r,4,schoolHead?.toUpperCase()||'________________________________',{bold:true,align:'left',size:9});
-    setCell(ws,r,7,'________________________________',{align:'left',size:9});
+    const [sg1, sg2, sg3] = splitCols(totalCols, 3);
+    const sc1 = 1, sc1End = sg1;
+    const sc2 = sc1End + 1, sc2End = sc1End + sg2;
+    const sc3 = sc2End + 1, sc3End = totalCols;
+    setMergedText(ws, r, sc1, sc1End, adviser?.toUpperCase() || '', { bold:true, size:9 });
+    setMergedText(ws, r, sc2, sc2End, schoolHead?.toUpperCase() || '________________________________', { bold:true, size:9 });
+    setMergedText(ws, r, sc3, sc3End, '________________________________', { size:9 });
     r++;
-    setCell(ws,r,1,'Subject Teacher',{align:'left',size:9});
-    setCell(ws,r,4,'School Head',{align:'left',size:9});
-    setCell(ws,r,7,'Date',{align:'left',size:9});
+    setMergedText(ws, r, sc1, sc1End, 'Subject Teacher', { size:9 });
+    setMergedText(ws, r, sc2, sc2End, 'School Head', { size:9 });
+    setMergedText(ws, r, sc3, sc3End, 'Date', { size:9 });
 
     ws.getColumn(1).width = 5;
     ws.getColumn(2).width = 28;
@@ -862,11 +881,13 @@ function EClassRecordView({
 
       const writeStatBlock = (startCol: number, title: string, rows: [string, ...(string|number)[]][]) => {
         let rr = analysisTop;
-        if (title) {
-          setCell(ws, rr, startCol, title, { bold:true, align:'left', size:8 });
-          ws.mergeCells(rr, startCol, rr, startCol+4);
-          rr++;
-        }
+        // Always write a title row (blank when there's no title) so every block's
+        // header/data rows land on the same row numbers as its neighbors — this is
+        // what was causing the "Number of Examinees" block to sit one row higher
+        // than the other three and look misaligned/overlapping.
+        setCell(ws, rr, startCol, title, { bold:true, align:'left', size:8 });
+        ws.mergeCells(rr, startCol, rr, startCol+4);
+        rr++;
         setCell(ws, rr, startCol, '', { bold:true, fill:'FFE8E8E8', size:8 });
         ws.mergeCells(rr, startCol, rr, startCol+1);
         stats.forEach((s,i)=>setCell(ws, rr, startCol+2+i, s.label, { bold:true, fill:'FFE8E8E8', size:8 }));
@@ -906,13 +927,17 @@ function EClassRecordView({
     }
 
     r++;
-    setCell(ws,r,1,adviser?.toUpperCase()||'',{bold:true,align:'left',size:8});
-    setCell(ws,r,4,schoolHead?.toUpperCase()||'________________________________',{bold:true,align:'left',size:8});
-    setCell(ws,r,7,'________________________________',{align:'left',size:8});
+    const [sg1, sg2, sg3] = splitCols(totalCols, 3);
+    const sc1 = 1, sc1End = sg1;
+    const sc2 = sc1End + 1, sc2End = sc1End + sg2;
+    const sc3 = sc2End + 1, sc3End = totalCols;
+    setMergedText(ws, r, sc1, sc1End, adviser?.toUpperCase() || '', { bold:true, size:8 });
+    setMergedText(ws, r, sc2, sc2End, schoolHead?.toUpperCase() || '________________________________', { bold:true, size:8 });
+    setMergedText(ws, r, sc3, sc3End, '________________________________', { size:8 });
     r++;
-    setCell(ws,r,1,'Subject Teacher',{align:'left',size:8});
-    setCell(ws,r,4,'School Head',{align:'left',size:8});
-    setCell(ws,r,7,'Date',{align:'left',size:8});
+    setMergedText(ws, r, sc1, sc1End, 'Subject Teacher', { size:8 });
+    setMergedText(ws, r, sc2, sc2End, 'School Head', { size:8 });
+    setMergedText(ws, r, sc3, sc3End, 'Date', { size:8 });
 
     ws.getColumn(1).width = 5;
     ws.getColumn(2).width = 26;
