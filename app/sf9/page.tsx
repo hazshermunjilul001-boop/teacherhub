@@ -124,7 +124,19 @@ function computeFromClassRecord(row:any, subject:string): number {
 // TYPES
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface Student { id:string; lrn:string; full_name:string; sex:string; birthdate?:string; }
+interface Student { id:string; lrn:string; full_name:string; middle_name?:string; sex:string; birthdate?:string; }
+
+// Compute chronological age (in full years) from an ISO birthdate string
+function calcAge(birthdate?: string): number | null {
+  if (!birthdate) return null;
+  const bd = new Date(birthdate);
+  if (isNaN(bd.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - bd.getFullYear();
+  const monthDiff = today.getMonth() - bd.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < bd.getDate())) age--;
+  return age;
+}
 interface Collaborator { id:string; email:string; subjects:string[]; status:string; role:string; }
 
 // Grade source: 'class_record' | 'manual' | 'none'
@@ -550,8 +562,12 @@ function SF9Card({ data, section }: { data:LearnerSF9; section:any }) {
   // After comma: e.g. "JUAN P." or "JUAN PEDRO M." — last token is middle initial/name
   const afterComma  = (nameParts[1] ?? '').trim();
   const afterTokens = afterComma.split(' ').filter(Boolean);
-  const middleName  = afterTokens.length > 1 ? afterTokens[afterTokens.length - 1] : '';
+  // Prefer a dedicated middle_name column when the record has one; otherwise
+  // fall back to splitting it out of full_name (only works if it was embedded there).
+  const middleName  = (data.student.middle_name ?? '').trim()
+    || (afterTokens.length > 1 ? afterTokens[afterTokens.length - 1] : '');
   const firstName   = afterTokens.length > 1 ? afterTokens.slice(0, -1).join(' ') : afterComma;
+  const studentAge  = calcAge(data.student.birthdate);
   const schoolHead = (section?.school_head ?? '').toUpperCase();
   const adviserName= (section?.adviser     ?? '').toUpperCase();
 
@@ -698,20 +714,35 @@ function SF9Card({ data, section }: { data:LearnerSF9; section:any }) {
           flexDirection:'column',
         }}>
           {/* DepEd Header */}
-          <div style={{textAlign:'center', marginBottom:'3mm'}}>
-            <div style={{fontSize:'7.5pt'}}>Republic of the Philippines</div>
-            <div style={{fontWeight:'bold', fontSize:'9pt'}}>DEPARTMENT OF EDUCATION</div>
-            <div style={{fontSize:'7.5pt'}}>
-              {section?.region ?? 'Region XI'} &mdash; {section?.division ?? ''}
+          <div style={{
+            display:'flex', alignItems:'center', justifyContent:'center',
+            gap:'3mm', marginBottom:'3mm',
+          }}>
+            <img
+              src="/depedseal.webp"
+              alt="DepEd Seal"
+              style={{width:'16mm', height:'16mm', objectFit:'contain', flexShrink:0}}
+            />
+            <div style={{textAlign:'center', flex:1}}>
+              <div style={{fontSize:'7.5pt'}}>Republic of the Philippines</div>
+              <div style={{fontWeight:'bold', fontSize:'9pt'}}>DEPARTMENT OF EDUCATION</div>
+              <div style={{fontSize:'7.5pt'}}>
+                {section?.region ?? 'Region XI'} &mdash; {section?.division ?? ''}
+              </div>
+              <div style={{
+                fontWeight:'bold', textDecoration:'underline',
+                fontSize:'9.5pt', marginTop:'2mm', marginBottom:'1mm',
+                textTransform:'uppercase',
+              }}>
+                {section?.school_name ?? ''}
+              </div>
+              <div style={{fontSize:'7pt', fontStyle:'italic'}}>School</div>
             </div>
-            <div style={{
-              fontWeight:'bold', textDecoration:'underline',
-              fontSize:'9.5pt', marginTop:'2mm', marginBottom:'1mm',
-              textTransform:'uppercase',
-            }}>
-              {section?.school_name ?? ''}
-            </div>
-            <div style={{fontSize:'7pt', fontStyle:'italic'}}>School</div>
+            <img
+              src="/depedlogo.webp"
+              alt="School Logo"
+              style={{width:'16mm', height:'16mm', objectFit:'contain', flexShrink:0}}
+            />
           </div>
 
           {/* LRN */}
@@ -745,7 +776,7 @@ function SF9Card({ data, section }: { data:LearnerSF9; section:any }) {
             <tbody>
               <tr>
                 <td style={{padding:'1px 2px', whiteSpace:'nowrap'}}>Age:</td>
-                <td style={{borderBottom:'1px solid black', padding:'1px 4px', fontWeight:'bold'}}></td>
+                <td style={{borderBottom:'1px solid black', padding:'1px 4px', fontWeight:'bold'}}>{studentAge ?? ''}</td>
                 <td style={{padding:'1px 2px', whiteSpace:'nowrap'}}>Sex:</td>
                 <td style={{borderBottom:'1px solid black', padding:'1px 4px', fontWeight:'bold'}}>{data.student.sex==='M'?'Male':'Female'}</td>
               </tr>
