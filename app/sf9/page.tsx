@@ -559,14 +559,22 @@ function CollabPanel({
 function SF9Card({ data, section }: { data:LearnerSF9; section:any }) {
   const nameParts   = data.student.full_name.split(',').map((s:string) => s.trim());
   const lastName    = nameParts[0] ?? '';
+  // Some records store the full name as "LAST, FIRST, MIDDLE" (3 comma-separated
+  // parts) instead of "LAST, FIRST MIDDLE_INITIAL" (2 parts). Detect which shape
+  // we're dealing with before falling back to token-splitting.
+  const rawThirdPart = (nameParts[2] ?? '').trim();
+  const has3PartMiddle = rawThirdPart !== '' && !['-', '.', 'n/a'].includes(rawThirdPart.toLowerCase());
   // After comma: e.g. "JUAN P." or "JUAN PEDRO M." — last token is middle initial/name
   const afterComma  = (nameParts[1] ?? '').trim();
   const afterTokens = afterComma.split(' ').filter(Boolean);
-  // Prefer a dedicated middle_name column when the record has one; otherwise
-  // fall back to splitting it out of full_name (only works if it was embedded there).
+  // Priority: 1) a populated middle_name column, 2) a 3-part "LAST, FIRST, MIDDLE"
+  // full_name, 3) a middle name/initial embedded as the last token after the comma.
   const middleName  = (data.student.middle_name ?? '').trim()
-    || (afterTokens.length > 1 ? afterTokens[afterTokens.length - 1] : '');
-  const firstName   = afterTokens.length > 1 ? afterTokens.slice(0, -1).join(' ') : afterComma;
+    || (has3PartMiddle ? rawThirdPart : '')
+    || (!has3PartMiddle && afterTokens.length > 1 ? afterTokens[afterTokens.length - 1] : '');
+  const firstName   = has3PartMiddle
+    ? afterComma
+    : (afterTokens.length > 1 ? afterTokens.slice(0, -1).join(' ') : afterComma);
   const studentAge  = calcAge(data.student.birthdate);
   const schoolHead = (section?.school_head ?? '').toUpperCase();
   const adviserName= (section?.adviser     ?? '').toUpperCase();
