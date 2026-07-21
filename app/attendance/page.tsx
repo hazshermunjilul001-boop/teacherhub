@@ -227,9 +227,22 @@ export default function AttendancePage() {
 
   // Active students only for tracking
   const activeStudents = students.filter(s => !s.status || s.status === 'active');
-  const inactiveStudents = students.filter(s => s.status && s.status !== 'active');
+  // "Inactive" now specifically means dropped/transferred-out — actually hidden from the day-to-day
+  // grid. transferred_in students are NOT inactive: they're current students (see rosterStudents
+  // below), just noted with which school they came from in Remarks.
+  const inactiveStudents = students.filter(s => s.status === 'dropped' || s.status === 'transferred_out');
   const males   = activeStudents.filter(s => s.sex === 'M');
   const females = activeStudents.filter(s => s.sex === 'F');
+
+  // Working roster for the day-to-day grid, dashboard headline, and "mark all present" —
+  // this is deliberately broader than activeStudents. A transferred-in student IS a current
+  // student (just noted where they came from in Remarks), so they belong in the regular list
+  // from the moment they're added — not hidden away like a dropped/transferred-out student.
+  // (activeStudents/males/females above stay untouched — SF2's enrollment-percentage math
+  // depends on that narrower "baseline" count and would double-count if this were merged in.)
+  const rosterStudents = students.filter(s => !s.status || s.status === 'active' || s.status === 'transferred_in');
+  const rosterMales   = rosterStudents.filter(s => s.sex === 'M');
+  const rosterFemales = rosterStudents.filter(s => s.sex === 'F');
 
   // ── Load students ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -302,9 +315,9 @@ export default function AttendancePage() {
   };
 
   const markAllPresent = async (date: string) => {
-    const updates = activeStudents.map(s => ({ student_id: s.id, section_id: sectionId, date, status: 'P' as Status }));
+    const updates = rosterStudents.map(s => ({ student_id: s.id, section_id: sectionId, date, status: 'P' as Status }));
     const next = {...records};
-    activeStudents.forEach(s => { next[s.id] = {...next[s.id], [date]: 'P'}; });
+    rosterStudents.forEach(s => { next[s.id] = {...next[s.id], [date]: 'P'}; });
     setRecords(next);
     await supabase.from('attendance').upsert(updates, { onConflict: 'student_id,date' });
   };
@@ -326,17 +339,17 @@ export default function AttendancePage() {
   };
 
   const totalSchoolDays = schoolDays.length;
-  const totalEnrollment = activeStudents.length;
+  const totalEnrollment = rosterStudents.length;
   const mEnroll = males.length; const fEnroll = females.length;
-  const dayAbsents  = (date: string) => activeStudents.filter(s => records[s.id]?.[date] === 'A').length;
-  const dayPresents = (date: string) => activeStudents.filter(s => {
+  const dayAbsents  = (date: string) => rosterStudents.filter(s => records[s.id]?.[date] === 'A').length;
+  const dayPresents = (date: string) => rosterStudents.filter(s => {
     const st = records[s.id]?.[date];
     return st === 'P' || st === 'L' || st === undefined;
   }).length;
-  const mAbsents  = males.reduce((s,st)=>s+getAbsents(st.id),0);
-  const fAbsents  = females.reduce((s,st)=>s+getAbsents(st.id),0);
-  const mTardies  = males.reduce((s,st)=>s+getTardies(st.id),0);
-  const fTardies  = females.reduce((s,st)=>s+getTardies(st.id),0);
+  const mAbsents  = rosterMales.reduce((s,st)=>s+getAbsents(st.id),0);
+  const fAbsents  = rosterFemales.reduce((s,st)=>s+getAbsents(st.id),0);
+  const mTardies  = rosterMales.reduce((s,st)=>s+getTardies(st.id),0);
+  const fTardies  = rosterFemales.reduce((s,st)=>s+getTardies(st.id),0);
 
   // ── TRACKER VIEW ───────────────────────────────────────────────────────────
   const TrackerView = () => (
@@ -377,9 +390,9 @@ export default function AttendancePage() {
         <tbody>
           {/* MALE */}
           <tr><td colSpan={schoolDays.length+5} className="bg-blue-950/50 px-3 py-1.5 text-blue-400 font-bold text-xs">
-            MALE ({males.length})
+            MALE ({rosterMales.length})
           </td></tr>
-          {males.map((student) => {
+          {rosterMales.map((student) => {
             const absents = getAbsents(student.id);
             const alert   = hasConsecAbsences(student.id);
             return (
@@ -419,9 +432,9 @@ export default function AttendancePage() {
 
           {/* FEMALE */}
           <tr><td colSpan={schoolDays.length+5} className="bg-pink-950/50 px-3 py-1.5 text-pink-400 font-bold text-xs">
-            FEMALE ({females.length})
+            FEMALE ({rosterFemales.length})
           </td></tr>
-          {females.map((student) => {
+          {rosterFemales.map((student) => {
             const absents = getAbsents(student.id);
             const alert   = hasConsecAbsences(student.id);
             return (
@@ -509,12 +522,12 @@ export default function AttendancePage() {
       </div>
 
       {/* Consecutive absences alert */}
-      {activeStudents.some(s => hasConsecAbsences(s.id)) && (
+      {rosterStudents.some(s => hasConsecAbsences(s.id)) && (
         <div className="no-print mt-4 bg-red-950/40 border border-red-800 rounded-2xl p-4">
           <div className="flex items-center gap-2 text-red-400 font-semibold mb-2">
             <AlertTriangle size={16}/> Learners with 5+ Consecutive Absences (Requires Home Visit)
           </div>
-          {activeStudents.filter(s => hasConsecAbsences(s.id)).map(s => (
+          {rosterStudents.filter(s => hasConsecAbsences(s.id)).map(s => (
             <div key={s.id} className="text-sm text-red-300 ml-6">&bull; {s.full_name}</div>
           ))}
         </div>
@@ -553,7 +566,7 @@ export default function AttendancePage() {
   const SF2View = () => {
     const droppedStudents      = inactiveStudents.filter(s => s.status === 'dropped');
     const transferredOutStudents = inactiveStudents.filter(s => s.status === 'transferred_out');
-    const transferredInStudents  = inactiveStudents.filter(s => s.status === 'transferred_in');
+    const transferredInStudents  = students.filter(s => s.status === 'transferred_in');
 
     const mDropped  = droppedStudents.filter(s => s.sex === 'M').length;
     const fDropped  = droppedStudents.filter(s => s.sex === 'F').length;
