@@ -1660,9 +1660,17 @@ export default function ClassRecord() {
 
   const loadTermData = async (terms: number[], subjectOverride?: string) => {
     const subj = subjectOverride ?? subject;
+    const studentIds = students.map(s => s.id);
     const termMap: Record<number,TermData> = {};
     for (const t of terms) {
-      const {data} = await supabase.from('grades').select('*').eq('subject',subj).eq('term',t);
+      // Same scoping as the live per-subject effect above: without .in('student_id', studentIds)
+      // and .order('updated_at'), this pulls every teacher's rows for the same subject/term
+      // across the whole school, and the "Highest Possible Score" baseline ends up coming from
+      // an arbitrary row that isn't even this class — which is exactly what was silently
+      // recomputing wrong grades in Summary of Grades / MAPEH Summary / E-Class Record.
+      const {data} = await supabase.from('grades').select('*')
+        .eq('subject',subj).eq('term',t).in('student_id', studentIds)
+        .order('updated_at', {ascending:false});
       const m: Record<string,Scores> = {};
       let h: Highest = {ww:[100,100,100,100,100],pt:[100,100,100],st:[50,50],te:100};
       if (data && data.length>0) {
