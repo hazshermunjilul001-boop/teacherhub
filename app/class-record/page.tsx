@@ -385,7 +385,8 @@ function SummaryOfGradesView({
   const computeTerm = (sid: string, termNum: number) => {
     const td = allTermData[termNum];
     if (!td) return 0;
-    const s = td.scores[sid] || { ww:{}, pt:{}, st:{}, te:0 };
+    const s = td.scores[sid];
+    if (!s) return 0; // no grades row at all for this student/term — not yet graded, not a 60
     const ww = Array.from({length:5},(_,i)=>s.ww?.[i]??0);
     const pt = Array.from({length:3},(_,i)=>s.pt?.[i]??0);
     const st = Array.from({length:2},(_,i)=>s.st?.[i]??0);
@@ -643,7 +644,7 @@ function SummaryOfGradesView({
 function MAPEHSummaryView({
   students, sectionName, gradeLevel, schoolName, schoolId,
   schoolYear, division, region, adviser, schoolHead,
-  maTermData, peTermData, onClose,
+  maTermData, peTermData, currentTerm, onClose,
 }: {
   students: Student[];
   sectionName: string; gradeLevel: string; schoolName: string;
@@ -651,6 +652,7 @@ function MAPEHSummaryView({
   region: string; adviser: string; schoolHead: string;
   maTermData: Record<number, TermData>;
   peTermData: Record<number, TermData>;
+  currentTerm: number;
   onClose: () => void;
 }) {
   const maWeights = SUBJECT_WEIGHTS['MAPEH - Music & Arts'];
@@ -665,7 +667,8 @@ function MAPEHSummaryView({
   ) => {
     const td = termData[termNum];
     if (!td) return 0;
-    const s = td.scores[sid] || { ww:{}, pt:{}, st:{}, te:0 };
+    const s = td.scores[sid];
+    if (!s) return 0; // no grades row at all for this student/term — not yet graded, not a 60
     const ww = Array.from({length:5},(_,i)=>s.ww?.[i]??0);
     const pt = Array.from({length:3},(_,i)=>s.pt?.[i]??0);
     const st = Array.from({length:2},(_,i)=>s.st?.[i]??0);
@@ -678,7 +681,12 @@ function MAPEHSummaryView({
   };
 
   // Per-quarter MAPEH = whole-number average of that quarter's Music & Arts and PE & Health grades.
+  // Terms beyond the one currently being worked on are deliberately kept blank — even if a
+  // component subject happens to already have scores entered — so a MAPEH teacher can hand
+  // the adviser a Term 1 printout showing only Term 1, without prematurely revealing later
+  // quarters that haven't been finalized yet.
   const computeMAPEHTerm = (sid: string, termNum: number) => {
+    if (termNum > currentTerm) return { ma: 0, pe: 0, mapeh: 0 };
     const ma = computeComponentTerm(sid, termNum, maTermData, maWeights);
     const pe = computeComponentTerm(sid, termNum, peTermData, peWeights);
     const parts = [ma, pe].filter(v => v > 0);
@@ -2045,6 +2053,7 @@ export default function ClassRecord() {
           schoolHead={schoolHead}
           maTermData={maTermData}
           peTermData={peTermData}
+          currentTerm={term}
           onClose={() => setShowMAPEHSummary(false)}
         />
       )}
