@@ -633,6 +633,309 @@ function SummaryOfGradesView({
   );
 }
 
+// ── MAPEH SUMMARY VIEW ────────────────────────────────────────────────────────
+// MAPEH is entered as two separate subjects (Music & Arts, PE & Health), each with
+// its own weighted quarterly grade. Report cards need ONE combined MAPEH grade,
+// which DepEd computes as the average of the component grades — this view pulls
+// both components' term data and averages them per quarter (then averages the
+// quarters for a final grade), all rounded to whole numbers at each step, the
+// same way SummaryOfGradesView rounds a single subject's quarters.
+function MAPEHSummaryView({
+  students, sectionName, gradeLevel, schoolName, schoolId,
+  schoolYear, division, region, adviser, schoolHead,
+  maTermData, peTermData, onClose,
+}: {
+  students: Student[];
+  sectionName: string; gradeLevel: string; schoolName: string;
+  schoolId: string; schoolYear: string; division: string;
+  region: string; adviser: string; schoolHead: string;
+  maTermData: Record<number, TermData>;
+  peTermData: Record<number, TermData>;
+  onClose: () => void;
+}) {
+  const maWeights = SUBJECT_WEIGHTS['MAPEH - Music & Arts'];
+  const peWeights = SUBJECT_WEIGHTS['MAPEH - PE & Health'];
+  const activeStudents = students.filter(s => !s.status || s.status === 'active');
+  const males   = activeStudents.filter(s => s.sex === 'M').sort((a,b)=>a.full_name.localeCompare(b.full_name));
+  const females = activeStudents.filter(s => s.sex === 'F').sort((a,b)=>a.full_name.localeCompare(b.full_name));
+
+  const computeComponentTerm = (
+    sid: string, termNum: number,
+    termData: Record<number, TermData>, weights: { ww: number; pt: number; ta: number },
+  ) => {
+    const td = termData[termNum];
+    if (!td) return 0;
+    const s = td.scores[sid] || { ww:{}, pt:{}, st:{}, te:0 };
+    const ww = Array.from({length:5},(_,i)=>s.ww?.[i]??0);
+    const pt = Array.from({length:3},(_,i)=>s.pt?.[i]??0);
+    const st = Array.from({length:2},(_,i)=>s.st?.[i]??0);
+    const te = s.te ?? 0;
+    const avgWW = calcAvg(ww, td.highest.ww);
+    const avgPT = calcAvg(pt, td.highest.pt);
+    const avgTA = calcEX(st[0],st[1],te, td.highest.st[0],td.highest.st[1],td.highest.te);
+    const initial = avgWW*weights.ww + avgPT*weights.pt + avgTA*weights.ta;
+    return transmute(initial);
+  };
+
+  // Per-quarter MAPEH = whole-number average of that quarter's Music & Arts and PE & Health grades.
+  const computeMAPEHTerm = (sid: string, termNum: number) => {
+    const ma = computeComponentTerm(sid, termNum, maTermData, maWeights);
+    const pe = computeComponentTerm(sid, termNum, peTermData, peWeights);
+    const parts = [ma, pe].filter(v => v > 0);
+    const mapeh = parts.length > 0 ? Math.round(parts.reduce((a,b)=>a+b,0) / parts.length) : 0;
+    return { ma, pe, mapeh };
+  };
+
+  const td = { border:'1px solid #999', padding:'2px 5px', fontSize:'8px', textAlign:'center' as const };
+  const th = { ...td, background:'#e8e8e8', fontWeight:'bold' as const };
+  const thQ = { ...th, background:'#f3e8ff' }; // light purple to set MAPEH's own averaged column apart from its two components
+
+  const renderGroup = (group: Student[], label: string) => (
+    <>
+      <tr>
+        <td colSpan={14} style={{...td, background: label==='MALE'?'#dbeafe':'#fce7f3', fontWeight:'bold', textAlign:'left'}}>
+          {label}
+        </td>
+      </tr>
+      {group.map((student, idx) => {
+        const q1 = computeMAPEHTerm(student.id, 1);
+        const q2 = computeMAPEHTerm(student.id, 2);
+        const q3 = computeMAPEHTerm(student.id, 3);
+        const valid = [q1.mapeh, q2.mapeh, q3.mapeh].filter(v => v > 0);
+        const final = valid.length > 0 ? Math.round(valid.reduce((a,b)=>a+b,0) / valid.length) : 0;
+        const desc = descriptor(final);
+        const remarks = final >= 75 ? 'PASSED' : final > 0 ? 'FAILED' : '';
+        return (
+          <tr key={student.id} style={{background: idx%2===0 ? 'white' : '#f9fafb'}}>
+            <td style={td}>{idx+1}</td>
+            <td style={{...td, textAlign:'left', minWidth:'150px'}}>{student.full_name}</td>
+            <td style={td}>{q1.ma||''}</td>
+            <td style={td}>{q1.pe||''}</td>
+            <td style={{...td, background:'#faf5ff', fontWeight:'bold'}}>{q1.mapeh||''}</td>
+            <td style={td}>{q2.ma||''}</td>
+            <td style={td}>{q2.pe||''}</td>
+            <td style={{...td, background:'#faf5ff', fontWeight:'bold'}}>{q2.mapeh||''}</td>
+            <td style={td}>{q3.ma||''}</td>
+            <td style={td}>{q3.pe||''}</td>
+            <td style={{...td, background:'#faf5ff', fontWeight:'bold'}}>{q3.mapeh||''}</td>
+            <td style={{...td, fontWeight:'bold', fontSize:'11px', color:final>=75?'#166534':'#991b1b'}}>{final||''}</td>
+            <td style={{...td, fontSize:'8px'}}>{final ? desc.short : ''}</td>
+            <td style={{...td, fontWeight:'bold', color:final>=75?'#166534':'#991b1b'}}>{remarks}</td>
+          </tr>
+        );
+      })}
+    </>
+  );
+
+  // ── Excel export — mirrors the print preview above exactly ────────────────
+  const downloadExcel = async () => {
+    const ExcelJS = await loadExcelJS();
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('MAPEH Summary');
+    const totalCols = 14;
+    let r = 1;
+
+    setCell(ws, r, 1, 'MAPEH SUMMARY OF GRADES', { bold:true, size:13 }); ws.mergeCells(r,1,r,totalCols); r++;
+    setCell(ws, r, 1, `Music & Arts + PE & Health — ${schoolYear}`, { size:9, color:'FF555555' }); ws.mergeCells(r,1,r,totalCols); r++;
+    r++;
+
+    const [u1, u2, u3, u4] = splitCols(totalCols, 4);
+    const c1 = 1, c1End = u1;
+    const c2 = c1End + 1, c2End = c1End + u2;
+    const c3 = c2End + 1, c3End = c2End + u3;
+    const c4 = c3End + 1, c4End = totalCols;
+
+    setLabelValue(ws, r, c1, c1End, 'Region', region);
+    setLabelValue(ws, r, c2, c2End, 'Division', division);
+    setLabelValue(ws, r, c3, c3End, 'School ID', schoolId);
+    setLabelValue(ws, r, c4, c4End, 'School Year', schoolYear);
+    r++;
+    setLabelValue(ws, r, c1, c2End, 'School', schoolName);
+    setLabelValue(ws, r, c3, c3End, 'Grade & Section', `${gradeLevel} — ${sectionName}`);
+    setLabelValue(ws, r, c4, c4End, 'Subject', 'MAPEH (Music & Arts + PE & Health)');
+    r++;
+    setLabelValue(ws, r, c1, c2End, 'Teacher', adviser?.toUpperCase() || '');
+    setLabelValue(ws, r, c3, c4End, 'Total Active Learners', `${activeStudents.length} (${males.length}M / ${females.length}F)`);
+    r++; r++;
+
+    const hdrRow = r;
+    const headers = [
+      '#', "LEARNER'S NAME",
+      'Q1\nMusic & Arts', 'Q1\nPE & Health', 'Q1\nMAPEH',
+      'Q2\nMusic & Arts', 'Q2\nPE & Health', 'Q2\nMAPEH',
+      'Q3\nMusic & Arts', 'Q3\nPE & Health', 'Q3\nMAPEH',
+      'FINAL\nMAPEH', 'DESCRIPTOR', 'REMARKS',
+    ];
+    const mapehCols = [5, 8, 11]; // Q1/Q2/Q3 MAPEH average columns
+    headers.forEach((label, i) => {
+      setCell(ws, hdrRow, i+1, label, {
+        bold:true,
+        fill: (i+1)===12 ? 'FFD1FAE5' : mapehCols.includes(i+1) ? 'FFF3E8FF' : 'FFE8E8E8',
+        size:9, align: i===1 ? 'left' : 'center',
+      });
+    });
+    r++;
+
+    const writeGroup = (group: Student[], label: string) => {
+      if (group.length === 0) return;
+      setCell(ws,r,1,label,{bold:true,fill:label==='MALE'?'FFDBEAFE':'FFFCE7F3',align:'left',size:9});
+      ws.mergeCells(r,1,r,totalCols); r++;
+      group.forEach((student, idx) => {
+        const q1 = computeMAPEHTerm(student.id, 1);
+        const q2 = computeMAPEHTerm(student.id, 2);
+        const q3 = computeMAPEHTerm(student.id, 3);
+        const valid = [q1.mapeh, q2.mapeh, q3.mapeh].filter(v => v > 0);
+        const final = valid.length > 0 ? Math.round(valid.reduce((a,b)=>a+b,0) / valid.length) : 0;
+        const desc = descriptor(final);
+        const remarks = final >= 75 ? 'PASSED' : final > 0 ? 'FAILED' : '';
+        setCell(ws,r,1,idx+1,{size:9});
+        setCell(ws,r,2,student.full_name,{size:9,align:'left'});
+        setCell(ws,r,3,q1.ma||'',{size:9});
+        setCell(ws,r,4,q1.pe||'',{size:9});
+        setCell(ws,r,5,q1.mapeh||'',{bold:true,size:9,fill:'FFFAF5FF'});
+        setCell(ws,r,6,q2.ma||'',{size:9});
+        setCell(ws,r,7,q2.pe||'',{size:9});
+        setCell(ws,r,8,q2.mapeh||'',{bold:true,size:9,fill:'FFFAF5FF'});
+        setCell(ws,r,9,q3.ma||'',{size:9});
+        setCell(ws,r,10,q3.pe||'',{size:9});
+        setCell(ws,r,11,q3.mapeh||'',{bold:true,size:9,fill:'FFFAF5FF'});
+        setCell(ws,r,12,final||'',{bold:true,size:10,color:final>=75?'FF166534':'FF991B1B'});
+        setCell(ws,r,13,final?desc.short:'',{size:8});
+        setCell(ws,r,14,remarks,{bold:true,color:final>=75?'FF166534':'FF991B1B',size:9});
+        r++;
+      });
+    };
+    writeGroup(males, 'MALE');
+    writeGroup(females, 'FEMALE');
+
+    r++;
+    const [sg1, sg2, sg3] = splitCols(totalCols, 3);
+    const sc1 = 1, sc1End = sg1;
+    const sc2 = sc1End + 1, sc2End = sc1End + sg2;
+    const sc3 = sc2End + 1, sc3End = totalCols;
+    setMergedText(ws, r, sc1, sc1End, adviser?.toUpperCase() || '', { bold:true, size:9 });
+    setMergedText(ws, r, sc2, sc2End, schoolHead?.toUpperCase() || '________________________________', { bold:true, size:9 });
+    setMergedText(ws, r, sc3, sc3End, '________________________________', { size:9 });
+    r++;
+    setMergedText(ws, r, sc1, sc1End, 'MAPEH Teacher', { size:9 });
+    setMergedText(ws, r, sc2, sc2End, 'School Head', { size:9 });
+    setMergedText(ws, r, sc3, sc3End, 'Date', { size:9 });
+
+    ws.getColumn(1).width = 5;
+    ws.getColumn(2).width = 26;
+    for (let c=3;c<=14;c++) ws.getColumn(c).width = 10;
+
+    await saveWorkbook(wb, `MAPEH_Summary_${sectionName.replace(/[^a-zA-Z0-9]+/g,'_')}.xlsx`);
+  };
+
+  return (
+    <div className="eclass-modal-overlay fixed inset-0 bg-black/80 z-50 overflow-auto">
+      <div className="no-print sticky top-0 bg-gray-900 border-b border-gray-700 px-6 py-3 flex items-center justify-between z-10">
+        <div className="flex items-center gap-3">
+          <FileText size={18} className="text-fuchsia-400"/>
+          <span className="font-semibold">MAPEH Summary — Music &amp; Arts + PE &amp; Health</span>
+          <span className="text-gray-400 text-sm">{sectionName} &middot; {schoolYear}</span>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={downloadExcel} className="flex items-center gap-2 bg-green-700 hover:bg-green-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
+            <Download size={16}/> Download Excel
+          </button>
+          <button onClick={() => window.print()} className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
+            <Printer size={16}/> Print
+          </button>
+          <button onClick={onClose} className="flex items-center gap-2 bg-red-900/50 hover:bg-red-800 px-4 py-2 rounded-xl text-sm font-semibold transition">
+            <X size={16}/> Close
+          </button>
+        </div>
+      </div>
+
+      <div className="summary-print bg-white text-black p-6" style={{fontFamily:'Arial, sans-serif', maxWidth:'1100px', margin:'0 auto'}}>
+        {/* Header */}
+        <div style={{textAlign:'center', marginBottom:'8px'}}>
+          <div style={{fontWeight:'bold', fontSize:'13px'}}>MAPEH SUMMARY OF GRADES</div>
+          <div style={{fontSize:'9px', color:'#555'}}>Music &amp; Arts + PE &amp; Health — {schoolYear}</div>
+        </div>
+
+        <table style={{width:'100%', borderCollapse:'collapse', marginBottom:'6px', fontSize:'9px'}}>
+          <tbody>
+            <tr>
+              <td style={{...td, textAlign:'left', fontSize:'9px'}}><strong>Region:</strong> {region}</td>
+              <td style={{...td, textAlign:'left', fontSize:'9px'}}><strong>Division:</strong> {division}</td>
+              <td style={{...td, textAlign:'left', fontSize:'9px'}}><strong>School ID:</strong> {schoolId}</td>
+              <td style={{...td, textAlign:'left', fontSize:'9px'}}><strong>School Year:</strong> {schoolYear}</td>
+            </tr>
+            <tr>
+              <td colSpan={2} style={{...td, textAlign:'left', fontSize:'9px'}}><strong>School:</strong> {schoolName}</td>
+              <td style={{...td, textAlign:'left', fontSize:'9px'}}><strong>Grade &amp; Section:</strong> {gradeLevel} &mdash; {sectionName}</td>
+              <td style={{...td, textAlign:'left', fontSize:'9px'}}><strong>Subject:</strong> MAPEH</td>
+            </tr>
+            <tr>
+              <td colSpan={2} style={{...td, textAlign:'left', fontSize:'9px'}}><strong>Teacher:</strong> {adviser?.toUpperCase()}</td>
+              <td colSpan={2} style={{...td, textAlign:'left', fontSize:'9px'}}><strong>Total Active Learners:</strong> {activeStudents.length} ({males.length}M / {females.length}F)</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8px'}}>
+          <thead>
+            <tr>
+              <th style={th} rowSpan={2}>#</th>
+              <th style={{...th, textAlign:'left'}} rowSpan={2}>LEARNER'S NAME</th>
+              <th style={th} colSpan={3}>TERM 1</th>
+              <th style={th} colSpan={3}>TERM 2</th>
+              <th style={th} colSpan={3}>TERM 3</th>
+              <th style={{...th, background:'#d1fae5'}} rowSpan={2}>FINAL<br/>MAPEH</th>
+              <th style={th} rowSpan={2}>DESCRIPTOR</th>
+              <th style={th} rowSpan={2}>REMARKS</th>
+            </tr>
+            <tr>
+              <th style={th}>Music<br/>&amp; Arts</th><th style={th}>PE &amp;<br/>Health</th><th style={thQ}>MAPEH</th>
+              <th style={th}>Music<br/>&amp; Arts</th><th style={th}>PE &amp;<br/>Health</th><th style={thQ}>MAPEH</th>
+              <th style={th}>Music<br/>&amp; Arts</th><th style={th}>PE &amp;<br/>Health</th><th style={thQ}>MAPEH</th>
+            </tr>
+          </thead>
+          <tbody>
+            {renderGroup(males,   'MALE')}
+            {renderGroup(females, 'FEMALE')}
+          </tbody>
+        </table>
+
+        <p style={{fontSize:'7px', color:'#666', marginTop:'4px'}}>
+          Each quarter's MAPEH grade is the whole-number average of that quarter's Music &amp; Arts and PE &amp; Health grades.
+          The Final MAPEH grade is the whole-number average of the three quarterly MAPEH grades.
+        </p>
+
+        {/* Signatures */}
+        <div style={{display:'flex', justifyContent:'space-between', marginTop:'20px', fontSize:'9px'}}>
+          <div style={{textAlign:'center', minWidth:'200px'}}>
+            <div style={{fontWeight:'bold', borderTop:'1px solid black', paddingTop:'2px', marginTop:'24px'}}>{adviser?.toUpperCase()}</div>
+            <div>MAPEH Teacher</div>
+          </div>
+          <div style={{textAlign:'center', minWidth:'200px'}}>
+            <div style={{fontWeight:'bold', borderTop:'1px solid black', paddingTop:'2px', marginTop:'24px'}}>{schoolHead?.toUpperCase() || '________________________________'}</div>
+            <div>School Head</div>
+          </div>
+          <div style={{textAlign:'center', minWidth:'200px'}}>
+            <div style={{borderTop:'1px solid black', paddingTop:'2px', marginTop:'24px'}}>________________________________</div>
+            <div>Date</div>
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          .eclass-modal-overlay { display: block !important; position: static !important; overflow: visible !important; background: white !important; }
+          .min-h-screen { display: none !important; }
+          body { background: white !important; }
+          .summary-print { padding: 6mm !important; max-width: 100% !important; }
+          @page { size: landscape; margin: 6mm; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 // ── E-CLASS RECORD VIEW (current term + test analysis) ────────────────────────
 function EClassRecordView({
   students, subject, sectionName, gradeLevel, schoolName, schoolId,
@@ -1185,9 +1488,13 @@ export default function ClassRecord() {
   const [showAdd,setShowAdd]   = useState(false);
   const [showEClass,setShowEClass] = useState(false);
   const [showSummary,setShowSummary] = useState(false);
+  const [showMAPEHSummary,setShowMAPEHSummary] = useState(false);
   const [allTermData,setAllTermData] = useState<Record<number,TermData>>({});
+  const [maTermData,setMATermData] = useState<Record<number,TermData>>({});
+  const [peTermData,setPETermData] = useState<Record<number,TermData>>({});
   const [loadingEClass,setLoadingEClass] = useState(false);
   const [loadingSummary,setLoadingSummary] = useState(false);
+  const [loadingMAPEHSummary,setLoadingMAPEHSummary] = useState(false);
   const [statusModal,setStatusModal] = useState<Student|null>(null);
 
   const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear, division, region, adviser, schoolHead } = useActiveSection();
@@ -1343,10 +1650,11 @@ export default function ClassRecord() {
   const classAvg = activeStudents.length>0
     ? activeStudents.reduce((s,st)=>s+compute(st.id).transmuted,0)/activeStudents.length : 0;
 
-  const loadTermData = async (terms: number[]) => {
+  const loadTermData = async (terms: number[], subjectOverride?: string) => {
+    const subj = subjectOverride ?? subject;
     const termMap: Record<number,TermData> = {};
     for (const t of terms) {
-      const {data} = await supabase.from('grades').select('*').eq('subject',subject).eq('term',t);
+      const {data} = await supabase.from('grades').select('*').eq('subject',subj).eq('term',t);
       const m: Record<string,Scores> = {};
       let h: Highest = {ww:[100,100,100,100,100],pt:[100,100,100],st:[50,50],te:100};
       if (data && data.length>0) {
@@ -1372,6 +1680,18 @@ export default function ClassRecord() {
     setAllTermData(termMap);
     setLoadingSummary(false);
     setShowSummary(true);
+  };
+
+  const openMAPEHSummary = async () => {
+    setLoadingMAPEHSummary(true);
+    const [ma, pe] = await Promise.all([
+      loadTermData([1,2,3], 'MAPEH - Music & Arts'),
+      loadTermData([1,2,3], 'MAPEH - PE & Health'),
+    ]);
+    setMATermData(ma);
+    setPETermData(pe);
+    setLoadingMAPEHSummary(false);
+    setShowMAPEHSummary(true);
   };
   
   const handleEnter = (
@@ -1527,6 +1847,13 @@ export default function ClassRecord() {
               {loadingSummary ? <RefreshCw size={16} className="animate-spin"/> : <FileText size={16}/>}
               Summary of Grades
             </button>
+            {(subject === 'MAPEH - Music & Arts' || subject === 'MAPEH - PE & Health') && (
+              <button onClick={openMAPEHSummary} disabled={loadingMAPEHSummary}
+                className="flex items-center gap-2 bg-fuchsia-700 hover:bg-fuchsia-600 px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-60">
+                {loadingMAPEHSummary ? <RefreshCw size={16} className="animate-spin"/> : <FileText size={16}/>}
+                MAPEH Summary
+              </button>
+            )}
           </div>
         </div>
 
@@ -1701,6 +2028,24 @@ export default function ClassRecord() {
           schoolHead={schoolHead}
           allTermData={allTermData}
           onClose={() => setShowSummary(false)}
+        />
+      )}
+
+      {showMAPEHSummary && (
+        <MAPEHSummaryView
+          students={students}
+          sectionName={sectionName}
+          gradeLevel={gradeLevel}
+          schoolName={schoolName}
+          schoolId={schoolId}
+          schoolYear={schoolYear}
+          division={division}
+          region={region}
+          adviser={adviser}
+          schoolHead={schoolHead}
+          maTermData={maTermData}
+          peTermData={peTermData}
+          onClose={() => setShowMAPEHSummary(false)}
         />
       )}
     </>
