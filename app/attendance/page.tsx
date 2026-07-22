@@ -582,11 +582,25 @@ export default function AttendancePage() {
     const sf2Males   = students.filter(s => s.sex === 'M');
     const sf2Females = students.filter(s => s.sex === 'F');
 
+    // Parse a date string into a comparable number of milliseconds. Handles a plain
+    // "2026-06-26" as well as a full timestamp like "2026-06-26T00:00:00+00:00" — whatever
+    // shape the status_date column actually hands back — by letting the JS Date parser
+    // normalize it, rather than comparing raw strings (which breaks in several ways: a
+    // timestamp suffix, stray whitespace, etc.). Returns null if the value can't be parsed
+    // at all, so the caller can fail open instead of silently blanking out real history.
+    const parseDateMs = (s?: string): number | null => {
+      if (!s) return null;
+      const str = s.trim();
+      const t = new Date(str.length <= 10 ? `${str}T00:00:00` : str).getTime();
+      return Number.isNaN(t) ? null : t;
+    };
     const isCountedOn = (student: Student, ds: string): boolean => {
       if (!student.status || student.status === 'active') return true;
-      if (!student.status_date) return true; // no date on record — don't silently blank out history
-      if (student.status === 'transferred_in') return ds >= student.status_date;
-      return ds < student.status_date; // dropped / transferred_out
+      const statusMs = parseDateMs(student.status_date);
+      if (statusMs === null) return true; // can't read the date — don't silently blank out history
+      const dsMs = parseDateMs(ds)!; // ds always comes from fmt(), always a valid plain date
+      if (student.status === 'transferred_in') return dsMs >= statusMs;
+      return dsMs < statusMs; // dropped / transferred_out
     };
     const sf2GetAbsents = (student: Student) => schoolDays.filter(d => {
       const ds = fmt(d);
@@ -612,7 +626,7 @@ export default function AttendancePage() {
       if (!student.status || student.status === 'active') return '';
       const label = student.status === 'dropped' ? 'DROPPED OUT'
                   : student.status === 'transferred_out' ? 'TRANSFERRED OUT' : 'TRANSFERRED IN';
-      return `${label}${student.status_date ? ` (${student.status_date})` : ''}${student.status_note ? ` — ${student.status_note}` : ''}`;
+      return `${label}${student.status_date ? ` (${student.status_date.trim().slice(0, 10)})` : ''}${student.status_note ? ` — ${student.status_note}` : ''}`;
     };
 
     const sf2ConsecM = sf2Males.filter(s => sf2HasConsecAbsences(s)).length;
