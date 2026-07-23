@@ -1138,25 +1138,30 @@ export default function SF9Page() {
         });
 
         grades[subj] = termCells;
-        const recorded = termCells.filter(c => c.value > 0);
-        finalGrades[subj] = recorded.length
-          ? Math.round(recorded.reduce((a,c)=>a+c.value,0)/recorded.length) : 0;
+        // Final Rating only counts once ALL 3 terms have an entered grade —
+        // a partial average (e.g. Term 1 only) is not a "final" rating yet.
+        const allTermsFilled = termCells.every(c => c.value > 0);
+        finalGrades[subj] = allTermsFilled
+          ? Math.round(termCells.reduce((a,c)=>a+c.value,0)/termCells.length) : 0;
       });
 
-      // MAPEH per term
+      // MAPEH per term (this is just that term's cross-component average — fine to show as-is)
       const mapeh = [0,1,2].map(ti => {
         const scores = MAPEH_COMPONENTS.map(k => grades[k][ti].value).filter(v=>v>0);
         return { value: scores.length ? Math.round(scores.reduce((a,b)=>a+b)/scores.length) : 0, source: 'none' } as GradeCell;
       });
-      const mapehFinalScores = mapeh.filter(c=>c.value>0);
-      const mapehFinal = mapehFinalScores.length
-        ? Math.round(mapehFinalScores.reduce((a,c)=>a+c.value,0)/mapehFinalScores.length) : 0;
+      // MAPEH Final likewise requires all 3 terms present before it's a real final grade
+      const mapehAllTermsFilled = mapeh.every(c => c.value > 0);
+      const mapehFinal = mapehAllTermsFilled
+        ? Math.round(mapeh.reduce((a,c)=>a+c.value,0)/mapeh.length) : 0;
 
-      // General average
+      // General average — only once every learning area (all 7 JHS subjects + MAPEH)
+      // has a completed Final Rating; otherwise it's not a true general average yet.
       const gaSubjects = JHS_SUBJECTS;
-      const gaScores = [...gaSubjects.map(s=>finalGrades[s]), mapehFinal].filter(v=>v>0);
-      const genAverage = gaScores.length
-        ? Math.round(gaScores.reduce((a,b)=>a+b)/gaScores.length) : 0;
+      const gaFinals = gaSubjects.map(s=>finalGrades[s]);
+      const gaComplete = gaFinals.every(v=>v>0) && mapehFinal>0;
+      const genAverage = gaComplete
+        ? Math.round([...gaFinals, mapehFinal].reduce((a,b)=>a+b,0)/(gaFinals.length+1)) : 0;
 
       // Attendance per term
       const attendance = [1,2,3].map(term => {
