@@ -76,11 +76,10 @@ const WEIGHTS: Record<string,{ww:number;pt:number;ta:number}> = {
 
 const transmute = (v:number) => TRANSMUTATION.find(t=>v>=t.min&&v<=t.max)?.trans??60;
 const descriptor = (g:number) => {
-  if(g>=90) return 'Outstanding';
-  if(g>=85) return 'Very Satisfactory';
-  if(g>=80) return 'Satisfactory';
-  if(g>=75) return 'Fairly Satisfactory';
-  return 'Did Not Meet Expectations';
+  if(g>=90) return 'Advancing / Namumukod-tangi';
+  if(g>=80) return 'Benchmarking / Napamamalas';
+  if(g>=75) return 'Connecting / Natutungo';
+  return 'Developing / Napauunlad';
 };
 const calcAvg = (s:number[],h:number[]) => {
   // Only count slots where highest > 0 AND score > 0 (actual data entered)
