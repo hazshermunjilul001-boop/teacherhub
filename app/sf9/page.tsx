@@ -720,21 +720,22 @@ function SF9Card({ data, section }: { data:LearnerSF9; section:any }) {
           display:'flex',
           flexDirection:'column',
         }}>
-          {/* School Form label */}
-          <div style={{textAlign:'center', fontSize:'7.5pt', fontWeight:'bold', letterSpacing:'0.5px', marginBottom:'1.5mm'}}>
-            School Form 9 (SF9)
-          </div>
-
           {/* DepEd Header */}
           <div style={{
             display:'flex', alignItems:'center', justifyContent:'center',
             gap:'3mm', marginBottom:'3mm',
           }}>
-            <img
-              src="/depedseal.webp"
-              alt="DepEd Seal"
-              style={{width:'16mm', height:'16mm', objectFit:'contain', flexShrink:0}}
-            />
+            <div style={{display:'flex', flexDirection:'column', alignItems:'center', flexShrink:0}}>
+              {/* School Form label — sits directly above the DepEd seal */}
+              <div style={{fontSize:'7.5pt', fontWeight:'bold', letterSpacing:'0.5px', marginBottom:'1mm', whiteSpace:'nowrap'}}>
+                School Form 9 (SF9)
+              </div>
+              <img
+                src="/depedseal.webp"
+                alt="DepEd Seal"
+                style={{width:'16mm', height:'16mm', objectFit:'contain', flexShrink:0}}
+              />
+            </div>
             <div style={{textAlign:'center', flex:1}}>
               <div style={{fontSize:'7.5pt'}}>Republic of the Philippines</div>
               <div style={{fontWeight:'bold', fontSize:'9pt'}}>DEPARTMENT OF EDUCATION</div>
