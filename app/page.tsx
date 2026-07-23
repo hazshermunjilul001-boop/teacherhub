@@ -141,8 +141,13 @@ function LoginScreen() {
             {isLogin ? "Don't have an account? " : 'Already have an account? '}
             <button onClick={() => { setIsLogin(!isLogin); setError(''); }}
               className="text-white font-semibold hover:underline">
-              {isLogin ? 'Register free' : 'Sign in'}
+              {isLogin ? 'SIGN UP or REGISTER here' : 'Sign in'}
             </button>
+          </p>
+          <p className="text-center text-sm text-gray-500 mt-3">
+            <a href="/forgot-password" className="text-blue-400 hover:underline">
+              Forgot password?
+            </a>
           </p>
         </div>
         <p className="text-center text-blue-300/60 text-xs mt-6">
