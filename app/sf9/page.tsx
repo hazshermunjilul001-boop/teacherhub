@@ -721,6 +721,11 @@ function SF9Card({ data, section }: { data:LearnerSF9; section:any }) {
           display:'flex',
           flexDirection:'column',
         }}>
+          {/* School Form label */}
+          <div style={{textAlign:'center', fontSize:'7.5pt', fontWeight:'bold', letterSpacing:'0.5px', marginBottom:'1.5mm'}}>
+            School Form 9 (SF9)
+          </div>
+
           {/* DepEd Header */}
           <div style={{
             display:'flex', alignItems:'center', justifyContent:'center',
@@ -744,13 +749,29 @@ function SF9Card({ data, section }: { data:LearnerSF9; section:any }) {
               }}>
                 {section?.school_name ?? ''}
               </div>
-              <div style={{fontSize:'7pt', fontStyle:'italic'}}>School</div>
+              {/* School address — requires a `school_address` field on the section record.
+                  Falls back to blank until that's added to your sections table/edit form. */}
+              <div style={{fontSize:'7pt'}}>{section?.school_address ?? ''}</div>
             </div>
             <img
               src="/depedlogo.webp"
               alt="School Logo"
               style={{width:'16mm', height:'16mm', objectFit:'contain', flexShrink:0}}
             />
+          </div>
+
+          <div style={{textAlign:'center', fontWeight:'bold', fontSize:'11pt', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'3mm'}}>
+            Student&apos;s Report Card
+          </div>
+
+          {/* School ID */}
+          <div style={{display:'flex', justifyContent:'flex-end', marginBottom:'1mm', fontSize:'7.5pt'}}>
+            <span style={{fontWeight:'bold'}}>School ID:&nbsp;</span>
+            <span style={{
+              borderBottom:'1px solid black',
+              minWidth:'88px', textAlign:'center',
+              display:'inline-block', paddingBottom:'1px',
+            }}>{section?.school_id ?? ''}</span>
           </div>
 
           {/* LRN */}
