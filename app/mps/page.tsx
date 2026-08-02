@@ -416,12 +416,6 @@ export default function MPSPage() {
         </div>
         <div className="text-center">
           <div className="border-t border-black mt-8 pt-1" style={{minWidth:'180px'}}>
-            <div className="font-semibold">&nbsp;</div>
-            <div>Department Head</div>
-          </div>
-        </div>
-        <div className="text-center">
-          <div className="border-t border-black mt-8 pt-1" style={{minWidth:'180px'}}>
             <div className="font-semibold">{schoolHead || '\u00A0'}</div>
             <div>School Head</div>
           </div>
