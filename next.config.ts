@@ -1,9 +1,6 @@
 import type { NextConfig } from 'next';
 
-const nextConfig: NextConfig = {};
-
-export default nextConfig;
-
+const nextConfig: NextConfig = {
   turbopack: {
     resolveAlias: {
       // pdfjs-dist only needs "canvas" for server-side/Node PDF rendering,
@@ -12,5 +9,5 @@ export default nextConfig;
     },
   },
 };
- 
-module.exports = nextConfig;
+
+export default nextConfig;
