@@ -458,7 +458,7 @@ function Dashboard({ user }: { user: any }) {
               </div>
               <button onClick={() => router.push('/subscribe')}
                 className="flex-shrink-0 ml-4 flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition">
-                <CreditCard size={16}/> ₱99/mo
+                <CreditCard size={16}/> Upgrade to Teacher Pro
               </button>
             </div>
           )}
