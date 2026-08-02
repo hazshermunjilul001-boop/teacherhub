@@ -5,12 +5,8 @@ import { ArrowLeft, Plus, Printer, RefreshCw, Trash2, BarChart2, Download, Uploa
 import { supabase } from '../../lib/supabase';
 import { useActiveSection } from '../../lib/useActiveSection';
 import mammoth from 'mammoth';
-import * as pdfjsLib from 'pdfjs-dist/build/pdf';
 
-// pdf.js needs a worker file — pulled from cdnjs so no extra build config is required.
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-
-// Official source for TOS uploads — enforced in the UI copy and validated (best-effort) on import.
+// Official source for TOS uploads — enforced in the UI copy.
 const TOS_GENERATOR_URL = 'https://tos-ai-generator.vercel.app/';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,6 +31,9 @@ const SUBJECTS_SHS = [
   'SHS Work Immersion','SHS Research / Capstone',
 ];
 const ALL_SUBJECTS = [...SUBJECTS_JHS, ...SUBJECTS_SHS];
+
+// "Term Assessment" isn't one record — it's 3 separate tests per term.
+const TERM_ASSESSMENT_KINDS = ['Summative Test 1', 'Summative Test 2', 'Term Examination'];
 
 const MASTERY_LEVELS = [
   { min: 96, max: 100, label: 'Mastered',                        color: 'bg-emerald-500', text: 'text-emerald-400' },
@@ -90,8 +89,10 @@ function computeMPS(items: Item[], scores: ItemScore[], students: Student[]) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TOS IMPORT — parses a Table of Specification (.docx or .pdf) exported by the
+// TOS IMPORT — parses a Table of Specification (.docx) exported by the
 // ASH Innovations TOS Generator (tos-ai-generator.vercel.app) into TOSRow[].
+// PDF is intentionally not supported: the generator's PDF export embeds the
+// table as a flat image with no text layer, so there is nothing to parse.
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function parseDocxTOS(file: File): Promise<TOSRow[]> {
@@ -115,35 +116,6 @@ async function parseDocxTOS(file: File): Promise<TOSRow[]> {
       competency,
       start: parseInt(range[1], 10),
       end: range[2] ? parseInt(range[2], 10) : parseInt(range[1], 10),
-    });
-  }
-  return rows;
-}
-
-async function parsePdfTOS(file: File): Promise<TOSRow[]> {
-  const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-
-  let fullText = '';
-  for (let p = 1; p <= pdf.numPages; p++) {
-    const page = await pdf.getPage(p);
-    const content = await page.getTextContent();
-    fullText += content.items.map((it: any) => it.str).join(' ') + ' ';
-  }
-
-  // Matches: "# Competency text Hours %% REM UND APP ANA EVA CRE Total Item#-Item#"
-  // This mirrors the fixed TOS table layout the generator produces.
-  const rowRegex = /(\d{1,2})\s+([A-Za-z][^%]*?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)%\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)(?:\s*-\s*(\d+))?/g;
-
-  const rows: TOSRow[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = rowRegex.exec(fullText)) !== null) {
-    const competency = m[2].trim().replace(/\s+/g, ' ');
-    if (competency.length < 5) continue; // guard against a stray numeric match
-    rows.push({
-      competency,
-      start: parseInt(m[12], 10),
-      end: m[13] ? parseInt(m[13], 10) : parseInt(m[12], 10),
     });
   }
   return rows;
@@ -174,6 +146,7 @@ export default function MPSPage() {
   const [subject,  setSubject]  = useState('Filipino');
   const [term,     setTerm]     = useState(1);
   const [assessType, setAssessType] = useState('Written Work');
+  const [termKind,  setTermKind]  = useState(TERM_ASSESSMENT_KINDS[0]);
   const [students, setStudents] = useState<Student[]>([]);
   const [items,    setItems]    = useState<Item[]>([]);
   const [scores,   setScores]   = useState<ItemScore[]>([]);
@@ -185,6 +158,12 @@ export default function MPSPage() {
   const [importing, setImporting] = useState(false);
   const [showTOSHelp, setShowTOSHelp] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // The value actually stored/queried. "Term Assessment" alone is never saved —
+  // it always resolves to one of its 3 sub-kinds.
+  const effectiveAssessType = assessType === 'Term Assessment'
+    ? `Term Assessment — ${termKind}`
+    : assessType;
 
   // ── Load students (active only) ───────────────────────────────────────────
   useEffect(() => {
@@ -214,7 +193,7 @@ export default function MPSPage() {
         .select('*')
         .eq('subject', subject)
         .eq('term', term)
-        .eq('assessment_type', assessType)
+        .eq('assessment_type', effectiveAssessType)
         .eq('section_id', sectionId)
         .maybeSingle();
 
@@ -229,13 +208,13 @@ export default function MPSPage() {
       }
       setLoading(false);
     })();
-  }, [subject, term, assessType, sectionId]);
+  }, [subject, term, effectiveAssessType, sectionId]);
 
   // ── Save full record ───────────────────────────────────────────────────────
   const save = async (newItems: Item[], newScores: ItemScore[]) => {
     setSaving(true);
     const payload = {
-      section_id: sectionId, subject, term, assessment_type: assessType,
+      section_id: sectionId, subject, term, assessment_type: effectiveAssessType,
       items: newItems, scores: newScores,
     };
     if (recordId) {
@@ -275,19 +254,19 @@ export default function MPSPage() {
   // whichever filters are active above dictate where the parsed TOS lands.
   const handleTOSFile = async (file: File) => {
     const ext = file.name.split('.').pop()?.toLowerCase();
-    if (ext !== 'docx' && ext !== 'pdf') {
-      alert('Please upload the Table of Specification as a .docx or .pdf file.');
+    if (ext !== 'docx') {
+      alert('Please upload the Table of Specification as a .docx file (PDF exports from the generator cannot be read — they contain no selectable text).');
       return;
     }
 
     setImporting(true);
     try {
-      const rows = ext === 'docx' ? await parseDocxTOS(file) : await parsePdfTOS(file);
+      const rows = await parseDocxTOS(file);
 
       if (!rows.length) {
         alert(
           'Could not read any competency rows from this file.\n\n' +
-          'Make sure it is an unmodified Table of Specification exported from the ' +
+          'Make sure it is an unmodified .docx Table of Specification exported from the ' +
           'ASH Innovations TOS Generator (tos-ai-generator.vercel.app).'
         );
         return;
@@ -296,7 +275,7 @@ export default function MPSPage() {
       const totalItems = rows.reduce((sum, r) => sum + (r.end - r.start + 1), 0);
       const proceed = window.confirm(
         `Found ${rows.length} competencies covering ${totalItems} items.\n\n` +
-        `This will replace the current items for ${subject} · Term ${term} · ${assessType}, ` +
+        `This will replace the current items for ${subject} · Term ${term} · ${effectiveAssessType}, ` +
         `and any existing scores encoded for those items will be cleared.\n\nContinue?`
       );
       if (!proceed) return;
@@ -315,7 +294,7 @@ export default function MPSPage() {
     } catch (err) {
       console.error(err);
       alert(
-        'Failed to read this TOS file. Please make sure it is an unmodified export from the ' +
+        'Failed to read this TOS file. Please make sure it is an unmodified .docx export from the ' +
         'ASH Innovations TOS Generator (tos-ai-generator.vercel.app) and try again.'
       );
     } finally {
@@ -357,7 +336,7 @@ export default function MPSPage() {
       <div className="text-center mb-3">
         <div className="font-bold text-base">ITEM ANALYSIS / MEAN PERCENTAGE SCORE (MPS)</div>
         <div>{schoolName} · {schoolYear} · {gradeLevel} - {sectionName}</div>
-        <div>Subject: <strong>{subject}</strong> · Term: <strong>{term}</strong> · Assessment: <strong>{assessType}</strong></div>
+        <div>Subject: <strong>{subject}</strong> · Term: <strong>{term}</strong> · Assessment: <strong>{effectiveAssessType}</strong></div>
       </div>
 
       {/* MPS summary */}
@@ -441,7 +420,14 @@ export default function MPSPage() {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <>
-      <style>{`@media print{.no-print{display:none!important}body{background:white!important}@page{margin:10mm}}`}</style>
+      <style>{`@media print{
+        .no-print{display:none!important}
+        body{background:white!important}
+        @page{margin:10mm}
+        table{page-break-inside:auto}
+        tr{page-break-inside:avoid;page-break-after:auto}
+        thead{display:table-header-group}
+      }`}</style>
       <div className="min-h-screen bg-gray-950 text-white">
 
         {/* Header */}
@@ -452,7 +438,7 @@ export default function MPSPage() {
             </button>
             <div>
               <h1 className="text-2xl font-bold">MPS & Item Analysis</h1>
-              <p className="text-gray-400 text-sm">Term {term} · {subject} · {assessType}</p>
+              <p className="text-gray-400 text-sm">Term {term} · {subject} · {effectiveAssessType}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -493,6 +479,18 @@ export default function MPSPage() {
             ))}
           </div>
 
+          {/* Term Assessment is 3 separate tests — pick which one */}
+          {assessType === 'Term Assessment' && (
+            <div className="flex rounded-xl overflow-hidden border border-amber-700/60">
+              {TERM_ASSESSMENT_KINDS.map(k => (
+                <button key={k} onClick={() => setTermKind(k)}
+                  className={`px-4 py-2.5 text-sm font-medium transition ${termKind===k?'bg-amber-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>
+                  {k}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* MPS badge */}
           {items.length > 0 && (
             <div className={`ml-auto px-5 py-2 rounded-xl font-bold text-sm ${getMastery(mps).color} text-white`}>
@@ -506,7 +504,7 @@ export default function MPSPage() {
             <RefreshCw size={20} className="animate-spin"/>Loading…
           </div>
         ) : (
-          <div className="px-6 py-6">
+          <div className="no-print px-6 py-6">
 
             {/* ── ENCODE VIEW ── */}
             {view === 'encode' && (
@@ -521,12 +519,12 @@ export default function MPSPage() {
                     <Plus size={16}/>Add Item
                   </button>
 
-                  <input ref={fileInputRef} type="file" accept=".docx,.pdf" className="hidden"
+                  <input ref={fileInputRef} type="file" accept=".docx" className="hidden"
                     onChange={e => { const f = e.target.files?.[0]; if (f) handleTOSFile(f); }}/>
                   <button onClick={() => fileInputRef.current?.click()} disabled={importing}
                     className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 disabled:cursor-not-allowed px-5 py-2.5 rounded-xl text-sm font-semibold transition">
                     {importing ? <RefreshCw size={16} className="animate-spin"/> : <Upload size={16}/>}
-                    {importing ? 'Reading TOS…' : 'Import TOS'}
+                    {importing ? 'Reading TOS…' : 'Import TOS (.docx)'}
                   </button>
                 </div>
 
@@ -534,10 +532,11 @@ export default function MPSPage() {
                 <div className="bg-purple-950/30 border border-purple-800/40 rounded-2xl px-4 py-3 mb-6 flex items-start gap-2 text-sm">
                   <Info size={16} className="text-purple-400 mt-0.5 shrink-0"/>
                   <div className="text-gray-300">
-                    TOS files uploaded here must be generated by the{' '}
-                    <span className="font-semibold text-purple-300">ASH Innovations TOS Generator</span>.
-                    Any other file — hand-typed tables, scanned copies, or TOS made in plain Word/Excel — will not parse correctly.
-                    Items will be created for whatever is currently selected above: <span className="font-semibold text-white">{subject} · Term {term} · {assessType}</span>.
+                    TOS files uploaded here must be the <span className="font-semibold text-purple-300">.docx</span> export
+                    from the <span className="font-semibold text-purple-300">ASH Innovations TOS Generator</span> — PDF
+                    exports aren't readable (they contain no selectable text). Any hand-typed, scanned, or plain
+                    Word/Excel table will also fail to parse.
+                    Items will be created for whatever is currently selected above: <span className="font-semibold text-white">{subject} · Term {term} · {effectiveAssessType}</span>.
                   </div>
                   <button onClick={() => setShowTOSHelp(true)} title="Where do I get a TOS file?"
                     className="ml-auto shrink-0 text-purple-300 hover:text-purple-200 underline underline-offset-2">
@@ -738,9 +737,10 @@ export default function MPSPage() {
                 <button onClick={() => setShowTOSHelp(false)} className="text-gray-400 hover:text-white"><X size={18}/></button>
               </div>
               <p className="text-sm text-gray-300 mb-4">
-                TOS uploads only work with files produced by the ASH Innovations TOS Generator — its .docx and .pdf
-                exports follow the fixed table layout this importer reads. Build your TOS there, download it, then
-                come back and use <span className="font-semibold text-white">Import TOS</span> above. The parsed
+                TOS uploads only work with the <span className="font-semibold text-white">.docx</span> file produced by
+                the ASH Innovations TOS Generator — its Word export uses real table structure this importer reads.
+                Build your TOS there, download the .docx (not the PDF), then come back and use{' '}
+                <span className="font-semibold text-white">Import TOS</span> above. The parsed
                 competencies will be applied to the subject, term, and assessment type currently selected.
               </p>
               <a href={TOS_GENERATOR_URL} target="_blank" rel="noopener noreferrer"
