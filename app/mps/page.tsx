@@ -5,7 +5,7 @@ import { ArrowLeft, Plus, Printer, RefreshCw, Trash2, BarChart2, Download, Uploa
 import { supabase } from '../../lib/supabase';
 import { useActiveSection } from '../../lib/useActiveSection';
 import mammoth from 'mammoth';
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
+import * as pdfjsLib from 'pdfjs-dist/build/pdf';
 
 // pdf.js needs a worker file — pulled from cdnjs so no extra build config is required.
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
