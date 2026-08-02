@@ -141,7 +141,7 @@ function MiniBar({ pct, color }: { pct: number; color: string }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function MPSPage() {
-  const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear, division, region, adviser } = useActiveSection();
+  const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear, division, region, adviser, schoolHead } = useActiveSection();
 
   const [subject,  setSubject]  = useState('Filipino');
   const [term,     setTerm]     = useState(1);
@@ -408,9 +408,24 @@ export default function MPSPage() {
       </div>
 
       <div className="flex justify-between mt-6 text-xs">
-        <div className="text-center"><div className="border-t border-black mt-8 pt-1" style={{minWidth:'180px'}}>{sectionName} Adviser</div></div>
-        <div className="text-center"><div className="border-t border-black mt-8 pt-1" style={{minWidth:'180px'}}>Department Head</div></div>
-        <div className="text-center"><div className="border-t border-black mt-8 pt-1" style={{minWidth:'180px'}}>School Head</div></div>
+        <div className="text-center">
+          <div className="border-t border-black mt-8 pt-1" style={{minWidth:'180px'}}>
+            <div className="font-semibold">{adviser || '\u00A0'}</div>
+            <div>{sectionName} Adviser</div>
+          </div>
+        </div>
+        <div className="text-center">
+          <div className="border-t border-black mt-8 pt-1" style={{minWidth:'180px'}}>
+            <div className="font-semibold">&nbsp;</div>
+            <div>Department Head</div>
+          </div>
+        </div>
+        <div className="text-center">
+          <div className="border-t border-black mt-8 pt-1" style={{minWidth:'180px'}}>
+            <div className="font-semibold">{schoolHead || '\u00A0'}</div>
+            <div>School Head</div>
+          </div>
+        </div>
       </div>
     </div>
   );
