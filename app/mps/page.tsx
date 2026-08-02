@@ -1,9 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Printer, RefreshCw, Trash2, BarChart2, Download } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, Plus, Printer, RefreshCw, Trash2, BarChart2, Download, Upload, Info, X, ExternalLink } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useActiveSection } from '../../lib/useActiveSection';
+import mammoth from 'mammoth';
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
+
+// pdf.js needs a worker file — pulled from cdnjs so no extra build config is required.
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+// Official source for TOS uploads — enforced in the UI copy and validated (best-effort) on import.
+const TOS_GENERATOR_URL = 'https://tos-ai-generator.vercel.app/';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -48,6 +56,7 @@ function getMastery(pct: number) {
 interface Student  { id: string; full_name: string; sex?: string; status?: string; }
 interface Item     { id: string; no: number; competency: string; }
 interface ItemScore { student_id: string; item_id: string; score: number; } // 1 or 0
+interface TOSRow   { competency: string; start: number; end: number; }
 
 interface MPSRecord {
   id: string;
@@ -78,6 +87,66 @@ function computeMPS(items: Item[], scores: ItemScore[], students: Student[]) {
   const mps = (n * total) > 0 ? (totalCorrect / (n * total)) * 100 : 0;
 
   return { mps, itemStats };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TOS IMPORT — parses a Table of Specification (.docx or .pdf) exported by the
+// ASH Innovations TOS Generator (tos-ai-generator.vercel.app) into TOSRow[].
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function parseDocxTOS(file: File): Promise<TOSRow[]> {
+  const arrayBuffer = await file.arrayBuffer();
+  const { value: html } = await mammoth.convertToHtml({ arrayBuffer });
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+
+  const table = Array.from(doc.querySelectorAll('table'))
+    .find(t => t.textContent?.includes('Learning Competency'));
+  if (!table) return [];
+
+  const rows: TOSRow[] = [];
+  for (const tr of Array.from(table.querySelectorAll('tr'))) {
+    const cells = Array.from(tr.querySelectorAll('td,th')).map(c => (c.textContent ?? '').trim());
+    if (cells.length < 3 || !/^\d+$/.test(cells[0])) continue; // skip header / TOTAL rows
+    const competency = cells[1];
+    const itemCell = cells[cells.length - 1];
+    const range = itemCell.match(/(\d+)\s*-\s*(\d+)/) ?? itemCell.match(/^(\d+)$/);
+    if (!competency || !range) continue;
+    rows.push({
+      competency,
+      start: parseInt(range[1], 10),
+      end: range[2] ? parseInt(range[2], 10) : parseInt(range[1], 10),
+    });
+  }
+  return rows;
+}
+
+async function parsePdfTOS(file: File): Promise<TOSRow[]> {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+  let fullText = '';
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    fullText += content.items.map((it: any) => it.str).join(' ') + ' ';
+  }
+
+  // Matches: "# Competency text Hours %% REM UND APP ANA EVA CRE Total Item#-Item#"
+  // This mirrors the fixed TOS table layout the generator produces.
+  const rowRegex = /(\d{1,2})\s+([A-Za-z][^%]*?)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)%\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)(?:\s*-\s*(\d+))?/g;
+
+  const rows: TOSRow[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = rowRegex.exec(fullText)) !== null) {
+    const competency = m[2].trim().replace(/\s+/g, ' ');
+    if (competency.length < 5) continue; // guard against a stray numeric match
+    rows.push({
+      competency,
+      start: parseInt(m[12], 10),
+      end: m[13] ? parseInt(m[13], 10) : parseInt(m[12], 10),
+    });
+  }
+  return rows;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -113,6 +182,9 @@ export default function MPSPage() {
   const [recordId, setRecordId] = useState<string | null>(null);
   const [newComp,  setNewComp]  = useState('');
   const [view,     setView]     = useState<'encode'|'analysis'>('encode');
+  const [importing, setImporting] = useState(false);
+  const [showTOSHelp, setShowTOSHelp] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Load students (active only) ───────────────────────────────────────────
   useEffect(() => {
@@ -196,6 +268,60 @@ export default function MPSPage() {
     setItems(next);
     setScores(nextScores);
     await save(next, nextScores);
+  };
+
+  // ── Import items from an uploaded Table of Specification (docx/pdf) ────────
+  // Populates the CURRENTLY SELECTED subject / term / assessment type — i.e.
+  // whichever filters are active above dictate where the parsed TOS lands.
+  const handleTOSFile = async (file: File) => {
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (ext !== 'docx' && ext !== 'pdf') {
+      alert('Please upload the Table of Specification as a .docx or .pdf file.');
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const rows = ext === 'docx' ? await parseDocxTOS(file) : await parsePdfTOS(file);
+
+      if (!rows.length) {
+        alert(
+          'Could not read any competency rows from this file.\n\n' +
+          'Make sure it is an unmodified Table of Specification exported from the ' +
+          'ASH Innovations TOS Generator (tos-ai-generator.vercel.app).'
+        );
+        return;
+      }
+
+      const totalItems = rows.reduce((sum, r) => sum + (r.end - r.start + 1), 0);
+      const proceed = window.confirm(
+        `Found ${rows.length} competencies covering ${totalItems} items.\n\n` +
+        `This will replace the current items for ${subject} · Term ${term} · ${assessType}, ` +
+        `and any existing scores encoded for those items will be cleared.\n\nContinue?`
+      );
+      if (!proceed) return;
+
+      const newItems: Item[] = [];
+      rows.forEach(r => {
+        for (let no = r.start; no <= r.end; no++) {
+          newItems.push({ id: crypto.randomUUID(), no, competency: r.competency });
+        }
+      });
+      newItems.sort((a, b) => a.no - b.no);
+
+      setItems(newItems);
+      setScores([]);
+      await save(newItems, []);
+    } catch (err) {
+      console.error(err);
+      alert(
+        'Failed to read this TOS file. Please make sure it is an unmodified export from the ' +
+        'ASH Innovations TOS Generator (tos-ai-generator.vercel.app) and try again.'
+      );
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   // ── Toggle score (1/0 per student per item) ────────────────────────────────
@@ -386,13 +512,36 @@ export default function MPSPage() {
             {view === 'encode' && (
               <div>
                 {/* Add competency */}
-                <div className="bg-gray-900 border border-gray-700 rounded-2xl p-4 mb-6 flex gap-3">
+                <div className="bg-gray-900 border border-gray-700 rounded-2xl p-4 mb-3 flex gap-3">
                   <input value={newComp} onChange={e => setNewComp(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && addItem()}
                     placeholder="Type learning competency / item description then press Enter…"
                     className="flex-1 bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500"/>
                   <button onClick={addItem} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-5 py-2.5 rounded-xl text-sm font-semibold transition">
                     <Plus size={16}/>Add Item
+                  </button>
+
+                  <input ref={fileInputRef} type="file" accept=".docx,.pdf" className="hidden"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleTOSFile(f); }}/>
+                  <button onClick={() => fileInputRef.current?.click()} disabled={importing}
+                    className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 disabled:cursor-not-allowed px-5 py-2.5 rounded-xl text-sm font-semibold transition">
+                    {importing ? <RefreshCw size={16} className="animate-spin"/> : <Upload size={16}/>}
+                    {importing ? 'Reading TOS…' : 'Import TOS'}
+                  </button>
+                </div>
+
+                {/* TOS source instruction */}
+                <div className="bg-purple-950/30 border border-purple-800/40 rounded-2xl px-4 py-3 mb-6 flex items-start gap-2 text-sm">
+                  <Info size={16} className="text-purple-400 mt-0.5 shrink-0"/>
+                  <div className="text-gray-300">
+                    TOS files uploaded here must be generated by the{' '}
+                    <span className="font-semibold text-purple-300">ASH Innovations TOS Generator</span>.
+                    Any other file — hand-typed tables, scanned copies, or TOS made in plain Word/Excel — will not parse correctly.
+                    Items will be created for whatever is currently selected above: <span className="font-semibold text-white">{subject} · Term {term} · {assessType}</span>.
+                  </div>
+                  <button onClick={() => setShowTOSHelp(true)} title="Where do I get a TOS file?"
+                    className="ml-auto shrink-0 text-purple-300 hover:text-purple-200 underline underline-offset-2">
+                    Get a TOS
                   </button>
                 </div>
 
@@ -578,6 +727,29 @@ export default function MPSPage() {
         <div className="hidden print:block">
           <PrintView/>
         </div>
+
+        {/* TOS help modal */}
+        {showTOSHelp && (
+          <div className="no-print fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4"
+            onClick={() => setShowTOSHelp(false)}>
+            <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-white text-lg">Import a Table of Specification</h3>
+                <button onClick={() => setShowTOSHelp(false)} className="text-gray-400 hover:text-white"><X size={18}/></button>
+              </div>
+              <p className="text-sm text-gray-300 mb-4">
+                TOS uploads only work with files produced by the ASH Innovations TOS Generator — its .docx and .pdf
+                exports follow the fixed table layout this importer reads. Build your TOS there, download it, then
+                come back and use <span className="font-semibold text-white">Import TOS</span> above. The parsed
+                competencies will be applied to the subject, term, and assessment type currently selected.
+              </p>
+              <a href={TOS_GENERATOR_URL} target="_blank" rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 px-4 py-2.5 rounded-xl text-sm font-semibold transition">
+                Open TOS Generator<ExternalLink size={14}/>
+              </a>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
