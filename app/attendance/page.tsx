@@ -216,6 +216,8 @@ export default function AttendancePage() {
   const [holidays,setHolidays]     = useState<string[]>([]);
   const [holidayReasons,setHolidayReasons] = useState<Record<string,string>>({});
   const [holInput,setHolInput]     = useState('');
+  const [holToInput,setHolToInput] = useState('');
+  const [holMode,setHolMode]       = useState<'single'|'range'>('single');
   const [holReason,setHolReason]   = useState('');
   const [showHolModal,setShowHolModal] = useState(false);
   const [statusModal,setStatusModal]   = useState<Student|null>(null);
@@ -292,6 +294,33 @@ export default function AttendancePage() {
     setHolInput(''); setHolReason('');
     await supabase.from('holidays').upsert(
       { section_id: sectionId, date: holInput, reason: reasonText },
+      { onConflict: 'section_id,date' }
+    );
+  };
+  const addHolidayRange = async () => {
+    if (!holInput || !holToInput || holToInput < holInput) return;
+    const reasonText = holReason || 'No Classes';
+    const newDates: string[] = [];
+    const d = new Date(holInput + 'T00:00:00');
+    const end = new Date(holToInput + 'T00:00:00');
+    while (d <= end) {
+      const dow = d.getDay();
+      const ds = fmt(d);
+      // Weekends are never school days anyway, so skip them rather than clutter the
+      // declared list with entries that never had any effect in the first place.
+      if (dow !== 0 && dow !== 6 && !holidays.includes(ds)) newDates.push(ds);
+      d.setDate(d.getDate() + 1);
+    }
+    if (newDates.length === 0) return;
+    setHolidays(prev => [...prev, ...newDates].sort());
+    setHolidayReasons(prev => {
+      const next = {...prev};
+      newDates.forEach(ds => { next[ds] = reasonText; });
+      return next;
+    });
+    setHolInput(''); setHolToInput(''); setHolReason('');
+    await supabase.from('holidays').upsert(
+      newDates.map(ds => ({ section_id: sectionId, date: ds, reason: reasonText })),
       { onConflict: 'section_id,date' }
     );
   };
@@ -1283,17 +1312,51 @@ export default function AttendancePage() {
               They're excluded from the attendance grid and SF2 school-day total, but will still appear in the
               printed SF2 as a shaded column labeled with the reason you give below.
             </p>
+            <div className="flex gap-2 mb-4">
+              <button onClick={() => setHolMode('single')}
+                className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${holMode==='single' ? 'bg-amber-600 text-white' : 'bg-gray-800 text-gray-400 border border-gray-700'}`}>
+                Single Day
+              </button>
+              <button onClick={() => setHolMode('range')}
+                className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${holMode==='range' ? 'bg-amber-600 text-white' : 'bg-gray-800 text-gray-400 border border-gray-700'}`}>
+                Date Range
+              </button>
+            </div>
             <div className="space-y-2 mb-4">
-              <label className="block text-sm text-gray-400">Date</label>
-              <input type="date" value={holInput} onChange={e=>setHolInput(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-amber-500"/>
+              {holMode === 'single' ? (
+                <>
+                  <label className="block text-sm text-gray-400">Date</label>
+                  <input type="date" value={holInput} onChange={e=>setHolInput(e.target.value)}
+                    className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-amber-500"/>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-sm text-gray-400">From</label>
+                      <input type="date" value={holInput} onChange={e=>setHolInput(e.target.value)}
+                        className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-amber-500"/>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-400">To</label>
+                      <input type="date" value={holToInput} onChange={e=>setHolToInput(e.target.value)} min={holInput || undefined}
+                        className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-amber-500"/>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Weekends in this range are skipped automatically &mdash; they're never school days anyway.
+                  </p>
+                </>
+              )}
               <label className="block text-sm text-gray-400">Reason / Description</label>
               <input value={holReason} onChange={e=>setHolReason(e.target.value)}
-                placeholder="e.g. Rizal Day, Typhoon Suspension"
+                placeholder="e.g. Rizal Day, Typhoon Suspension, Part of Summer"
                 className="w-full bg-gray-800 border border-gray-600 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-amber-500"/>
-              <button onClick={addHoliday} disabled={!holInput}
+              <button
+                onClick={holMode === 'single' ? addHoliday : addHolidayRange}
+                disabled={holMode === 'single' ? !holInput : (!holInput || !holToInput || holToInput < holInput)}
                 className="w-full py-2.5 bg-amber-600 hover:bg-amber-500 rounded-xl font-semibold text-sm transition disabled:opacity-50">
-                Add Holiday
+                {holMode === 'single' ? 'Add Holiday' : 'Add Holidays for Range'}
               </button>
             </div>
 
