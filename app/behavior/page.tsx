@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Printer, RefreshCw, Trash2, Award, AlertTriangle, CheckCircle, Search } from 'lucide-react';
+import { ArrowLeft, Plus, Printer, RefreshCw, Trash2, Award, AlertTriangle, CheckCircle, Search, Users, Mail, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useActiveSection } from '../../lib/useActiveSection';
 
@@ -98,12 +98,162 @@ interface BehaviorRecord {
   description: string;
   action_taken: string;
   created_at: string;
+  recorded_by_email?: string;
 }
 interface ConductRecord {
   student_id: string;
   term: number;
   ratings: Record<string, ConductRating>; // key = behaviorStatement
 }
+
+interface Collaborator { id:string; email:string; subjects:string[]; status:string; role:string; }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SUBJECT TEACHER / ADVISER ACCESS PANEL
+// Reuses the exact same `section_collaborators` table that SF9's "Subject Teacher
+// Access" panel writes to — so a teacher already added there for grade encoding
+// automatically also gets behavior visibility, and vice versa. There's deliberately
+// only one shared list rather than a separate invite flow for behavior, so the two
+// pages can never drift out of sync with each other.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function BehaviorCollabPanel({
+  sectionId, onClose,
+}: { sectionId:string; onClose:()=>void }) {
+  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
+  const [inviteEmail,   setInviteEmail]   = useState('');
+  const [loading,       setLoading]       = useState(true);
+  const [saving,        setSaving]        = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('section_collaborators')
+        .select('*')
+        .eq('section_id', sectionId);
+      setCollaborators(data ?? []);
+      setLoading(false);
+    })();
+  }, [sectionId]);
+
+  const invite = async () => {
+    if (!inviteEmail.trim()) return;
+    setSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const email = inviteEmail.trim().toLowerCase();
+
+    // Subjects is required by the shared table's existing invite schema (SF9 uses it to
+    // scope which subjects a teacher can encode grades for). For behavior-only sharing
+    // it isn't actually used to gate access — access here is section-wide — so a
+    // placeholder keeps the same row shape without inventing a second table.
+    const { data, error } = await supabase.from('section_collaborators').upsert({
+      section_id:  sectionId,
+      email,
+      subjects:    ['Behavior Access'],
+      role:        'subject_teacher',
+      status:      'pending',
+      invited_by:  user?.id,
+    }, { onConflict: 'section_id,email' }).select().single();
+
+    if (!error && data) {
+      setCollaborators(prev => [...prev.filter(c=>c.email!==data.email), data]);
+      setInviteEmail('');
+    } else {
+      alert('Error: ' + error?.message);
+    }
+    setSaving(false);
+  };
+
+  const remove = async (id:string) => {
+    if (!confirm('Remove this person\'s access to this section\'s behavior records?')) return;
+    await supabase.from('section_collaborators').delete().eq('id', id);
+    setCollaborators(prev => prev.filter(c => c.id !== id));
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-900 rounded-2xl w-full max-w-xl border border-gray-700 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-gray-800">
+          <div>
+            <h3 className="text-xl font-bold flex items-center gap-2">
+              <Users size={20} className="text-purple-400"/> Shared Behavior Access
+            </h3>
+            <p className="text-gray-400 text-sm mt-0.5">
+              Anyone added here can view and log behavior/incident records for this section's learners.
+            </p>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition"><X size={20}/></button>
+        </div>
+
+        <div className="p-5 space-y-5">
+          <div className="bg-blue-950/40 border border-blue-800 rounded-2xl p-4 text-sm text-blue-300">
+            <div className="font-semibold mb-2">📋 How it works:</div>
+            <ol className="space-y-1 text-xs list-decimal list-inside text-blue-200">
+              <li>Enter the teacher's email below</li>
+              <li className="text-amber-400">They must <strong>register or log in</strong> using the same email — access activates automatically once they do</li>
+              <li>Once active, they can see and add behavior/incident entries for this class, and the adviser sees everything logged by every subject teacher</li>
+              <li>This is the <strong>same list</strong> as SF9's "Subject Teachers" — adding someone here also gives them SF9 access, and adding them there also gives them behavior access</li>
+            </ol>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Teacher's Email</label>
+              <div className="relative">
+                <Mail size={16} className="absolute left-3 top-3 text-gray-500"/>
+                <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
+                  placeholder="teacher@deped.gov.ph"
+                  className="w-full pl-9 pr-4 py-2.5 bg-gray-800 border border-gray-600 rounded-xl text-white text-sm focus:outline-none focus:border-purple-500"/>
+              </div>
+            </div>
+            <button onClick={invite}
+              disabled={saving || !inviteEmail.trim()}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-purple-600 hover:bg-purple-700 rounded-xl font-semibold text-sm transition disabled:opacity-50">
+              {saving ? <RefreshCw size={16} className="animate-spin"/> : <Plus size={16}/>}
+              {saving ? 'Adding…' : 'Add Access'}
+            </button>
+          </div>
+
+          <div>
+            <div className="text-sm font-semibold text-gray-300 mb-3">
+              Currently Shared With ({collaborators.length})
+            </div>
+            {loading ? (
+              <div className="text-gray-500 text-sm text-center py-4">Loading…</div>
+            ) : collaborators.length === 0 ? (
+              <div className="text-gray-600 text-sm text-center py-4">
+                Not shared with anyone yet — only you and the adviser can see these records.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {collaborators.map(c => (
+                  <div key={c.id} className="bg-gray-800 border border-gray-700 rounded-xl p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${c.status==='active' ? 'bg-emerald-400' : 'bg-yellow-400'}`}/>
+                      <span className="text-white text-sm font-medium">{c.email}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        c.status==='active'
+                          ? 'bg-emerald-900/50 text-emerald-400'
+                          : 'bg-yellow-900/50 text-yellow-400'
+                      }`}>
+                        {c.status === 'active' ? 'Active' : 'Pending — must log in to activate'}
+                      </span>
+                    </div>
+                    <button onClick={() => remove(c.id)} className="text-gray-600 hover:text-red-400 transition text-xs flex-shrink-0">
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ADD RECORD MODAL
@@ -128,15 +278,17 @@ function AddRecordModal({
   const save = async () => {
     if (!description.trim()) return;
     setSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
     const rec: Omit<BehaviorRecord,'created_at'> = {
       id: crypto.randomUUID(),
       student_id: studentId,
       date, term, type, category,
       description: description.trim(),
       action_taken: action.trim(),
+      recorded_by_email: user?.email ?? '',
     };
     const { error } = await supabase.from('behavior_records').insert({
-      ...rec, recorded_by: (await supabase.auth.getUser()).data.user?.id,
+      ...rec, recorded_by: user?.id,
     });
     if (!error) {
       onAdd({ ...rec, created_at: new Date().toISOString() });
@@ -234,6 +386,7 @@ export default function BehaviorPage() {
   const [conduct,     setConduct]     = useState<Record<string, ConductRecord>>({});
   const [loading,     setLoading]     = useState(true);
   const [showAdd,     setShowAdd]     = useState(false);
+  const [showCollab,  setShowCollab]  = useState(false);
   const [activeTab,   setActiveTab]   = useState<'log'|'conduct'|'summary'>('log');
   const [filterType,  setFilterType]  = useState<BehaviorType|'All'>('All');
   const [filterSt,    setFilterSt]    = useState('');
@@ -459,6 +612,10 @@ export default function BehaviorPage() {
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-xl text-sm font-semibold transition">
               <Plus size={16}/>Log Behavior
             </button>
+            <button onClick={() => setShowCollab(true)}
+              className="flex items-center gap-2 bg-purple-700 hover:bg-purple-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
+              <Users size={16}/>Subject Teachers
+            </button>
             {selectedSt && (
               <button onClick={() => window.print()}
                 className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
@@ -542,6 +699,9 @@ export default function BehaviorPage() {
                           <p className="text-xs mt-1 text-gray-400">
                             <span className="font-semibold">Action: </span>{rec.action_taken}
                           </p>
+                        )}
+                        {rec.recorded_by_email && (
+                          <p className="text-xs mt-1 text-gray-500 italic">Reported by {rec.recorded_by_email}</p>
                         )}
                       </div>
                     ))}
@@ -705,6 +865,13 @@ export default function BehaviorPage() {
           students={students} term={term}
           onClose={() => setShowAdd(false)}
           onAdd={r => setRecords(prev => [r, ...prev])}
+        />
+      )}
+
+      {showCollab && sectionId && (
+        <BehaviorCollabPanel
+          sectionId={sectionId}
+          onClose={() => setShowCollab(false)}
         />
       )}
     </>
