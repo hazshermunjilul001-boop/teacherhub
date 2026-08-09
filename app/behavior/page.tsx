@@ -142,17 +142,27 @@ function BehaviorCollabPanel({
     const { data: { user } } = await supabase.auth.getUser();
     const email = inviteEmail.trim().toLowerCase();
 
-    // Subjects is required by the shared table's existing invite schema (SF9 uses it to
-    // scope which subjects a teacher can encode grades for). For behavior-only sharing
-    // it isn't actually used to gate access — access here is section-wide — so a
-    // placeholder keeps the same row shape without inventing a second table.
+    // Someone may already be a collaborator on this section for other reasons (e.g. SF9
+    // grades access, tagged with real subject names). We must MERGE 'Behavior Access'
+    // into whatever they already have — an upsert with a fixed subjects array would
+    // silently overwrite and revoke their existing subject access, and resetting
+    // status back to 'pending' would interrupt access they already actively have.
+    const { data: existing } = await supabase
+      .from('section_collaborators')
+      .select('*')
+      .eq('section_id', sectionId)
+      .eq('email', email)
+      .maybeSingle();
+
+    const mergedSubjects = Array.from(new Set([...(existing?.subjects ?? []), 'Behavior Access']));
+
     const { data, error } = await supabase.from('section_collaborators').upsert({
       section_id:  sectionId,
       email,
-      subjects:    ['Behavior Access'],
-      role:        'subject_teacher',
-      status:      'pending',
-      invited_by:  user?.id,
+      subjects:    mergedSubjects,
+      role:        existing?.role ?? 'subject_teacher',
+      status:      existing?.status ?? 'pending', // never downgrade an already-active collaborator
+      invited_by:  existing?.invited_by ?? user?.id,
     }, { onConflict: 'section_id,email' }).select().single();
 
     if (!error && data) {
@@ -164,10 +174,21 @@ function BehaviorCollabPanel({
     setSaving(false);
   };
 
-  const remove = async (id:string) => {
+  const remove = async (id:string, currentSubjects:string[]) => {
     if (!confirm('Remove this person\'s access to this section\'s behavior records?')) return;
-    await supabase.from('section_collaborators').delete().eq('id', id);
-    setCollaborators(prev => prev.filter(c => c.id !== id));
+    const remainingSubjects = currentSubjects.filter(s => s !== 'Behavior Access');
+    if (remainingSubjects.length === 0) {
+      // No other access left on this row (e.g. no SF9 subjects) — safe to delete entirely.
+      await supabase.from('section_collaborators').delete().eq('id', id);
+      setCollaborators(prev => prev.filter(c => c.id !== id));
+    } else {
+      // They still have other access (e.g. SF9 grades) on this same row — only strip the
+      // behavior tag, don't touch the rest.
+      const { data } = await supabase.from('section_collaborators')
+        .update({ subjects: remainingSubjects })
+        .eq('id', id).select().single();
+      if (data) setCollaborators(prev => prev.map(c => c.id === id ? data : c));
+    }
   };
 
   return (
@@ -192,7 +213,7 @@ function BehaviorCollabPanel({
               <li>Enter the teacher's email below</li>
               <li className="text-amber-400">They must <strong>register or log in</strong> using the same email — access activates automatically once they do</li>
               <li>Once active, they can see and add behavior/incident entries for this class, and the adviser sees everything logged by every subject teacher</li>
-              <li>This is the <strong>same list</strong> as SF9's "Subject Teachers" — adding someone here also gives them SF9 access, and adding them there also gives them behavior access</li>
+              <li>This grants <strong>behavior access only</strong> — not Class Record, SF9, attendance, or Health &amp; Nutrition (SF8). Someone who already has SF9 access as a subject teacher does <strong>not</strong> automatically get behavior access, and adding them here does not grant them anything outside of this tab</li>
             </ol>
           </div>
 
@@ -239,7 +260,7 @@ function BehaviorCollabPanel({
                         {c.status === 'active' ? 'Active' : 'Pending — must log in to activate'}
                       </span>
                     </div>
-                    <button onClick={() => remove(c.id)} className="text-gray-600 hover:text-red-400 transition text-xs flex-shrink-0">
+                    <button onClick={() => remove(c.id, c.subjects)} className="text-gray-600 hover:text-red-400 transition text-xs flex-shrink-0">
                       Remove
                     </button>
                   </div>
