@@ -139,9 +139,9 @@ const descriptor = (g:number) => {
   return         {label:'Developing (Napauunlad)',        short:'Developing',   color:'text-yellow-400' };
 };
 const calcAvg = (scores:number[], highs:number[]) => {
-  let tot=0, cnt=0;
-  scores.forEach((s,i)=>{ if(highs[i]>0){tot+=(s/highs[i])*100;cnt++;} });
-  return cnt>0?tot/cnt:0;
+  let sumScore=0, sumHigh=0;
+  scores.forEach((s,i)=>{ if(highs[i]>0){sumScore+=s; sumHigh+=highs[i];} });
+  return sumHigh>0 ? (sumScore/sumHigh)*100 : 0;
 };
 
 // DO 15 s. 2026 — Within the EXs component:
