@@ -484,11 +484,17 @@ function SummaryOfGradesView({
     setLabelValue(ws, r, c3, c4End, 'Total Active Learners', `${activeStudents.length} (${males.length}M / ${females.length}F)`);
     r++; r++;
 
-    const hdrRow = r;
-    ['#',"LEARNER'S NAME",'TERM 1','TERM 2','TERM 3','FINAL GRADE','DESCRIPTOR','REMARKS'].forEach((label,i)=>{
-      setCell(ws,hdrRow,i+1,label,{bold:true,fill:i===5?'FFD1FAE5':'FFE8E8E8',size:9,align:i===1?'left':'center'});
-    });
-    r++;
+    const hdrRow = r, hdrRow2 = r+1;
+    setCell(ws,hdrRow,1,'#',{bold:true,fill:'FFE8E8E8',size:9}); ws.mergeCells(hdrRow,1,hdrRow2,1);
+    setCell(ws,hdrRow,2,"LEARNERS' NAMES",{bold:true,fill:'FFE8E8E8',size:9,align:'left'}); ws.mergeCells(hdrRow,2,hdrRow2,2);
+    setCell(ws,hdrRow,3,'TERM GRADES',{bold:true,fill:'FFE8E8E8',size:9}); ws.mergeCells(hdrRow,3,hdrRow,5);
+    setCell(ws,hdrRow2,3,'TERM 1',{bold:true,fill:'FFE8E8E8',size:9});
+    setCell(ws,hdrRow2,4,'TERM 2',{bold:true,fill:'FFE8E8E8',size:9});
+    setCell(ws,hdrRow2,5,'TERM 3',{bold:true,fill:'FFE8E8E8',size:9});
+    setCell(ws,hdrRow,6,'FINAL GRADE',{bold:true,fill:'FFD1FAE5',size:9}); ws.mergeCells(hdrRow,6,hdrRow2,6);
+    setCell(ws,hdrRow,7,'DESCRIPTOR',{bold:true,fill:'FFE8E8E8',size:9}); ws.mergeCells(hdrRow,7,hdrRow2,7);
+    setCell(ws,hdrRow,8,'REMARK',{bold:true,fill:'FFE8E8E8',size:9}); ws.mergeCells(hdrRow,8,hdrRow2,8);
+    r = hdrRow2 + 1;
 
     const writeGroup = (group: Student[], label: string) => {
       if (group.length === 0) return;
@@ -587,14 +593,17 @@ function SummaryOfGradesView({
         <table style={{width:'100%', borderCollapse:'collapse', fontSize:'9px'}}>
           <thead>
             <tr>
-              <th style={th}>#</th>
-              <th style={{...th, textAlign:'left'}}>LEARNER'S NAME</th>
+              <th style={th} rowSpan={2}>#</th>
+              <th style={{...th, textAlign:'left'}} rowSpan={2}>LEARNERS' NAMES</th>
+              <th style={th} colSpan={3}>TERM GRADES</th>
+              <th style={{...th, background:'#d1fae5'}} rowSpan={2}>FINAL<br/>GRADE</th>
+              <th style={th} rowSpan={2}>DESCRIPTOR</th>
+              <th style={th} rowSpan={2}>REMARK</th>
+            </tr>
+            <tr>
               <th style={th}>TERM 1</th>
               <th style={th}>TERM 2</th>
               <th style={th}>TERM 3</th>
-              <th style={{...th, background:'#d1fae5'}}>FINAL GRADE</th>
-              <th style={th}>DESCRIPTOR</th>
-              <th style={th}>REMARKS</th>
             </tr>
           </thead>
           <tbody>
@@ -768,11 +777,11 @@ function MAPEHSummaryView({
 
     const hdrRow = r;
     const headers = [
-      '#', "LEARNER'S NAME",
+      '#', "LEARNERS' NAMES",
       'Q1\nMusic & Arts', 'Q1\nPE & Health', 'Q1\nMAPEH',
       'Q2\nMusic & Arts', 'Q2\nPE & Health', 'Q2\nMAPEH',
       'Q3\nMusic & Arts', 'Q3\nPE & Health', 'Q3\nMAPEH',
-      'FINAL\nMAPEH', 'DESCRIPTOR', 'REMARKS',
+      'FINAL\nMAPEH', 'DESCRIPTOR', 'REMARK',
     ];
     const mapehCols = [5, 8, 11]; // Q1/Q2/Q3 MAPEH average columns
     headers.forEach((label, i) => {
@@ -888,13 +897,13 @@ function MAPEHSummaryView({
           <thead>
             <tr>
               <th style={th} rowSpan={2}>#</th>
-              <th style={{...th, textAlign:'left'}} rowSpan={2}>LEARNER'S NAME</th>
+              <th style={{...th, textAlign:'left'}} rowSpan={2}>LEARNERS' NAMES</th>
               <th style={th} colSpan={3}>TERM 1</th>
               <th style={th} colSpan={3}>TERM 2</th>
               <th style={th} colSpan={3}>TERM 3</th>
               <th style={{...th, background:'#d1fae5'}} rowSpan={2}>FINAL<br/>MAPEH</th>
               <th style={th} rowSpan={2}>DESCRIPTOR</th>
-              <th style={th} rowSpan={2}>REMARKS</th>
+              <th style={th} rowSpan={2}>REMARK</th>
             </tr>
             <tr>
               <th style={th}>Music<br/>&amp; Arts</th><th style={th}>PE &amp;<br/>Health</th><th style={thQ}>MAPEH</th>
@@ -966,7 +975,7 @@ function EClassRecordView({
   const highest = termData?.highest ?? { ww:[100,100,100,100,100], pt:[100,100,100], st:[50,50], te:100 };
 
   const computeTerm = (sid: string) => {
-    if (!termData) return { transmuted:0, initial:0, ww:[0,0,0,0,0], pt:[0,0,0], st:[0,0], te:0, avgWW:0, avgPT:0, avgTA:0 };
+    if (!termData) return { transmuted:0, initial:0, ww:[0,0,0,0,0], pt:[0,0,0], st:[0,0], te:0, avgWW:0, avgPT:0, avgTA:0, totalWW:0, totalPT:0, wsWW:0, wsPT:0, wsTA:0, wsSt1:0, wsSt2:0, wsTe:0 };
     const s = termData.scores[sid] || { ww:{}, pt:{}, st:{}, te:0 };
     const ww = Array.from({length:5},(_,i)=>s.ww?.[i]??0);
     const pt = Array.from({length:3},(_,i)=>s.pt?.[i]??0);
@@ -976,7 +985,18 @@ function EClassRecordView({
     const avgPT = calcAvg(pt, highest.pt);
     const avgTA = calcEX(st[0],st[1],te, highest.st[0],highest.st[1],highest.te);
     const initial = avgWW*weights.ww + avgPT*weights.pt + avgTA*(weights.ta??0.25);
-    return { transmuted:transmute(initial), initial, ww, pt, st, te, avgWW, avgPT, avgTA };
+    // Display-only figures to mirror the official DepEd layout's Total/WS columns.
+    // None of these feed back into initial/transmuted — those are still computed
+    // exactly as before, straight from avgWW/avgPT/avgTA.
+    const totalWW = ww.reduce((a,b)=>a+b,0);
+    const totalPT = pt.reduce((a,b)=>a+b,0);
+    const wsWW = avgWW*weights.ww;
+    const wsPT = avgPT*weights.pt;
+    const wsTA = avgTA*(weights.ta??0.25);
+    const wsSt1 = highest.st[0]>0 ? (st[0]/highest.st[0])*100*0.30 : 0;
+    const wsSt2 = highest.st[1]>0 ? (st[1]/highest.st[1])*100*0.30 : 0;
+    const wsTe  = highest.te>0    ? (te/highest.te)*100*0.40        : 0;
+    return { transmuted:transmute(initial), initial, ww, pt, st, te, avgWW, avgPT, avgTA, totalWW, totalPT, wsWW, wsPT, wsTA, wsSt1, wsSt2, wsTe };
   };
 
   const td  = { border:'1px solid #999', padding:'2px 4px', fontSize:'8px', textAlign:'center' as const };
@@ -1023,10 +1043,14 @@ function EClassRecordView({
   ];
 
   // ── Render student group ───────────────────────────────────────────────────
+  // Column count per learner row, matching the official layout: # + Name + WW(5+Total+PS+WS)
+  // + PT(3+Total+PS+WS) + [EXs(3+3WS+PS+WS)] + Initial Grade + Term Grade + Descriptor
+  const rowColCount = 2 + 8 + 6 + (hasTA ? 8 : 0) + 3;
+
   const renderGroup = (group: Student[], label: string) => (
     <>
       <tr style={{pageBreakAfter:'avoid', breakAfter:'avoid'}}>
-        <td colSpan={hasTA?20:16} style={{...td, background:label==='MALE'?'#dbeafe':'#fce7f3', fontWeight:'bold', textAlign:'left'}}>
+        <td colSpan={rowColCount} style={{...td, background:label==='MALE'?'#dbeafe':'#fce7f3', fontWeight:'bold', textAlign:'left'}}>
           {label}
         </td>
       </tr>
@@ -1038,15 +1062,23 @@ function EClassRecordView({
             <td style={td}>{idx+1}</td>
             <td style={{...td, textAlign:'left', minWidth:'140px'}}>{student.full_name}</td>
             {c.ww.map((v,i) => <td key={i} style={td}>{v||''}</td>)}
+            <td style={td}>{c.totalWW||''}</td>
             <td style={{...td, background:'#dbeafe'}}>{c.avgWW.toFixed(1)}</td>
+            <td style={{...td, background:'#dbeafe'}}>{c.wsWW.toFixed(2)}</td>
             {c.pt.map((v,i) => <td key={i} style={td}>{v||''}</td>)}
+            <td style={td}>{c.totalPT||''}</td>
             <td style={{...td, background:'#ede9fe'}}>{c.avgPT.toFixed(1)}</td>
+            <td style={{...td, background:'#ede9fe'}}>{c.wsPT.toFixed(2)}</td>
             {hasTA && <>
               {c.st.map((v,i) => <td key={i} style={td}>{v||''}</td>)}
               <td style={td}>{c.te||''}</td>
+              <td style={td}>{c.wsSt1?c.wsSt1.toFixed(2):''}</td>
+              <td style={td}>{c.wsSt2?c.wsSt2.toFixed(2):''}</td>
+              <td style={td}>{c.wsTe?c.wsTe.toFixed(2):''}</td>
               <td style={{...td, background:'#fef3c7'}}>{c.avgTA.toFixed(1)}</td>
+              <td style={{...td, background:'#fef3c7'}}>{c.wsTA.toFixed(2)}</td>
             </>}
-            <td style={{...td, background:'#f0fdf4'}}>{c.initial.toFixed(2)}</td>
+            <td style={{...td, background:'#f0fdf4', fontWeight:'bold'}}>{c.initial.toFixed(2)}</td>
             <td style={{...td, fontWeight:'bold', fontSize:'9px', color:c.transmuted>=75?'#166534':'#991b1b'}}>{c.transmuted||''}</td>
             <td style={{...td, fontSize:'7px'}}>{desc.short}</td>
           </tr>
@@ -1055,6 +1087,8 @@ function EClassRecordView({
     </>
   );
 
+  const TERM_LABELS: Record<number,string> = { 1:'FIRST TERM', 2:'SECOND TERM', 3:'THIRD TERM' };
+
   const pageHeader = (
     <table style={{width:'100%', borderCollapse:'collapse', marginBottom:'4px', fontSize:'8px'}}>
       <tbody>
@@ -1062,18 +1096,22 @@ function EClassRecordView({
           <td style={tdL}><strong>REGION:</strong> {region}</td>
           <td style={tdL}><strong>DIVISION:</strong> {division}</td>
           <td style={tdL}><strong>SCHOOL ID:</strong> {schoolId}</td>
+        </tr>
+        <tr>
+          <td colSpan={2} style={tdL}><strong>SCHOOL NAME:</strong> {schoolName}</td>
           <td style={tdL}><strong>SCHOOL YEAR:</strong> {schoolYear}</td>
         </tr>
         <tr>
-          <td colSpan={2} style={tdL}><strong>SCHOOL:</strong> {schoolName}</td>
-          <td style={tdL}><strong>GRADE &amp; SECTION:</strong> {gradeLevel} &mdash; {sectionName}</td>
-          <td style={tdL}><strong>SUBJECT:</strong> {subject}</td>
+          <td style={{...td, background:'#1e3a5f', color:'white', fontWeight:'bold', textAlign:'left'}}>{TERM_LABELS[currentTerm] ?? `TERM ${currentTerm}`}</td>
+          <td style={tdL}><strong>GRADE LEVEL:</strong> {gradeLevel}</td>
+          <td style={tdL}><strong>TEACHER:</strong> {adviser?.toUpperCase()}</td>
         </tr>
         <tr>
-          <td colSpan={2} style={tdL}><strong>TEACHER:</strong> {adviser?.toUpperCase()}</td>
-          <td colSpan={2} style={tdL}>
+          <td style={tdL}><strong>SECTION:</strong> {sectionName}</td>
+          <td style={tdL}><strong>SUBJECT:</strong> {subject}</td>
+          <td style={tdL}>
             <strong>WEIGHTS:</strong> WW {(weights.ww*100).toFixed(0)}% | PT {(weights.pt*100).toFixed(0)}%
-            {hasTA ? ` | TA ${((weights.ta??0)*100).toFixed(0)}%` : ''}
+            {hasTA ? ` | EXs ${((weights.ta??0)*100).toFixed(0)}%` : ''}
           </td>
         </tr>
       </tbody>
@@ -1086,68 +1124,105 @@ function EClassRecordView({
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet(`Term ${currentTerm}`);
 
-    const wwStart = 3, wwEnd = 7, psWW = 8;
-    const ptStart = 9, ptEnd = 11, psPT = 12;
-    const stStart = 13, stEnd = 14, teCol = 15, psTA = 16;
-    const initialCol = hasTA ? 17 : 13;
+    // Column layout mirrors the official DepEd Class Record exactly:
+    // WW: 1-5, Total, PS, WS  |  PT: 1-3, Total, PS, WS  |  EXs: ST1,ST2,TE, WS ST1/ST2/TE, PS, WS
+    const wwStart = 3, wwEnd = 7, totalWW = 8, psWW = 9, wsWW = 10;
+    const ptStart = 11, ptEnd = 13, totalPT = 14, psPT = 15, wsPT = 16;
+    const stStart = 17, stEnd = 18, teCol = 19, wsSt1Col = 20, wsSt2Col = 21, wsTeCol = 22, psTA = 23, wsTA = 24;
+    const initialCol = hasTA ? 25 : 17;
     const tgCol = initialCol + 1;
     const descCol = tgCol + 1;
     const totalCols = descCol;
+    const TERM_LABEL_XL: Record<number,string> = { 1:'FIRST TERM', 2:'SECOND TERM', 3:'THIRD TERM' };
 
     let r = 1;
 
-    setCell(ws, r, 1, `CLASS RECORD — TERM ${currentTerm}`, { bold:true, size:13 }); ws.mergeCells(r,1,r,totalCols); r++;
+    setCell(ws, r, 1, `CLASS RECORD — ${TERM_LABEL_XL[currentTerm] ?? `TERM ${currentTerm}`}`, { bold:true, size:13 }); ws.mergeCells(r,1,r,totalCols); r++;
     setCell(ws, r, 1, `${subject} — ${schoolYear}`, { size:9, color:'FF555555' }); ws.mergeCells(r,1,r,totalCols); r++;
     r++;
 
-    // 4-column info grid — same proportions as the print preview's header table
-    // (a "unit" of totalCols/4 columns; School/Teacher rows take 2 units each).
-    const [u1, u2, u3, u4] = splitCols(totalCols, 4);
+    // Info grid mirrors the official header fields (Region/Division/School ID,
+    // School Name/School Year, Term/Grade Level/Teacher, Section/Subject).
+    const [u1, u2, u3] = splitCols(totalCols, 3);
     const ic1 = 1, ic1End = u1;
     const ic2 = ic1End + 1, ic2End = ic1End + u2;
-    const ic3 = ic2End + 1, ic3End = ic2End + u3;
-    const ic4 = ic3End + 1, ic4End = totalCols;
+    const ic3 = ic2End + 1, ic3End = totalCols;
 
     setLabelValue(ws, r, ic1, ic1End, 'Region', region);
     setLabelValue(ws, r, ic2, ic2End, 'Division', division);
     setLabelValue(ws, r, ic3, ic3End, 'School ID', schoolId);
-    setLabelValue(ws, r, ic4, ic4End, 'School Year', schoolYear);
     r++;
-    setLabelValue(ws, r, ic1, ic2End, 'School', schoolName);
-    setLabelValue(ws, r, ic3, ic3End, 'Grade & Section', `${gradeLevel} — ${sectionName}`);
-    setLabelValue(ws, r, ic4, ic4End, 'Subject', subject);
+    setLabelValue(ws, r, ic1, ic2End, 'School Name', schoolName);
+    setLabelValue(ws, r, ic3, ic3End, 'School Year', schoolYear);
     r++;
-    setLabelValue(ws, r, ic1, ic2End, 'Teacher', adviser?.toUpperCase() || '');
-    setLabelValue(ws, r, ic3, ic4End, 'Weights',
-      `WW ${(weights.ww*100).toFixed(0)}% | PT ${(weights.pt*100).toFixed(0)}%${hasTA?` | TA ${((weights.ta??0)*100).toFixed(0)}%`:''}`);
+    setMergedText(ws, r, ic1, ic1End, TERM_LABEL_XL[currentTerm] ?? `TERM ${currentTerm}`, { bold:true, align:'left', color:'FFFFFFFF', size:9 });
+    ws.getCell(r, ic1).fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FF1E3A5F'} };
+    setLabelValue(ws, r, ic2, ic2End, 'Grade Level', gradeLevel);
+    setLabelValue(ws, r, ic3, ic3End, 'Teacher', adviser?.toUpperCase() || '');
+    r++;
+    setLabelValue(ws, r, ic1, ic1End, 'Section', sectionName);
+    setLabelValue(ws, r, ic2, ic2End, 'Subject', subject);
+    setLabelValue(ws, r, ic3, ic3End, 'Weights',
+      `WW ${(weights.ww*100).toFixed(0)}% | PT ${(weights.pt*100).toFixed(0)}%${hasTA?` | EXs ${((weights.ta??0)*100).toFixed(0)}%`:''}`);
     r++; r++;
 
-    setCell(ws,r,1,`TERM ${currentTerm} CLASS RECORD`,{bold:true,size:9,color:'FFFFFFFF',fill:'FF1E3A5F',align:'left'});
-    ws.mergeCells(r,1,r,totalCols); r++;
-
-    const hdr1 = r, hdr2 = r+1;
-    setCell(ws,hdr1,1,'#',{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr1,1,hdr2,1);
-    setCell(ws,hdr1,2,"LEARNER'S NAME",{bold:true,fill:'FFE8E8E8',size:8,align:'left'}); ws.mergeCells(hdr1,2,hdr2,2);
-    setCell(ws,hdr1,wwStart,`WRITTEN WORKS (${(weights.ww*100).toFixed(0)}%)`,{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr1,wwStart,hdr1,wwEnd);
-    setCell(ws,hdr1,psWW,'PS',{bold:true,fill:'FFDBEAFE',size:8}); ws.mergeCells(hdr1,psWW,hdr2,psWW);
-    setCell(ws,hdr1,ptStart,`PERFORMANCE TASKS (${(weights.pt*100).toFixed(0)}%)`,{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr1,ptStart,hdr1,ptEnd);
-    setCell(ws,hdr1,psPT,'PS',{bold:true,fill:'FFEDE9FE',size:8}); ws.mergeCells(hdr1,psPT,hdr2,psPT);
+    const hdr1 = r, hdr2 = r+1, hdr3 = r+2;
+    setCell(ws,hdr1,1,'#',{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr1,1,hdr3,1);
+    setCell(ws,hdr1,2,"LEARNERS' NAMES",{bold:true,fill:'FFE8E8E8',size:8,align:'left'}); ws.mergeCells(hdr1,2,hdr3,2);
+    setCell(ws,hdr1,wwStart,`WRITTEN / ORAL WORKS (WWs) — ${(weights.ww*100).toFixed(0)}%`,{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr1,wwStart,hdr1,wsWW);
+    setCell(ws,hdr1,ptStart,`PRODUCT / PERFORMANCE TASKS (PTs) — ${(weights.pt*100).toFixed(0)}%`,{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr1,ptStart,hdr1,wsPT);
     if (hasTA) {
-      setCell(ws,hdr1,stStart,`SUMMATIVE TESTS (${((weights.ta??0)*100).toFixed(0)}%)`,{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr1,stStart,hdr1,stEnd);
-      setCell(ws,hdr1,teCol,'TERM EXAM',{bold:true,fill:'FFE8E8E8',size:8});
-      setCell(ws,hdr1,psTA,'TA PS',{bold:true,fill:'FFFEF3C7',size:8}); ws.mergeCells(hdr1,psTA,hdr2,psTA);
+      setCell(ws,hdr1,stStart,`EXAMINATIONS (EXs) — ${((weights.ta??0)*100).toFixed(0)}%`,{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr1,stStart,hdr1,wsTA);
     }
-    setCell(ws,hdr1,initialCol,'Initial',{bold:true,fill:'FFF0FDF4',size:8}); ws.mergeCells(hdr1,initialCol,hdr2,initialCol);
-    setCell(ws,hdr1,tgCol,'TG',{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr1,tgCol,hdr2,tgCol);
-    setCell(ws,hdr1,descCol,'Descriptor',{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr1,descCol,hdr2,descCol);
+    setCell(ws,hdr1,initialCol,'Initial\nGrade',{bold:true,fill:'FFF0FDF4',size:8}); ws.mergeCells(hdr1,initialCol,hdr3,initialCol);
+    setCell(ws,hdr1,tgCol,'Term\nGrade',{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr1,tgCol,hdr3,tgCol);
+    setCell(ws,hdr1,descCol,'Descriptor',{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr1,descCol,hdr3,descCol);
 
-    highest.ww.forEach((v,i)=>setCell(ws,hdr2,wwStart+i,v||i+1,{bold:true,fill:'FFE8E8E8',size:8}));
-    highest.pt.forEach((v,i)=>setCell(ws,hdr2,ptStart+i,v||i+1,{bold:true,fill:'FFE8E8E8',size:8}));
+    for (let c=wwStart;c<=wwEnd;c++) ws.mergeCells(hdr2,c,hdr3,c);
+    setCell(ws,hdr2,totalWW,'Total',{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr2,totalWW,hdr3,totalWW);
+    setCell(ws,hdr2,psWW,'PS',{bold:true,fill:'FFDBEAFE',size:8}); ws.mergeCells(hdr2,psWW,hdr3,psWW);
+    setCell(ws,hdr2,wsWW,'WS',{bold:true,fill:'FFDBEAFE',size:8}); ws.mergeCells(hdr2,wsWW,hdr3,wsWW);
+    for (let c=ptStart;c<=ptEnd;c++) ws.mergeCells(hdr2,c,hdr3,c);
+    setCell(ws,hdr2,totalPT,'Total',{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr2,totalPT,hdr3,totalPT);
+    setCell(ws,hdr2,psPT,'PS',{bold:true,fill:'FFEDE9FE',size:8}); ws.mergeCells(hdr2,psPT,hdr3,psPT);
+    setCell(ws,hdr2,wsPT,'WS',{bold:true,fill:'FFEDE9FE',size:8}); ws.mergeCells(hdr2,wsPT,hdr3,wsPT);
     if (hasTA) {
-      highest.st.forEach((v,i)=>setCell(ws,hdr2,stStart+i,v||i+1,{bold:true,fill:'FFE8E8E8',size:8}));
-      setCell(ws,hdr2,teCol,highest.te||100,{bold:true,fill:'FFE8E8E8',size:8});
+      setCell(ws,hdr2,stStart,'ST1',{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr2,stStart,hdr3,stStart);
+      setCell(ws,hdr2,stStart+1,'ST2',{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr2,stStart+1,hdr3,stStart+1);
+      setCell(ws,hdr2,teCol,'TE',{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr2,teCol,hdr3,teCol);
+      setCell(ws,hdr2,wsSt1Col,'WS ST1',{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr2,wsSt1Col,hdr3,wsSt1Col);
+      setCell(ws,hdr2,wsSt2Col,'WS ST2',{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr2,wsSt2Col,hdr3,wsSt2Col);
+      setCell(ws,hdr2,wsTeCol,'WS TE',{bold:true,fill:'FFE8E8E8',size:8}); ws.mergeCells(hdr2,wsTeCol,hdr3,wsTeCol);
+      setCell(ws,hdr2,psTA,'PS',{bold:true,fill:'FFFEF3C7',size:8}); ws.mergeCells(hdr2,psTA,hdr3,psTA);
+      setCell(ws,hdr2,wsTA,'WS',{bold:true,fill:'FFFEF3C7',size:8}); ws.mergeCells(hdr2,wsTA,hdr3,wsTA);
     }
-    r = hdr2 + 1;
+    r = hdr3 + 1;
+
+    // HIGHEST POSSIBLE SCORE row
+    setCell(ws,r,1,'',{fill:'FFF3F4F6'});
+    setCell(ws,r,2,'HIGHEST POSSIBLE SCORE',{bold:true,align:'left',fill:'FFF3F4F6',size:8});
+    highest.ww.forEach((v,i)=>setCell(ws,r,wwStart+i,v,{size:8,fill:'FFF3F4F6'}));
+    setCell(ws,r,totalWW,highest.ww.reduce((a,b)=>a+b,0),{size:8,fill:'FFF3F4F6'});
+    setCell(ws,r,psWW,100,{size:8,fill:'FFDBEAFE'});
+    setCell(ws,r,wsWW,weights.ww,{size:8,fill:'FFDBEAFE'});
+    highest.pt.forEach((v,i)=>setCell(ws,r,ptStart+i,v,{size:8,fill:'FFF3F4F6'}));
+    setCell(ws,r,totalPT,highest.pt.reduce((a,b)=>a+b,0),{size:8,fill:'FFF3F4F6'});
+    setCell(ws,r,psPT,100,{size:8,fill:'FFEDE9FE'});
+    setCell(ws,r,wsPT,weights.pt,{size:8,fill:'FFEDE9FE'});
+    if (hasTA) {
+      setCell(ws,r,stStart,highest.st[0],{size:8,fill:'FFF3F4F6'});
+      setCell(ws,r,stStart+1,highest.st[1],{size:8,fill:'FFF3F4F6'});
+      setCell(ws,r,teCol,highest.te,{size:8,fill:'FFF3F4F6'});
+      setCell(ws,r,wsSt1Col,30,{size:8,fill:'FFF3F4F6'});
+      setCell(ws,r,wsSt2Col,30,{size:8,fill:'FFF3F4F6'});
+      setCell(ws,r,wsTeCol,40,{size:8,fill:'FFF3F4F6'});
+      setCell(ws,r,psTA,100,{size:8,fill:'FFFEF3C7'});
+      setCell(ws,r,wsTA,weights.ta,{size:8,fill:'FFFEF3C7'});
+    }
+    setCell(ws,r,initialCol,'',{fill:'FFF0FDF4'});
+    setCell(ws,r,tgCol,'',{fill:'FFF3F4F6'});
+    setCell(ws,r,descCol,'',{fill:'FFF3F4F6'});
+    r++;
 
     const writeGroup = (group: Student[], label: string, fill: string) => {
       if (group.length === 0) return;
@@ -1160,13 +1235,21 @@ function EClassRecordView({
         setCell(ws,r,1,idx+1,{size:8,fill:zebra});
         setCell(ws,r,2,student.full_name,{size:8,align:'left',fill:zebra});
         c.ww.forEach((v,i)=>setCell(ws,r,wwStart+i,v||'',{size:8,fill:zebra}));
+        setCell(ws,r,totalWW,c.totalWW||'',{size:8,fill:zebra});
         setCell(ws,r,psWW,Number(c.avgWW.toFixed(1)),{size:8,fill:'FFDBEAFE'});
+        setCell(ws,r,wsWW,Number(c.wsWW.toFixed(2)),{size:8,fill:'FFDBEAFE'});
         c.pt.forEach((v,i)=>setCell(ws,r,ptStart+i,v||'',{size:8,fill:zebra}));
+        setCell(ws,r,totalPT,c.totalPT||'',{size:8,fill:zebra});
         setCell(ws,r,psPT,Number(c.avgPT.toFixed(1)),{size:8,fill:'FFEDE9FE'});
+        setCell(ws,r,wsPT,Number(c.wsPT.toFixed(2)),{size:8,fill:'FFEDE9FE'});
         if (hasTA) {
           c.st.forEach((v,i)=>setCell(ws,r,stStart+i,v||'',{size:8,fill:zebra}));
           setCell(ws,r,teCol,c.te||'',{size:8,fill:zebra});
+          setCell(ws,r,wsSt1Col,c.wsSt1?Number(c.wsSt1.toFixed(2)):'',{size:8,fill:zebra});
+          setCell(ws,r,wsSt2Col,c.wsSt2?Number(c.wsSt2.toFixed(2)):'',{size:8,fill:zebra});
+          setCell(ws,r,wsTeCol,c.wsTe?Number(c.wsTe.toFixed(2)):'',{size:8,fill:zebra});
           setCell(ws,r,psTA,Number(c.avgTA.toFixed(1)),{size:8,fill:'FFFEF3C7'});
+          setCell(ws,r,wsTA,Number(c.wsTA.toFixed(2)),{size:8,fill:'FFFEF3C7'});
         }
         setCell(ws,r,initialCol,Number(c.initial.toFixed(2)),{size:8,fill:'FFF0FDF4'});
         setCell(ws,r,tgCol,c.transmuted||'',{bold:true,size:9,color:c.transmuted>=75?'FF166534':'FF991B1B',fill:zebra});
@@ -1283,43 +1366,73 @@ function EClassRecordView({
 
         {/* Title */}
         <div style={{textAlign:'center', marginBottom:'4px'}}>
-          <div style={{fontWeight:'bold', fontSize:'12px'}}>CLASS RECORD &mdash; TERM {currentTerm}</div>
+          <div style={{fontWeight:'bold', fontSize:'12px'}}>CLASS RECORD &mdash; {TERM_LABELS[currentTerm] ?? `TERM ${currentTerm}`}</div>
           <div style={{fontSize:'8px', color:'#555'}}>{subject} &mdash; {schoolYear}</div>
         </div>
         {pageHeader}
 
         {/* Class Record Table */}
-        <div style={{fontWeight:'bold', fontSize:'9px', background:'#1e3a5f', color:'white', padding:'3px 6px', marginBottom:'2px', marginTop:'4px'}}>
-          TERM {currentTerm} CLASS RECORD
-        </div>
         <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8px', marginBottom:'8px'}}>
           <thead>
             <tr>
-              <th style={th} rowSpan={2}>#</th>
-              <th style={{...th, textAlign:'left'}} rowSpan={2}>LEARNERS' NAMES</th>
-              <th style={th} colSpan={5}>WRITTEN WORKS ({(weights.ww*100).toFixed(0)}%)</th>
-              <th style={{...th, background:'#dbeafe'}} rowSpan={2}>PS</th>
-              <th style={th} colSpan={3}>PERFORMANCE TASKS ({(weights.pt*100).toFixed(0)}%)</th>
-              <th style={{...th, background:'#ede9fe'}} rowSpan={2}>PS</th>
-              {hasTA && <>
-                <th style={th} colSpan={2}>SUMMATIVE TESTS ({((weights.ta??0)*100).toFixed(0)}%)</th>
-                <th style={th}>TERM EXAM</th>
-                <th style={{...th, background:'#fef3c7'}} rowSpan={2}>TA PS</th>
-              </>}
-              <th style={{...th, background:'#f0fdf4'}} rowSpan={2}>Initial</th>
-              <th style={{...th}} rowSpan={2}>TG</th>
-              <th style={th} rowSpan={2}>Descriptor</th>
+              <th style={th} rowSpan={3}>#</th>
+              <th style={{...th, textAlign:'left'}} rowSpan={3}>LEARNERS' NAMES</th>
+              <th style={th} colSpan={8}>WRITTEN / ORAL WORKS (WWs) &mdash; {(weights.ww*100).toFixed(0)}%</th>
+              <th style={th} colSpan={6}>PRODUCT / PERFORMANCE TASKS (PTs) &mdash; {(weights.pt*100).toFixed(0)}%</th>
+              {hasTA && <th style={th} colSpan={8}>EXAMINATIONS (EXs) &mdash; {((weights.ta??0)*100).toFixed(0)}%</th>}
+              <th style={{...th, background:'#f0fdf4'}} rowSpan={3}>Initial<br/>Grade</th>
+              <th style={th} rowSpan={3}>Term<br/>Grade</th>
+              <th style={th} rowSpan={3}>Descriptor</th>
             </tr>
             <tr>
-              {highest.ww.map((v,i) => <th key={i} style={th}>{v||i+1}</th>)}
-              {highest.pt.map((v,i) => <th key={i} style={th}>{v||i+1}</th>)}
+              <th style={th} colSpan={5}>&nbsp;</th>
+              <th style={th}>Total</th>
+              <th style={{...th, background:'#dbeafe'}}>PS</th>
+              <th style={{...th, background:'#dbeafe'}}>WS</th>
+              <th style={th} colSpan={3}>&nbsp;</th>
+              <th style={th}>Total</th>
+              <th style={{...th, background:'#ede9fe'}}>PS</th>
+              <th style={{...th, background:'#ede9fe'}}>WS</th>
               {hasTA && <>
-                {highest.st.map((v,i) => <th key={i} style={th}>{v||i+1}</th>)}
-                <th style={th}>{highest.te||100}</th>
+                <th style={th}>ST1</th><th style={th}>ST2</th><th style={th}>TE</th>
+                <th style={th}>WS<br/>ST1</th><th style={th}>WS<br/>ST2</th><th style={th}>WS<br/>TE</th>
+                <th style={{...td, background:'#fef3c7', fontWeight:'bold'}}>PS</th>
+                <th style={{...td, background:'#fef3c7', fontWeight:'bold'}}>WS</th>
+              </>}
+            </tr>
+            <tr>
+              {highest.ww.map((v,i) => <th key={i} style={th}>{i+1}</th>)}
+              <th style={th}>&nbsp;</th><th style={th}>&nbsp;</th><th style={th}>&nbsp;</th>
+              {highest.pt.map((v,i) => <th key={i} style={th}>{i+1}</th>)}
+              <th style={th}>&nbsp;</th><th style={th}>&nbsp;</th><th style={th}>&nbsp;</th>
+              {hasTA && <>
+                <th style={th}>&nbsp;</th><th style={th}>&nbsp;</th><th style={th}>&nbsp;</th>
+                <th style={th}>&nbsp;</th><th style={th}>&nbsp;</th><th style={th}>&nbsp;</th>
+                <th style={th}>&nbsp;</th><th style={th}>&nbsp;</th>
               </>}
             </tr>
           </thead>
           <tbody>
+            <tr style={{background:'#f3f4f6'}}>
+              <td colSpan={2} style={{...td, textAlign:'left', fontWeight:'bold'}}>HIGHEST POSSIBLE SCORE</td>
+              {highest.ww.map((v,i) => <td key={i} style={td}>{v}</td>)}
+              <td style={td}>{highest.ww.reduce((a,b)=>a+b,0)}</td>
+              <td style={{...td, background:'#dbeafe'}}>100</td>
+              <td style={{...td, background:'#dbeafe'}}>{weights.ww}</td>
+              {highest.pt.map((v,i) => <td key={i} style={td}>{v}</td>)}
+              <td style={td}>{highest.pt.reduce((a,b)=>a+b,0)}</td>
+              <td style={{...td, background:'#ede9fe'}}>100</td>
+              <td style={{...td, background:'#ede9fe'}}>{weights.pt}</td>
+              {hasTA && <>
+                <td style={td}>{highest.st[0]}</td><td style={td}>{highest.st[1]}</td><td style={td}>{highest.te}</td>
+                <td style={td}>30</td><td style={td}>30</td><td style={td}>40</td>
+                <td style={{...td, background:'#fef3c7'}}>100</td>
+                <td style={{...td, background:'#fef3c7'}}>{weights.ta}</td>
+              </>}
+              <td style={{...td, background:'#f0fdf4'}}>&nbsp;</td>
+              <td style={td}>&nbsp;</td>
+              <td style={td}>&nbsp;</td>
+            </tr>
             {renderGroup(males,   'MALE')}
             {renderGroup(females, 'FEMALE')}
           </tbody>
