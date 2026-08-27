@@ -1090,32 +1090,41 @@ function EClassRecordView({
   const TERM_LABELS: Record<number,string> = { 1:'FIRST TERM', 2:'SECOND TERM', 3:'THIRD TERM' };
 
   const pageHeader = (
-    <table style={{width:'100%', borderCollapse:'collapse', marginBottom:'4px', fontSize:'8px'}}>
-      <tbody>
-        <tr>
-          <td style={tdL}><strong>REGION:</strong> {region}</td>
-          <td style={tdL}><strong>DIVISION:</strong> {division}</td>
-          <td style={tdL}><strong>SCHOOL ID:</strong> {schoolId}</td>
-        </tr>
-        <tr>
-          <td colSpan={2} style={tdL}><strong>SCHOOL NAME:</strong> {schoolName}</td>
-          <td style={tdL}><strong>SCHOOL YEAR:</strong> {schoolYear}</td>
-        </tr>
-        <tr>
-          <td style={{...td, background:'#1e3a5f', color:'white', fontWeight:'bold', textAlign:'left'}}>{TERM_LABELS[currentTerm] ?? `TERM ${currentTerm}`}</td>
-          <td style={tdL}><strong>GRADE LEVEL:</strong> {gradeLevel}</td>
-          <td style={tdL}><strong>TEACHER:</strong> {adviser?.toUpperCase()}</td>
-        </tr>
-        <tr>
-          <td style={tdL}><strong>SECTION:</strong> {sectionName}</td>
-          <td style={tdL}><strong>SUBJECT:</strong> {subject}</td>
-          <td style={tdL}>
-            <strong>WEIGHTS:</strong> WW {(weights.ww*100).toFixed(0)}% | PT {(weights.pt*100).toFixed(0)}%
-            {hasTA ? ` | EXs ${((weights.ta??0)*100).toFixed(0)}%` : ''}
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <>
+      <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8px'}}>
+        <tbody>
+          <tr>
+            <td style={tdL}><strong>REGION:</strong> {region}</td>
+            <td style={tdL}><strong>DIVISION:</strong> {division}</td>
+            <td style={tdL}><strong>SCHOOL ID:</strong> {schoolId}</td>
+          </tr>
+          <tr>
+            <td colSpan={2} style={tdL}><strong>SCHOOL NAME:</strong> {schoolName}</td>
+            <td style={tdL}><strong>SCHOOL YEAR:</strong> {schoolYear}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style={{height:'3px', background:'#1e3a5f'}}/>
+      <table style={{width:'100%', borderCollapse:'collapse', marginBottom:'2px', fontSize:'8px'}}>
+        <tbody>
+          <tr>
+            <td rowSpan={2} style={{...td, textAlign:'left', verticalAlign:'middle', fontWeight:'bold', fontSize:'11px', width:'16%'}}>
+              {TERM_LABELS[currentTerm] ?? `TERM ${currentTerm}`}
+            </td>
+            <td style={tdL}><strong>GRADE LEVEL:</strong> {gradeLevel}</td>
+            <td rowSpan={2} style={{...td, textAlign:'left', verticalAlign:'middle'}}><strong>TEACHER:</strong><br/>{adviser?.toUpperCase()}</td>
+            <td rowSpan={2} style={{...td, textAlign:'left', verticalAlign:'middle'}}><strong>SUBJECT:</strong><br/>{subject}</td>
+          </tr>
+          <tr>
+            <td style={tdL}><strong>SECTION:</strong> {sectionName}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style={{fontSize:'7px', color:'#555', textAlign:'right', marginBottom:'2px'}}>
+        WEIGHTS: WW {(weights.ww*100).toFixed(0)}% | PT {(weights.pt*100).toFixed(0)}%
+        {hasTA ? ` | EXs ${((weights.ta??0)*100).toFixed(0)}%` : ''}
+      </div>
+    </>
   );
 
   // ── Excel export — mirrors the print preview above exactly ────────────────
@@ -1155,14 +1164,35 @@ function EClassRecordView({
     setLabelValue(ws, r, ic1, ic2End, 'School Name', schoolName);
     setLabelValue(ws, r, ic3, ic3End, 'School Year', schoolYear);
     r++;
-    setMergedText(ws, r, ic1, ic1End, TERM_LABEL_XL[currentTerm] ?? `TERM ${currentTerm}`, { bold:true, align:'left', color:'FFFFFFFF', size:9 });
-    ws.getCell(r, ic1).fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FF1E3A5F'} };
-    setLabelValue(ws, r, ic2, ic2End, 'Grade Level', gradeLevel);
-    setLabelValue(ws, r, ic3, ic3End, 'Teacher', adviser?.toUpperCase() || '');
-    r++;
-    setLabelValue(ws, r, ic1, ic1End, 'Section', sectionName);
-    setLabelValue(ws, r, ic2, ic2End, 'Subject', subject);
-    setLabelValue(ws, r, ic3, ic3End, 'Weights',
+
+    // FIRST/SECOND/THIRD TERM block — mirrors the official layout: the term name
+    // spans two rows on the left, Grade Level/Section stack in the next column,
+    // and Teacher/Subject each span both rows to the right.
+    const setLabelValueRows = (rowStart: number, rowEnd: number, colStart: number, colEnd: number, label: string, value: string) => {
+      for (let rr = rowStart; rr <= rowEnd; rr++) for (let c = colStart; c <= colEnd; c++) ws.getCell(rr, c).border = XLSX_ALL_BORDERS;
+      ws.mergeCells(rowStart, colStart, rowEnd, colEnd);
+      const master = ws.getCell(rowStart, colStart);
+      master.value = { richText: [{ font: { bold:true, size:9 }, text: `${label}: ` }, { font: { size:9 }, text: value ?? '' }] };
+      master.alignment = { horizontal:'left', vertical:'middle', wrapText:true };
+    };
+    const [ju1, ju2, ju3] = splitCols(totalCols, 4);
+    const jc1 = 1, jc1End = ju1;
+    const jc2 = jc1End + 1, jc2End = jc1End + ju2;
+    const jc3 = jc2End + 1, jc3End = jc2End + ju3;
+    const jc4 = jc3End + 1, jc4End = totalCols;
+    const termRow1 = r, termRow2 = r + 1;
+    for (let c = jc1; c <= jc1End; c++) { ws.getCell(termRow1,c).border = XLSX_ALL_BORDERS; ws.getCell(termRow2,c).border = XLSX_ALL_BORDERS; }
+    ws.mergeCells(termRow1, jc1, termRow2, jc1End);
+    const termCell = ws.getCell(termRow1, jc1);
+    termCell.value = TERM_LABEL_XL[currentTerm] ?? `TERM ${currentTerm}`;
+    termCell.font = { bold:true, size:11 };
+    termCell.alignment = { horizontal:'left', vertical:'middle', wrapText:true };
+    setLabelValue(ws, termRow1, jc2, jc2End, 'Grade Level', gradeLevel);
+    setLabelValue(ws, termRow2, jc2, jc2End, 'Section', sectionName);
+    setLabelValueRows(termRow1, termRow2, jc3, jc3End, 'Teacher', adviser?.toUpperCase() || '');
+    setLabelValueRows(termRow1, termRow2, jc4, jc4End, 'Subject', subject);
+    r = termRow2 + 1;
+    setLabelValue(ws, r, ic1, ic3End, 'Weights',
       `WW ${(weights.ww*100).toFixed(0)}% | PT ${(weights.pt*100).toFixed(0)}%${hasTA?` | EXs ${((weights.ta??0)*100).toFixed(0)}%`:''}`);
     r++; r++;
 
@@ -1204,11 +1234,11 @@ function EClassRecordView({
     highest.ww.forEach((v,i)=>setCell(ws,r,wwStart+i,v,{size:8,fill:'FFF3F4F6'}));
     setCell(ws,r,totalWW,highest.ww.reduce((a,b)=>a+b,0),{size:8,fill:'FFF3F4F6'});
     setCell(ws,r,psWW,100,{size:8,fill:'FFDBEAFE'});
-    setCell(ws,r,wsWW,weights.ww,{size:8,fill:'FFDBEAFE'});
+    setCell(ws,r,wsWW,`${(weights.ww*100).toFixed(0)}%`,{size:8,fill:'FFDBEAFE'});
     highest.pt.forEach((v,i)=>setCell(ws,r,ptStart+i,v,{size:8,fill:'FFF3F4F6'}));
     setCell(ws,r,totalPT,highest.pt.reduce((a,b)=>a+b,0),{size:8,fill:'FFF3F4F6'});
     setCell(ws,r,psPT,100,{size:8,fill:'FFEDE9FE'});
-    setCell(ws,r,wsPT,weights.pt,{size:8,fill:'FFEDE9FE'});
+    setCell(ws,r,wsPT,`${(weights.pt*100).toFixed(0)}%`,{size:8,fill:'FFEDE9FE'});
     if (hasTA) {
       setCell(ws,r,stStart,highest.st[0],{size:8,fill:'FFF3F4F6'});
       setCell(ws,r,stStart+1,highest.st[1],{size:8,fill:'FFF3F4F6'});
@@ -1217,12 +1247,15 @@ function EClassRecordView({
       setCell(ws,r,wsSt2Col,30,{size:8,fill:'FFF3F4F6'});
       setCell(ws,r,wsTeCol,40,{size:8,fill:'FFF3F4F6'});
       setCell(ws,r,psTA,100,{size:8,fill:'FFFEF3C7'});
-      setCell(ws,r,wsTA,weights.ta,{size:8,fill:'FFFEF3C7'});
+      setCell(ws,r,wsTA,`${((weights.ta??0)*100).toFixed(0)}%`,{size:8,fill:'FFFEF3C7'});
     }
     setCell(ws,r,initialCol,'',{fill:'FFF0FDF4'});
     setCell(ws,r,tgCol,'',{fill:'FFF3F4F6'});
     setCell(ws,r,descCol,'',{fill:'FFF3F4F6'});
     r++;
+
+    setCell(ws,r,1,"LEARNERS' NAMES",{bold:true,color:'FFFFFFFF',fill:'FF1E3A5F',align:'left',size:9});
+    ws.mergeCells(r,1,r,totalCols); r++;
 
     const writeGroup = (group: Student[], label: string, fill: string) => {
       if (group.length === 0) return;
@@ -1365,9 +1398,17 @@ function EClassRecordView({
       <div className="eclass-print bg-white text-black p-4" style={{fontFamily:'Arial, sans-serif', minWidth:'1100px'}}>
 
         {/* Title */}
-        <div style={{textAlign:'center', marginBottom:'4px'}}>
-          <div style={{fontWeight:'bold', fontSize:'12px'}}>CLASS RECORD &mdash; {TERM_LABELS[currentTerm] ?? `TERM ${currentTerm}`}</div>
-          <div style={{fontSize:'8px', color:'#555'}}>{subject} &mdash; {schoolYear}</div>
+        <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'12px', marginBottom:'4px'}}>
+          <div style={{width:'34px', height:'34px', borderRadius:'50%', border:'2px solid #1e3a5f', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'6px', fontWeight:'bold', color:'#1e3a5f', textAlign:'center', lineHeight:1, flexShrink:0}}>
+            DepEd
+          </div>
+          <div>
+            <div style={{fontWeight:'bold', fontSize:'14px'}}>CLASS RECORD - {TERM_LABELS[currentTerm] ?? `TERM ${currentTerm}`}</div>
+            <div style={{fontSize:'8px', color:'#555'}}>{subject} &mdash; {schoolYear}</div>
+          </div>
+          <div style={{width:'34px', height:'34px', borderRadius:'50%', border:'2px solid #1e3a5f', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'6px', fontWeight:'bold', color:'#1e3a5f', textAlign:'center', lineHeight:1, flexShrink:0}}>
+            DepEd
+          </div>
         </div>
         {pageHeader}
 
@@ -1418,20 +1459,25 @@ function EClassRecordView({
               {highest.ww.map((v,i) => <td key={i} style={td}>{v}</td>)}
               <td style={td}>{highest.ww.reduce((a,b)=>a+b,0)}</td>
               <td style={{...td, background:'#dbeafe'}}>100</td>
-              <td style={{...td, background:'#dbeafe'}}>{weights.ww}</td>
+              <td style={{...td, background:'#dbeafe'}}>{(weights.ww*100).toFixed(0)}%</td>
               {highest.pt.map((v,i) => <td key={i} style={td}>{v}</td>)}
               <td style={td}>{highest.pt.reduce((a,b)=>a+b,0)}</td>
               <td style={{...td, background:'#ede9fe'}}>100</td>
-              <td style={{...td, background:'#ede9fe'}}>{weights.pt}</td>
+              <td style={{...td, background:'#ede9fe'}}>{(weights.pt*100).toFixed(0)}%</td>
               {hasTA && <>
                 <td style={td}>{highest.st[0]}</td><td style={td}>{highest.st[1]}</td><td style={td}>{highest.te}</td>
                 <td style={td}>30</td><td style={td}>30</td><td style={td}>40</td>
                 <td style={{...td, background:'#fef3c7'}}>100</td>
-                <td style={{...td, background:'#fef3c7'}}>{weights.ta}</td>
+                <td style={{...td, background:'#fef3c7'}}>{((weights.ta??0)*100).toFixed(0)}%</td>
               </>}
               <td style={{...td, background:'#f0fdf4'}}>&nbsp;</td>
               <td style={td}>&nbsp;</td>
               <td style={td}>&nbsp;</td>
+            </tr>
+            <tr>
+              <td colSpan={rowColCount} style={{...td, background:'#1e3a5f', color:'white', fontWeight:'bold', textAlign:'left'}}>
+                LEARNERS' NAMES
+              </td>
             </tr>
             {renderGroup(males,   'MALE')}
             {renderGroup(females, 'FEMALE')}
