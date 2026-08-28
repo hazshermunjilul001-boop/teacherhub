@@ -203,6 +203,37 @@ function StatusBadge({ status }: { status?: StudentStatus }) {
   );
 }
 
+// ── PAST-MONTH EDIT CONFIRMATION MODAL ─────────────────────────────────────────
+function PastMonthConfirmModal({ month, onConfirm, onCancel }:
+  { month: string; onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-900 rounded-2xl p-6 w-full max-w-sm border border-gray-700 shadow-2xl">
+        <div className="flex items-start gap-3 mb-4">
+          <AlertTriangle size={22} className="text-amber-400 flex-shrink-0 mt-0.5"/>
+          <div>
+            <h3 className="text-base font-bold text-white">Edit a past month?</h3>
+            <p className="text-gray-400 text-sm mt-1">
+              You're about to change attendance for <strong className="text-white">{month} {MONTH_YEAR[month]}</strong>, which has already passed.
+              Are you sure you want to modify it?
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={onCancel}
+            className="flex-1 py-2.5 rounded-xl border border-gray-600 hover:bg-gray-800 transition text-sm">
+            Cancel
+          </button>
+          <button onClick={onConfirm}
+            className="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 font-semibold transition text-sm">
+            Yes, modify it
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── MAIN PAGE ─────────────────────────────────────────────────────────────────
 export default function AttendancePage() {
   const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear, adviser, schoolHead, district, division, region } = useActiveSection();
@@ -222,6 +253,9 @@ export default function AttendancePage() {
   const [showHolModal,setShowHolModal] = useState(false);
   const [statusModal,setStatusModal]   = useState<Student|null>(null);
   const [showSF2Modal,setShowSF2Modal]   = useState(false);
+  // Guards edits to past months: when set, a confirmation modal is shown before
+  // the held action (a single toggle or a "mark all present") actually runs.
+  const [pendingPastAction,setPendingPastAction] = useState<null | (() => void)>(null);
 
   const schoolDays = useMemo(() => getSchoolDays(month, holidays), [month, holidays]);
   // Full calendar for the month — SF2 always shows every day, school days feed the computations.
@@ -330,6 +364,17 @@ export default function AttendancePage() {
     await supabase.from('holidays').delete().eq('section_id', sectionId).eq('date', date);
   };
 
+  // ── Past-month edit guard ────────────────────────────────────────────────────
+  // Compares the month being VIEWED (month/MONTH_JS/MONTH_YEAR) against today's
+  // real-world calendar month. Only strictly-past months are guarded — the
+  // current month and any future month proceed with no prompt.
+  const isPastMonth = (m: string) => {
+    const now = new Date();
+    const nowYM = now.getFullYear() * 12 + now.getMonth();
+    const selYM = MONTH_YEAR[m] * 12 + MONTH_JS[m];
+    return selYM < nowYM;
+  };
+
   // ── Toggle attendance ──────────────────────────────────────────────────────
   const toggle = async (sid: string, date: string) => {
     const cur = records[sid]?.[date];
@@ -342,6 +387,11 @@ export default function AttendancePage() {
     );
     setSaving(null);
   };
+  // Guarded entry point used by the UI — prompts first if `month` is in the past.
+  const requestToggle = (sid: string, date: string) => {
+    if (isPastMonth(month)) { setPendingPastAction(() => () => toggle(sid, date)); return; }
+    toggle(sid, date);
+  };
 
   const markAllPresent = async (date: string) => {
     const updates = rosterStudents.map(s => ({ student_id: s.id, section_id: sectionId, date, status: 'P' as Status }));
@@ -349,6 +399,11 @@ export default function AttendancePage() {
     rosterStudents.forEach(s => { next[s.id] = {...next[s.id], [date]: 'P'}; });
     setRecords(next);
     await supabase.from('attendance').upsert(updates, { onConflict: 'student_id,date' });
+  };
+  // Guarded entry point used by the UI — prompts first if `month` is in the past.
+  const requestMarkAllPresent = (date: string) => {
+    if (isPastMonth(month)) { setPendingPastAction(() => () => markAllPresent(date)); return; }
+    markAllPresent(date);
   };
 
   // ── Stats helpers ──────────────────────────────────────────────────────────
@@ -382,7 +437,7 @@ export default function AttendancePage() {
 
   // ── TRACKER VIEW ───────────────────────────────────────────────────────────
   const TrackerView = () => (
-    <div className="px-4 pb-10 overflow-x-auto">
+    <div className="px-4 pb-10">
       <div className="no-print flex items-center gap-4 mb-4 text-xs">
         <span className="text-gray-400 font-medium">Click cell to cycle:</span>
         <span className="flex items-center gap-1"><span className="w-6 h-6 rounded bg-gray-800 border border-gray-700 inline-block"/><span>= Present</span></span>
@@ -395,23 +450,27 @@ export default function AttendancePage() {
         )}
       </div>
 
+      {/* Scrolls both ways inside its own box, so the date row (sticky top) and the
+          Learner's Name column (sticky left) stay frozen in view no matter how far
+          a teacher scrolls — on laptop or on a small phone screen. */}
+      <div className="overflow-auto rounded-xl border border-gray-800" style={{maxHeight:'75vh'}}>
       <table className="w-full text-xs border-separate border-spacing-0 min-w-[900px]">
         <thead>
           <tr>
-            <th className="bg-gray-800 text-left px-3 py-2 rounded-tl-xl sticky left-0 z-10 min-w-[220px]">Learner's Name</th>
+            <th className="bg-gray-800 text-left px-3 py-2 rounded-tl-xl sticky left-0 top-0 z-30 min-w-[220px]">Learner's Name</th>
             {schoolDays.map(d => (
-              <th key={fmt(d)} className="bg-gray-800 text-center px-0.5 py-1 min-w-[32px] group">
+              <th key={fmt(d)} className="bg-gray-800 text-center px-0.5 py-1 min-w-[32px] group sticky top-0 z-20">
                 <div className="text-gray-300">{d.getDate()}</div>
                 <div style={{fontSize:'9px'}} className="text-gray-500">{dayLabel(d)}</div>
-                <button onClick={() => markAllPresent(fmt(d))} title="Mark all Present"
+                <button onClick={() => requestMarkAllPresent(fmt(d))} title="Mark all Present"
                   className="opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 w-5 h-4 rounded bg-emerald-700 hover:bg-emerald-600 text-white"
                   style={{fontSize:'9px'}}>P</button>
               </th>
             ))}
-            <th className="bg-emerald-900 text-center px-2 py-2 text-emerald-300">Days Present</th>
-            <th className="bg-red-900 text-center px-2 py-2 text-red-300">Absences</th>
-            <th className="bg-yellow-900 text-center px-2 py-2 text-yellow-300">Tardies</th>
-            <th className="bg-gray-800 text-center px-2 py-2 rounded-tr-xl">
+            <th className="bg-emerald-900 text-center px-2 py-2 text-emerald-300 sticky top-0 z-20">Days Present</th>
+            <th className="bg-red-900 text-center px-2 py-2 text-red-300 sticky top-0 z-20">Absences</th>
+            <th className="bg-yellow-900 text-center px-2 py-2 text-yellow-300 sticky top-0 z-20">Tardies</th>
+            <th className="bg-gray-800 text-center px-2 py-2 rounded-tr-xl sticky top-0 z-20">
               <AlertTriangle size={12} className="mx-auto text-orange-400"/>
             </th>
           </tr>
@@ -440,7 +499,7 @@ export default function AttendancePage() {
                   return (
                     <td key={dateStr} className="px-0.5 py-0.5 text-center border-l border-gray-900">
                       <button
-                        onClick={() => toggle(student.id, dateStr)}
+                        onClick={() => requestToggle(student.id, dateStr)}
                         className={`w-7 h-7 rounded text-xs font-bold transition-all hover:scale-110 active:scale-95
                           ${isSav ? 'animate-pulse bg-gray-600' : statusColor(status)}`}
                         title={status || 'Present'}>
@@ -482,7 +541,7 @@ export default function AttendancePage() {
                   return (
                     <td key={dateStr} className="px-0.5 py-0.5 text-center border-l border-gray-900">
                       <button
-                        onClick={() => toggle(student.id, dateStr)}
+                        onClick={() => requestToggle(student.id, dateStr)}
                         className={`w-7 h-7 rounded text-xs font-bold transition-all hover:scale-110 active:scale-95
                           ${isSav ? 'animate-pulse bg-gray-600' : statusColor(status)}`}
                         title={status || 'Present'}>
@@ -522,6 +581,7 @@ export default function AttendancePage() {
           </tr>
         </tbody>
       </table>
+      </div>
 
       {/* Summary cards */}
       <div className="no-print mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1401,6 +1461,15 @@ export default function AttendancePage() {
           student={statusModal}
           onClose={() => setStatusModal(null)}
           onUpdate={updated => setStudents(prev => prev.map(s => s.id===updated.id ? updated : s))}
+        />
+      )}
+
+      {/* Past-Month Edit Confirmation */}
+      {pendingPastAction && (
+        <PastMonthConfirmModal
+          month={month}
+          onConfirm={() => { const action = pendingPastAction; setPendingPastAction(null); action(); }}
+          onCancel={() => setPendingPastAction(null)}
         />
       )}
     </>
