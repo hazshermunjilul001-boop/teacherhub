@@ -420,8 +420,9 @@ export default function SF9Page() {
   const { sectionId, sectionName, gradeLevel, schoolYear, activeSection } = sectionCtx;
 
   const numericGradeLevel = Number(gradeLevel) || 0;
-  const shsTrack: SHSTrack | null = (activeSection?.shs_track as SHSTrack) ?? null;
-  const electiveSubjectNames: string[] = activeSection?.elective_subjects ?? [];
+  const sectionExtra = activeSection as any; // Phase 1 columns not yet in the Section type — see note below
+  const shsTrack: SHSTrack | null = (sectionExtra?.shs_track as SHSTrack) ?? null;
+  const electiveSubjectNames: string[] = sectionExtra?.elective_subjects ?? [];
 
   const [selected,      setSelected]      = useState(0);
   const [printAll,      setPrintAll]      = useState(false);
