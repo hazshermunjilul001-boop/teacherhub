@@ -417,9 +417,11 @@ function CollabPanel({
 
 export default function SF9Page() {
   const sectionCtx = useActiveSection();
-  const { sectionId, sectionName, gradeLevel, schoolYear, activeSection } = sectionCtx;
+  // gradeLevel here is a display string like "Grade 9" — grade_number is the
+  // actual integer field on Section, exposed by useActiveSection as gradeNumber.
+  const { sectionId, sectionName, gradeLevel, gradeNumber, schoolYear, activeSection } = sectionCtx;
 
-  const numericGradeLevel = Number(gradeLevel) || 0;
+  const numericGradeLevel = Number(gradeNumber) || 0;
   const sectionExtra = activeSection as any; // Phase 1 columns not yet in the Section type — see note below
   const shsTrack: SHSTrack | null = (sectionExtra?.shs_track as SHSTrack) ?? null;
   const electiveSubjectNames: string[] = sectionExtra?.elective_subjects ?? [];
