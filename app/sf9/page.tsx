@@ -11,7 +11,7 @@ import { useActiveSection } from '../../lib/useActiveSection';
 
 import { buildSubjectRows, type SF9SubjectRow, type SHSTrack } from '../../lib/sf9/sf9GradeBands';
 import { useSF9Data, type Student, type Collaborator } from '../../lib/sf9/useSF9Data';
-import { downloadSF9Docx } from '../../lib/sf9/generateSF9Docx';
+import { downloadSF9Docx, downloadAllSF9Docx } from '../../lib/sf9/generateSF9Docx';
 import SectionSF9Settings from './SectionSF9Settings';
 import SF9Card from './SF9Card';
 
@@ -432,6 +432,7 @@ export default function SF9Page() {
   const [showCollab,    setShowCollab]    = useState(false);
   const [showSettings,  setShowSettings]  = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [bulkProgress,  setBulkProgress]  = useState<{done:number; total:number} | null>(null);
   const [dataVersion,   setDataVersion]   = useState(0);
 
   const {
@@ -449,6 +450,19 @@ export default function SF9Page() {
       await downloadSF9Docx({ data: current, section: activeSection, frontPage, continuationPage, gaKeys });
     } finally {
       setDownloadingId(null);
+    }
+  };
+
+  const handleDownloadAllDocx = async () => {
+    if (!sf9Data.length) return;
+    setBulkProgress({ done: 0, total: sf9Data.length });
+    try {
+      await downloadAllSF9Docx({
+        allData: sf9Data, section: activeSection, frontPage, continuationPage, gaKeys,
+        onProgress: (done, total) => setBulkProgress({ done, total }),
+      });
+    } finally {
+      setBulkProgress(null);
     }
   };
 
@@ -533,7 +547,14 @@ export default function SF9Page() {
             <button onClick={handleDownloadDocx} disabled={!current || downloadingId===current?.student.id}
               className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-600 px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
               {downloadingId===current?.student.id ? <RefreshCw size={16} className="animate-spin"/> : <FileDown size={16}/>}
-              {downloadingId===current?.student.id ? 'Generating…' : 'Download DOCX'}
+              {downloadingId===current?.student.id ? 'Generating…' : 'Download This'}
+            </button>
+
+            <button onClick={handleDownloadAllDocx} disabled={!sf9Data.length || !!bulkProgress}
+              title="Downloads one .docx per learner, bundled as a .zip"
+              className="flex items-center gap-2 bg-emerald-800 hover:bg-emerald-700 px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
+              {bulkProgress ? <RefreshCw size={16} className="animate-spin"/> : <FileDown size={16}/>}
+              {bulkProgress ? `Generating ${bulkProgress.done}/${bulkProgress.total}…` : `Download All (${sf9Data.length})`}
             </button>
 
             <button onClick={()=>{setPrintAll(false);setTimeout(()=>window.print(),100);}}

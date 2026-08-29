@@ -24,6 +24,7 @@ import {
   WidthType, AlignmentType, BorderStyle, ShadingType, HeadingLevel,
   PageOrientation, VerticalAlign, PageBreak,
 } from 'docx';
+import JSZip from 'jszip';
 import type { SF9SubjectRow } from '../../lib/sf9/sf9GradeBands';
 import type { LearnerSF9, GradeCell } from '../../lib/sf9/useSF9Data';
 
@@ -306,6 +307,59 @@ export async function downloadSF9Docx(params: SF9DocxParams) {
   const safeName = params.data.student.full_name.replace(/[^a-z0-9]+/gi, '_');
   a.href = url;
   a.download = `SF9_${safeName}.docx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export interface SF9BulkDocxParams {
+  allData: LearnerSF9[];
+  section: any;
+  frontPage: SF9SubjectRow[];
+  continuationPage: SF9SubjectRow[];
+  gaKeys: string[];
+  /** Called after each learner's docx is generated, for a progress indicator. */
+  onProgress?: (done: number, total: number) => void;
+}
+
+/**
+ * Generates one .docx per learner and bundles them into a single .zip —
+ * this is the "give the adviser all N files at once" download. A single
+ * combined multi-section docx was considered but rejected: each learner
+ * needs their own independent page numbering/margins for printing, and a
+ * ZIP of individually-named files is what an adviser actually wants to hand
+ * off or print one-by-one anyway.
+ */
+export async function downloadAllSF9Docx({
+  allData, section, frontPage, continuationPage, gaKeys, onProgress,
+}: SF9BulkDocxParams) {
+  const zip = new JSZip();
+  const usedNames = new Set<string>();
+
+  for (let i = 0; i < allData.length; i++) {
+    const data = allData[i];
+    const blob = await buildSF9Docx({ data, section, frontPage, continuationPage, gaKeys });
+
+    let safeName = data.student.full_name.replace(/[^a-z0-9]+/gi, '_');
+    let fileName = `SF9_${safeName}.docx`;
+    let dupeCount = 1;
+    while (usedNames.has(fileName)) {
+      fileName = `SF9_${safeName}_${++dupeCount}.docx`;
+    }
+    usedNames.add(fileName);
+
+    zip.file(fileName, blob);
+    onProgress?.(i + 1, allData.length);
+  }
+
+  const zipBlob = await zip.generateAsync({ type: 'blob' });
+  const url = URL.createObjectURL(zipBlob);
+  const a = document.createElement('a');
+  const sectionLabel = (section?.name ?? 'Section').replace(/[^a-z0-9]+/gi, '_');
+  const yearLabel = (section?.school_year ?? '').replace(/[^a-z0-9]+/gi, '_');
+  a.href = url;
+  a.download = `SF9_${sectionLabel}${yearLabel ? '_'+yearLabel : ''}.zip`;
   document.body.appendChild(a);
   a.click();
   a.remove();

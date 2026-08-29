@@ -3,10 +3,9 @@
 import type { CSSProperties } from 'react';
 import type { SF9SubjectRow } from '../../lib/sf9/sf9GradeBands';
 import type { LearnerSF9, GradeCell } from '../../lib/sf9/useSF9Data';
-import { descriptor } from '../../lib/sf9/sf9ClassRecordScoring';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Constants unrelated to grade-band logic (unchanged from the original card)
+// Constants unrelated to grade-band logic
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CORE_VALUES = [
@@ -40,9 +39,9 @@ const DESCRIPTOR_LEGEND: [string, string, string][] = [
 ];
 
 const PROMOTION_COLOR: Record<string,string> = {
-  'Promoted':               '#166534', // green
-  'Conditionally Promoted': '#b45309', // amber
-  'Failed':                 '#b91c1c', // red
+  'Promoted':               '#166534',
+  'Conditionally Promoted': '#b45309',
+  'Failed':                 '#b91c1c',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -58,8 +57,6 @@ function calcAge(birthdate?: string): number | null {
   return age;
 }
 
-/** Per-term display value for a computed parent row (MAPEH, Effective Comm)
- *  — cross-component average for that term, informational only. */
 function computedRowTermCells(row: SF9SubjectRow, data: LearnerSF9): GradeCell[] {
   return [0,1,2].map(ti => {
     const scores = (row.subRows ?? [])
@@ -107,7 +104,7 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
     </td>
   );
 
-  const SigLine = ({ name, title, marginTop='10mm' }: { name:string; title:string; marginTop?:string }) => (
+  const SigLine = ({ name, title, marginTop='6mm' }: { name:string; title:string; marginTop?:string }) => (
     <div style={{textAlign:'center', marginTop}}>
       <div style={{
         borderTop:'1px solid black', paddingTop:'2px', fontSize:'7.5pt',
@@ -192,7 +189,7 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
         <th style={{border:'1px solid black', padding:'2px', textAlign:'center', width:'12%'}}>Term 1</th>
         <th style={{border:'1px solid black', padding:'2px', textAlign:'center', width:'12%'}}>Term 2</th>
         <th style={{border:'1px solid black', padding:'2px', textAlign:'center', width:'12%'}}>Term 3</th>
-        <th style={{border:'1px solid black', padding:'2px', textAlign:'center', width:'14%'}}>Final Rating</th>
+        <th style={{border:'1px solid black', padding:'2px', textAlign:'center', width:'14%'}}>Final Grade</th>
         <th style={{border:'1px solid black', padding:'2px', textAlign:'center', width:'16%'}}>Remarks</th>
       </tr>
     </thead>
@@ -209,73 +206,19 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
     }}>
 
       {/* ══════════════════════════════════════════════════════
-          PAGE 1  —  BACK (left) + FRONT/COVER (right)
+          MAIN PAGE — matches the official single-page landscape
+          layout exactly: LEFT = header/info/grades, RIGHT =
+          attendance/comments/signatures/certificate. Same column
+          order as generateSF9Docx.ts, so the on-screen preview,
+          the print output, and the downloaded .docx all match.
           ══════════════════════════════════════════════════════ */}
-      <div style={{ display:'flex', width:'100%', border:'1px solid black', pageBreakAfter:'always', minHeight:'190mm' }}>
+      <div style={{
+        display:'flex', width:'100%', border:'1px solid black', minHeight:'190mm',
+        pageBreakAfter: 'always',
+      }}>
 
-        {/* ── BACK PAGE: Monthly Attendance + Certificate of Transfer ── */}
-        <div style={{ width: HALF_W, flexShrink:0, borderRight:'1px solid black', padding:'4mm', fontSize:'8pt', boxSizing:'border-box' as const }}>
-          <div style={{fontWeight:'bold', textAlign:'center', marginBottom:'2mm', fontSize:'8.5pt'}}>
-            REPORT ON ATTENDANCE
-          </div>
-          <table style={{width:'100%', borderCollapse:'collapse', fontSize:'6pt', marginBottom:'5mm'}}>
-            <thead>
-              <tr>
-                <td style={{border:'1px solid black', padding:'1px'}}></td>
-                {MONTH_LABELS.map(m=>(
-                  <td key={m} style={{border:'1px solid black', padding:'1px', textAlign:'center', fontWeight:'bold'}}>{m}</td>
-                ))}
-                <td style={{border:'1px solid black', padding:'1px', textAlign:'center', fontWeight:'bold'}}>Total</td>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                {label:'No. of Class Days',   key:'days'},
-                {label:'No. of Days Present', key:'present'},
-                {label:'No. of Days Absent',  key:'absent'},
-              ].map(row=>(
-                <tr key={row.key}>
-                  <td style={{border:'1px solid black', padding:'1px 2px', fontSize:'6pt', whiteSpace:'nowrap'}}>{row.label}</td>
-                  {data.attendance.map((att,i)=>(
-                    <td key={i} style={{border:'1px solid black', textAlign:'center', padding:'1px'}}>
-                      {(att as any)[row.key]||''}
-                    </td>
-                  ))}
-                  <td style={{border:'1px solid black', textAlign:'center', fontWeight:'bold', padding:'1px'}}>
-                    {attendanceTotal(row.key as 'days'|'present'|'absent')||''}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div style={{fontWeight:'bold', marginBottom:'3mm'}}>PARENT / GUARDIAN&apos;S SIGNATURE</div>
-          {['Term 1','Term 2','Term 3'].map(t=>(
-            <div key={t} style={{display:'flex', alignItems:'flex-end', marginBottom:'7mm', gap:'2mm'}}>
-              <span style={{fontSize:'7.5pt', whiteSpace:'nowrap', minWidth:'95px'}}>{t}</span>
-              <div style={{flex:1, borderBottom:'1px solid black', marginBottom:'1px'}}></div>
-            </div>
-          ))}
-
-          <div style={{fontSize:'7.5pt', marginTop:'3mm', borderTop:'1px solid #ccc', paddingTop:'3mm'}}>
-            <div style={{fontWeight:'bold', textAlign:'center', marginBottom:'3mm', fontSize:'8pt'}}>Certificate of Transfer</div>
-            <div style={{marginBottom:'4mm'}}>Admitted to Grade: ______ Section: _______________</div>
-            <div style={{marginBottom:'4mm'}}>Eligibility for Admission to Grade: _____________</div>
-            <div style={{display:'flex', justifyContent:'space-between', gap:'4mm', marginBottom:'4mm'}}>
-              <SigLine name={schoolHead} title="School Head" marginTop="8mm"/>
-              <SigLine name={adviserName} title="Adviser"    marginTop="8mm"/>
-            </div>
-            <div style={{fontWeight:'bold', textAlign:'center', marginBottom:'3mm', fontSize:'8pt'}}>
-              Cancellation of Eligibility to Transfer
-            </div>
-            <div style={{marginBottom:'3mm'}}>Admitted in: ________________________</div>
-            <div style={{marginBottom:'3mm'}}>Date: _______________________________</div>
-            <SigLine name={schoolHead} title="School Head" marginTop="6mm"/>
-          </div>
-        </div>
-
-        {/* ── FRONT/COVER PAGE ── */}
-        <div style={{ width: HALF_W, flexShrink:0, padding:'5mm', fontSize:'8pt', boxSizing:'border-box' as const, display:'flex', flexDirection:'column' }}>
+        {/* ── LEFT: Header / Student Info / Learning Progress ── */}
+        <div style={{ width: HALF_W, flexShrink:0, borderRight:'1px solid black', padding:'5mm', fontSize:'8pt', boxSizing:'border-box' as const }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'3mm', marginBottom:'3mm' }}>
             <div style={{display:'flex', flexDirection:'column', alignItems:'center', flexShrink:0}}>
               <div style={{fontSize:'7.5pt', fontWeight:'bold', letterSpacing:'0.5px', marginBottom:'1mm', whiteSpace:'nowrap'}}>
@@ -289,7 +232,6 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
               <div style={{fontSize:'7.5pt'}}>
                 {section?.region ?? 'Region XI'} &mdash; {section?.division ?? ''}
               </div>
-              {/* District (elementary) or Cluster (JHS/SHS) — from the Section SF9 Settings panel */}
               {section?.header_scope_name && (
                 <div style={{fontSize:'7pt'}}>{section.header_scope_name}</div>
               )}
@@ -302,7 +244,7 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
           </div>
 
           <div style={{textAlign:'center', fontWeight:'bold', fontSize:'11pt', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'3mm'}}>
-            Student&apos;s Report Card
+            Learner&apos;s Performance Report
           </div>
 
           <div style={{display:'flex', justifyContent:'flex-end', marginBottom:'1mm', fontSize:'7.5pt'}}>
@@ -311,7 +253,6 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
               {section?.school_id ?? ''}
             </span>
           </div>
-
           <div style={{display:'flex', justifyContent:'flex-end', marginBottom:'2mm', fontSize:'7.5pt'}}>
             <span style={{fontWeight:'bold'}}>LRN:&nbsp;</span>
             <span style={{borderBottom:'1px solid black', minWidth:'88px', textAlign:'center', display:'inline-block', paddingBottom:'1px'}}>
@@ -357,46 +298,29 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
                 </tr>
               )}
               <tr>
-                <td style={{padding:'1px 2px', whiteSpace:'nowrap', fontSize:'7.5pt'}}>Curriculum:</td>
-                <td colSpan={3} style={{borderBottom:'1px solid black', padding:'1px 4px', fontWeight:'bold', fontSize:'7.5pt'}}>K to 12 Basic Education Curriculum</td>
-              </tr>
-              <tr>
                 <td style={{padding:'1px 2px', whiteSpace:'nowrap', fontSize:'7.5pt'}}>School Year:</td>
                 <td colSpan={3} style={{borderBottom:'1px solid black', padding:'1px 4px', fontWeight:'bold'}}>{section?.school_year??''}</td>
               </tr>
             </tbody>
           </table>
 
-          <div style={{fontSize:'7.5pt', fontStyle:'italic', lineHeight:'1.5', marginBottom:'4mm', flex:1}}>
-            <p style={{marginBottom:'2mm'}}>Dear Parent/Guardian,</p>
-            <p style={{marginBottom:'2mm', textIndent:'5mm'}}>
-              This report card shows the ability and progress your child has made in the different
-              learning areas as well as his/her core values.
+          <div style={{fontSize:'7.5pt', lineHeight:'1.4', marginBottom:'2mm'}}>
+            <p style={{marginBottom:'1mm'}}>Dear Parents,</p>
+            <p style={{marginBottom:'1mm'}}>
+              This Performance Report presents your child&apos;s progress and achievement in the different learning areas.
             </p>
-            <p style={{textIndent:'5mm'}}>
-              The school welcomes you should you desire to know more about your child&apos;s progress.
+            <p>
+              The school welcomes you to reach out should you wish to know more about your child&apos;s learning and performance.
             </p>
           </div>
 
-          <div style={{marginTop:'auto'}}>
-            <SigLine name={adviserName} title="Adviser" marginTop="10mm"/>
-            <SigLine name={schoolHead || ''}  title="Principal / School Head" marginTop="10mm"/>
+          <div style={{display:'flex', justifyContent:'space-between', gap:'4mm', marginBottom:'3mm'}}>
+            <SigLine name="" title="School Head"/>
+            <SigLine name={adviserName} title="Adviser"/>
           </div>
-        </div>
-      </div>
 
-      {/* ══════════════════════════════════════════════════════
-          PAGE 2  —  Grades table (left) | Core values (right)
-          ══════════════════════════════════════════════════════ */}
-      <div style={{
-        display:'flex', width:'100%', border:'1px solid black', minHeight:'190mm',
-        pageBreakAfter: continuationPage.length ? 'always' : undefined,
-      }}>
-
-        {/* ── LEFT INNER: Grades Table (grade-band dynamic) ── */}
-        <div style={{ width: HALF_W, flexShrink:0, borderRight:'1px solid black', padding:'4mm', fontSize:'8pt', boxSizing:'border-box' as const }}>
-          <div style={{fontWeight:'bold', textAlign:'center', marginBottom:'3mm', fontSize:'8.5pt'}}>
-            REPORT ON LEARNING PROGRESS AND ACHIEVEMENT
+          <div style={{fontWeight:'bold', textAlign:'center', marginBottom:'2mm', fontSize:'8.5pt'}}>
+            LEARNING PROGRESS AND ACHIEVEMENT
           </div>
           <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8pt'}}>
             <GradesTableHead/>
@@ -428,60 +352,78 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
           </div>
         </div>
 
-        {/* ── RIGHT INNER: Core Values ── */}
-        <div style={{ width: HALF_W, flexShrink:0, padding:'4mm', fontSize:'8pt', boxSizing:'border-box' as const }}>
-          <div style={{fontWeight:'bold', textAlign:'center', marginBottom:'3mm', fontSize:'8.5pt'}}>
-            REPORT ON LEARNER&apos;S OBSERVED VALUES
+        {/* ── RIGHT: Attendance / Comments / Signatures / Certificate ── */}
+        <div style={{ width: HALF_W, flexShrink:0, padding:'5mm', fontSize:'8pt', boxSizing:'border-box' as const }}>
+          <div style={{fontWeight:'bold', textAlign:'center', marginBottom:'2mm', fontSize:'8.5pt'}}>
+            REPORT ON ATTENDANCE
           </div>
-          <table style={{width:'100%', borderCollapse:'collapse', fontSize:'7pt', marginBottom:'4mm'}}>
+          <table style={{width:'100%', borderCollapse:'collapse', fontSize:'6pt', marginBottom:'5mm'}}>
             <thead>
-              <tr style={{background:'#f3f4f6'}}>
-                <th style={{border:'1px solid black', padding:'2px', width:'26%', textAlign:'center'}}>Core Values</th>
-                <th style={{border:'1px solid black', padding:'2px', textAlign:'left', width:'40%'}}>Behavior Statements</th>
-                <th style={{border:'1px solid black', padding:'2px', textAlign:'center', width:'11%'}}>T1</th>
-                <th style={{border:'1px solid black', padding:'2px', textAlign:'center', width:'11%'}}>T2</th>
-                <th style={{border:'1px solid black', padding:'2px', textAlign:'center', width:'11%'}}>T3</th>
+              <tr>
+                <td style={{border:'1px solid black', padding:'1px'}}></td>
+                {MONTH_LABELS.map(m=>(
+                  <td key={m} style={{border:'1px solid black', padding:'1px', textAlign:'center', fontWeight:'bold'}}>{m}</td>
+                ))}
+                <td style={{border:'1px solid black', padding:'1px', textAlign:'center', fontWeight:'bold'}}>Total</td>
               </tr>
             </thead>
             <tbody>
-              {CORE_VALUES.map(cv=>cv.behaviors.map((b,bi)=>(
-                <tr key={b}>
-                  {bi===0&&(
-                    <td style={{border:'1px solid black', padding:'2px', fontWeight:'bold', verticalAlign:'middle', textAlign:'center', fontSize:'7pt'}} rowSpan={cv.behaviors.length}>
-                      {cv.value}
-                    </td>
-                  )}
-                  <td style={{border:'1px solid black', padding:'2px', fontSize:'6.5pt', lineHeight:'1.3'}}>{b}</td>
-                  {[1,2,3].map(term=>(
-                    <td key={term} style={{border:'1px solid black', textAlign:'center', fontWeight:'bold', padding:'2px', fontSize:'9pt'}}>
-                      {data.conduct[`${b}_${term}`]??''}
+              {[
+                {label:'No. of Class Days',   key:'days'},
+                {label:'No. of Days Present', key:'present'},
+                {label:'No. of Days Absent',  key:'absent'},
+              ].map(row=>(
+                <tr key={row.key}>
+                  <td style={{border:'1px solid black', padding:'1px 2px', fontSize:'6pt', whiteSpace:'nowrap'}}>{row.label}</td>
+                  {data.attendance.map((att,i)=>(
+                    <td key={i} style={{border:'1px solid black', textAlign:'center', padding:'1px'}}>
+                      {(att as any)[row.key]||''}
                     </td>
                   ))}
+                  <td style={{border:'1px solid black', textAlign:'center', fontWeight:'bold', padding:'1px'}}>
+                    {attendanceTotal(row.key as 'days'|'present'|'absent')||''}
+                  </td>
                 </tr>
-              )))}
+              ))}
             </tbody>
           </table>
 
-          <div style={{fontSize:'7pt', marginBottom:'4mm'}}>
-            <div style={{fontWeight:'bold', marginBottom:'2px'}}>Non-Numerical Rating:</div>
-            <table style={{width:'100%', borderCollapse:'collapse'}}>
-              <tbody>
-                {Object.entries(CONDUCT_LABELS).map(([k,v])=>(
-                  <tr key={k}>
-                    <td style={{border:'1px solid black', padding:'1px 3px', fontWeight:'bold', width:'25px', textAlign:'center'}}>{k}</td>
-                    <td style={{border:'1px solid black', padding:'1px 3px'}}>{v}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{fontWeight:'bold', marginBottom:'2mm', fontSize:'8pt'}}>TEACHER&apos;S COMMENTS / REMARKS</div>
+          {['Term 1','Term 2','Term 3'].map(t=>(
+            <div key={t} style={{marginBottom:'4mm'}}>
+              <span style={{fontSize:'7.5pt', fontWeight:'bold'}}>{t}:</span>
+              <div style={{borderBottom:'1px solid black', minHeight:'4mm'}}></div>
+            </div>
+          ))}
+
+          <div style={{fontWeight:'bold', textAlign:'center', margin:'4mm 0 3mm', fontSize:'8pt'}}>
+            PARENT/S GUARDIAN&apos;S SIGNATURE
+          </div>
+          {['Term 1','Term 2','Term 3'].map(t=>(
+            <div key={t} style={{display:'flex', alignItems:'flex-end', marginBottom:'5mm', gap:'2mm'}}>
+              <span style={{fontSize:'7.5pt', whiteSpace:'nowrap', minWidth:'50px'}}>{t}</span>
+              <div style={{flex:1, borderBottom:'1px solid black', marginBottom:'1px'}}></div>
+            </div>
+          ))}
+
+          <div style={{fontSize:'7.5pt', marginTop:'3mm', borderTop:'1px solid #ccc', paddingTop:'3mm'}}>
+            <div style={{fontWeight:'bold', textAlign:'center', marginBottom:'2mm', fontSize:'8pt'}}>Certificate of Transfer</div>
+            <p style={{fontSize:'7pt', marginBottom:'2mm'}}>
+              This is to certify that the above-named learner has satisfactorily completed the requirements for the grade level indicated.
+            </p>
+            <div style={{marginBottom:'2mm'}}>Admitted to Grade: ______________</div>
+            <div style={{marginBottom:'3mm'}}>Eligible for Admission to Grade: ______________</div>
+            <div style={{display:'flex', justifyContent:'space-between', gap:'4mm'}}>
+              <SigLine name="" title="School Head"/>
+              <SigLine name="" title="Adviser"/>
+            </div>
           </div>
         </div>
       </div>
 
       {/* ══════════════════════════════════════════════════════
-          PAGE 3 — SHS CONTINUATION SHEET (electives 4+ / Work Immersion)
-          Full-width, matches the official DepEd continuation sheet layout —
-          only rendered when there are overflow rows.
+          SHS CONTINUATION SHEET (electives 4+ / Work Immersion)
+          Only rendered for SHS sections with overflow rows.
           ══════════════════════════════════════════════════════ */}
       {continuationPage.length > 0 && (
         <div style={{ width:'100%', border:'1px solid black', padding:'6mm', fontSize:'8pt', boxSizing:'border-box' as const, pageBreakAfter:'always' }}>
@@ -503,6 +445,64 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
           </table>
         </div>
       )}
+
+      {/* ══════════════════════════════════════════════════════
+          TEACHERHUB EXTRA — Report on Learner's Observed Values.
+          Not part of the official DepEd SF9 template (the released
+          form has no Core Values section) — kept here as an
+          in-app-only extra. Excluded from the .docx export.
+          ══════════════════════════════════════════════════════ */}
+      <div style={{ width:'100%', border:'2px dashed #999', padding:'6mm', fontSize:'8pt', boxSizing:'border-box' as const }}>
+        <div style={{textAlign:'center', marginBottom:'3mm'}}>
+          <span style={{fontSize:'7pt', color:'#888', fontStyle:'italic'}}>
+            TeacherHub Extra — not part of the official SF9, not included in the downloaded .docx
+          </span>
+          <div style={{fontWeight:'bold', fontSize:'8.5pt', marginTop:'1mm'}}>
+            REPORT ON LEARNER&apos;S OBSERVED VALUES
+          </div>
+        </div>
+        <table style={{width:'80%', margin:'0 auto', borderCollapse:'collapse', fontSize:'7pt', marginBottom:'4mm'}}>
+          <thead>
+            <tr style={{background:'#f3f4f6'}}>
+              <th style={{border:'1px solid black', padding:'2px', width:'22%', textAlign:'center'}}>Core Values</th>
+              <th style={{border:'1px solid black', padding:'2px', textAlign:'left', width:'44%'}}>Behavior Statements</th>
+              <th style={{border:'1px solid black', padding:'2px', textAlign:'center', width:'11%'}}>T1</th>
+              <th style={{border:'1px solid black', padding:'2px', textAlign:'center', width:'11%'}}>T2</th>
+              <th style={{border:'1px solid black', padding:'2px', textAlign:'center', width:'11%'}}>T3</th>
+            </tr>
+          </thead>
+          <tbody>
+            {CORE_VALUES.map(cv=>cv.behaviors.map((b,bi)=>(
+              <tr key={b}>
+                {bi===0&&(
+                  <td style={{border:'1px solid black', padding:'2px', fontWeight:'bold', verticalAlign:'middle', textAlign:'center', fontSize:'7pt'}} rowSpan={cv.behaviors.length}>
+                    {cv.value}
+                  </td>
+                )}
+                <td style={{border:'1px solid black', padding:'2px', fontSize:'6.5pt', lineHeight:'1.3'}}>{b}</td>
+                {[1,2,3].map(term=>(
+                  <td key={term} style={{border:'1px solid black', textAlign:'center', fontWeight:'bold', padding:'2px', fontSize:'9pt'}}>
+                    {data.conduct[`${b}_${term}`]??''}
+                  </td>
+                ))}
+              </tr>
+            )))}
+          </tbody>
+        </table>
+        <div style={{fontSize:'7pt', width:'50%', margin:'0 auto'}}>
+          <div style={{fontWeight:'bold', marginBottom:'2px', textAlign:'center'}}>Non-Numerical Rating</div>
+          <table style={{width:'100%', borderCollapse:'collapse'}}>
+            <tbody>
+              {Object.entries(CONDUCT_LABELS).map(([k,v])=>(
+                <tr key={k}>
+                  <td style={{border:'1px solid black', padding:'1px 3px', fontWeight:'bold', width:'25px', textAlign:'center'}}>{k}</td>
+                  <td style={{border:'1px solid black', padding:'1px 3px'}}>{v}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
