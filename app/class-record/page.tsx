@@ -93,6 +93,14 @@ const SUBJECTS_JHS = [
   'Araling Panlipunan (AP)', 'GMRC/VE',
   'EPP/TLE',
   'MAPEH - Music & Arts', 'MAPEH - PE & Health',
+  // Special Curricular Program subjects — each shares the assessment-component
+  // weights (WW/PT/TA) of its parent regular subject (see SUBJECT_WEIGHTS below).
+  'SPJ (Journalism)',        // follows English
+  'STE Mathematics',         // follows Mathematics
+  'STE Science',             // follows Science
+  'STE Foreign Language',    // follows English
+  'SPA (Arts)',              // follows MAPEH
+  'STE Research',            // follows Science
 ];
 const SUBJECTS_SHS = [
   'SHS Core Subjects', 'SHS Applied Track', 'SHS Specialized Subjects',
@@ -108,6 +116,13 @@ const SUBJECT_WEIGHTS: Record<string, { ww: number; pt: number; ta: number }> = 
   'EPP/TLE':                                        { ww: 0.20, pt: 0.60, ta: 0.20 },
   'MAPEH - Music & Arts':                           { ww: 0.20, pt: 0.60, ta: 0.20 },
   'MAPEH - PE & Health':                            { ww: 0.20, pt: 0.60, ta: 0.20 },
+  // Special Curricular Program subjects — weights mirror the parent subject noted above.
+  'SPJ (Journalism)':                               { ww: 0.20, pt: 0.50, ta: 0.30 },  // = English
+  'STE Mathematics':                                { ww: 0.20, pt: 0.50, ta: 0.30 },  // = Mathematics
+  'STE Science':                                     { ww: 0.20, pt: 0.50, ta: 0.30 },  // = Science
+  'STE Foreign Language':                           { ww: 0.20, pt: 0.50, ta: 0.30 },  // = English
+  'SPA (Arts)':                                     { ww: 0.20, pt: 0.60, ta: 0.20 },  // = MAPEH
+  'STE Research':                                    { ww: 0.20, pt: 0.50, ta: 0.30 },  // = Science
   'SHS Core Subjects':                               { ww: 0.20, pt: 0.50, ta: 0.30 },
   'SHS Applied Track':                              { ww: 0.20, pt: 0.60, ta: 0.20 },
   'SHS Specialized Subjects':                        { ww: 0.20, pt: 0.60, ta: 0.20 },
