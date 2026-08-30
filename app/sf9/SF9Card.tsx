@@ -289,7 +289,7 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
           </div>
 
           <div style={{display:'flex', justifyContent:'space-between', gap:'4mm', marginBottom:'2mm'}}>
-            <SigLine name="" title="School Head" marginTop="2mm"/>
+            <SigLine name={schoolHead} title="School Head" marginTop="2mm"/>
             <SigLine name={adviserName} title="Adviser" marginTop="2mm"/>
           </div>
 
@@ -304,21 +304,24 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
             </tbody>
           </table>
 
+          {/* Performance Descriptors — plain columns, no grid lines, matching
+              the official form's borderless layout (Grading Scale first). */}
           <div style={{marginTop:'3mm', fontSize:'7pt'}}>
+            <div style={{fontWeight:'bold', marginBottom:'1mm'}}>PERFORMANCE DESCRIPTORS</div>
             <table style={{width:'100%', borderCollapse:'collapse'}}>
               <thead>
-                <tr style={{background:'#f3f4f6'}}>
-                  <th style={{border:'1px solid black', padding:'1px 3px', textAlign:'left'}}>Descriptors</th>
-                  <th style={{border:'1px solid black', padding:'1px 3px'}}>Grading Scale</th>
-                  <th style={{border:'1px solid black', padding:'1px 3px'}}>Remarks</th>
+                <tr>
+                  <th style={{padding:'1px 8px 1px 0', textAlign:'left', fontWeight:'bold'}}>Grading Scale</th>
+                  <th style={{padding:'1px 8px', textAlign:'left', fontWeight:'bold'}}>Descriptors</th>
+                  <th style={{padding:'1px 0', textAlign:'left', fontWeight:'bold'}}>Remarks</th>
                 </tr>
               </thead>
               <tbody>
                 {DESCRIPTOR_LEGEND.map(([d,s,r])=>(
                   <tr key={d}>
-                    <td style={{border:'1px solid black', padding:'1px 3px'}}>{d}</td>
-                    <td style={{border:'1px solid black', padding:'1px 3px', textAlign:'center'}}>{s}</td>
-                    <td style={{border:'1px solid black', padding:'1px 3px', textAlign:'center'}}>{r}</td>
+                    <td style={{padding:'1px 8px 1px 0'}}>{s}</td>
+                    <td style={{padding:'1px 8px'}}>{d.charAt(0)+d.slice(1).toLowerCase()}</td>
+                    <td style={{padding:'1px 0'}}>{r}</td>
                   </tr>
                 ))}
               </tbody>
@@ -362,13 +365,16 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
             </tbody>
           </table>
 
+          {/* Teacher's Comments — bordered box per term, matching the
+              official form's rectangles instead of a plain underline. */}
           <div style={{fontWeight:'bold', marginBottom:'2mm', fontSize:'8pt'}}>TEACHER&apos;S COMMENTS / REMARKS</div>
-          {['Term 1','Term 2','Term 3'].map(t=>(
-            <div key={t} style={{marginBottom:'4mm'}}>
-              <span style={{fontSize:'7.5pt', fontWeight:'bold'}}>{t}:</span>
-              <div style={{borderBottom:'1px solid black', minHeight:'4mm'}}></div>
-            </div>
-          ))}
+          <div style={{display:'flex', flexDirection:'column', gap:'2mm', marginBottom:'4mm'}}>
+            {['Term 1','Term 2','Term 3'].map(t=>(
+              <div key={t} style={{border:'1px solid black', minHeight:'12mm', padding:'2px 4px'}}>
+                <span style={{fontSize:'7.5pt', fontWeight:'bold'}}>{t}:</span>
+              </div>
+            ))}
+          </div>
 
           <div style={{fontWeight:'bold', textAlign:'center', margin:'4mm 0 3mm', fontSize:'8pt'}}>
             PARENT/S GUARDIAN&apos;S SIGNATURE
@@ -386,14 +392,37 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
               This is to certify that the above-named learner has satisfactorily completed the requirements for the grade level indicated.
             </p>
             <div style={{marginBottom:'2mm'}}>Admitted to Grade: ______________</div>
-            <div style={{marginBottom:'3mm'}}>Eligible for Admission to Grade: ______________</div>
-            <div style={{display:'flex', justifyContent:'space-between', gap:'4mm'}}>
-              <SigLine name="" title="School Head"/>
-              <SigLine name="" title="Adviser"/>
+            <div style={{marginBottom:'4mm'}}>Eligible for Admission to Grade: ______________</div>
+
+            <div style={{display:'flex', alignItems:'flex-end', gap:'2mm', marginBottom:'6mm'}}>
+              <span style={{whiteSpace:'nowrap'}}>Approved:</span>
+              <div style={{flex:1}}>
+                <div style={{borderBottom:'1px solid black', minHeight:'4mm'}}></div>
+                <div style={{textAlign:'center', fontStyle:'italic', fontSize:'7pt', marginTop:'1px'}}>Adviser</div>
+              </div>
+            </div>
+            <div style={{width:'55%'}}>
+              <div style={{borderBottom:'1px solid black', minHeight:'4mm'}}></div>
+              <div style={{textAlign:'center', fontStyle:'italic', fontSize:'7pt', marginTop:'1px'}}>School Head</div>
+            </div>
+
+            <div style={{fontWeight:'bold', textAlign:'center', margin:'5mm 0 3mm', fontSize:'8pt'}}>
+              CANCELLATION OF ELIGIBILITY TO TRANSFER
+            </div>
+            <div style={{display:'flex', gap:'4mm', marginBottom:'6mm'}}>
+              <span style={{whiteSpace:'nowrap'}}>Admitted in:</span>
+              <div style={{flex:1, borderBottom:'1px solid black'}}></div>
+              <span style={{whiteSpace:'nowrap'}}>Date:</span>
+              <div style={{width:'25mm', borderBottom:'1px solid black'}}></div>
+            </div>
+            <div style={{width:'55%'}}>
+              <div style={{borderBottom:'1px solid black', minHeight:'4mm'}}></div>
+              <div style={{textAlign:'center', fontStyle:'italic', fontSize:'7pt', marginTop:'1px'}}>School Head</div>
             </div>
           </div>
         </div>
       </div>
+
 
       {/* ══════════════════════════════════════════════════════
           SHS CONTINUATION SHEET (electives 4+ / Work Immersion)
