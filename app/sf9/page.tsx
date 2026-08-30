@@ -13,6 +13,7 @@ import { useActiveSection } from '../../lib/useActiveSection';
 import { buildSubjectRows, type SF9SubjectRow, type SHSTrack } from '../../lib/sf9/sf9GradeBands';
 import { useSF9Data, type Student, type Collaborator } from '../../lib/sf9/useSF9Data';
 import { downloadSF9Docx, downloadAllSF9Docx } from '../../lib/sf9/generateSF9Docx';
+import { downloadSF9Pdf } from '../../lib/sf9/generateSF9Pdf';
 import SectionSF9Settings from './SectionSF9Settings';
 import SF9Card from './SF9Card';
 
@@ -491,7 +492,10 @@ export default function SF9Page() {
     if (!current) return;
     setDownloadingId(current.student.id);
     try {
-      await downloadSF9Docx({ data: current, section: effectiveSection, frontPage, continuationPage, gaKeys });
+      const preview = document.querySelector<HTMLElement>('[data-sf9-card="true"]');
+      if (!preview) throw new Error('SF9 preview is not available.');
+      const safeName = current.student.full_name.replace(/[^a-z0-9]+/gi, '_');
+      await downloadSF9Pdf(preview, `SF9_${safeName}.pdf`);
     } finally {
       setDownloadingId(null);
     }
@@ -591,7 +595,7 @@ export default function SF9Page() {
             <button onClick={handleDownloadDocx} disabled={!current || downloadingId===current?.student.id}
               className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-600 px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
               {downloadingId===current?.student.id ? <RefreshCw size={16} className="animate-spin"/> : <FileDown size={16}/>}
-              {downloadingId===current?.student.id ? 'Generating…' : 'Download This'}
+              {downloadingId===current?.student.id ? 'Generating…' : 'Download PDF'}
             </button>
 
             <button onClick={handleDownloadAllDocx} disabled={!sf9Data.length || !!bulkProgress}
