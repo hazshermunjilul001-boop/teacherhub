@@ -675,7 +675,7 @@ export default function SF9Page() {
           sectionId={sectionId}
           gradeLevel={numericGradeLevel}
           onClose={() => setShowSettings(false)}
-          onSaved={() => setDataVersion(v => v+1)}
+          onSaved={() => { setDataVersion(v => v+1); sectionCtx.refreshSections?.(); }}
         />
       )}
     </>

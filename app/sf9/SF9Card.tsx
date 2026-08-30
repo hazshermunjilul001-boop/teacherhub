@@ -214,18 +214,13 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
           ══════════════════════════════════════════════════════ */}
       <div style={{
         display:'flex', width:'100%', border:'1px solid black', minHeight:'190mm',
-        pageBreakAfter: 'always',
+        pageBreakAfter: continuationPage.length ? 'always' : undefined,
       }}>
 
         {/* ── LEFT: Header / Student Info / Learning Progress ── */}
-        <div style={{ width: HALF_W, flexShrink:0, borderRight:'1px solid black', padding:'5mm', fontSize:'8pt', boxSizing:'border-box' as const }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'3mm', marginBottom:'3mm' }}>
-            <div style={{display:'flex', flexDirection:'column', alignItems:'center', flexShrink:0}}>
-              <div style={{fontSize:'7.5pt', fontWeight:'bold', letterSpacing:'0.5px', marginBottom:'1mm', whiteSpace:'nowrap'}}>
-                School Form 9 (SF9)
-              </div>
-              <img src="/depedseal.webp" alt="DepEd Seal" style={{width:'16mm', height:'16mm', objectFit:'contain', flexShrink:0}}/>
-            </div>
+        <div style={{ width: HALF_W, flexShrink:0, borderRight:'1px solid black', padding:'4mm 5mm', fontSize:'8pt', boxSizing:'border-box' as const }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'3mm', marginBottom:'2mm' }}>
+            <img src="/depedseal.webp" alt="DepEd Seal" style={{width:'14mm', height:'14mm', objectFit:'contain', flexShrink:0}}/>
             <div style={{textAlign:'center', flex:1}}>
               <div style={{fontSize:'7.5pt'}}>Republic of the Philippines</div>
               <div style={{fontWeight:'bold', fontSize:'9pt'}}>DEPARTMENT OF EDUCATION</div>
@@ -235,91 +230,70 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
               {section?.header_scope_name && (
                 <div style={{fontSize:'7pt'}}>{section.header_scope_name}</div>
               )}
-              <div style={{ fontWeight:'bold', textDecoration:'underline', fontSize:'9.5pt', marginTop:'2mm', marginBottom:'1mm', textTransform:'uppercase' }}>
+              <div style={{ fontWeight:'bold', textDecoration:'underline', fontSize:'9.5pt', marginTop:'1mm', textTransform:'uppercase' }}>
                 {section?.school_name ?? ''}
               </div>
-              <div style={{fontSize:'7pt'}}>{section?.school_address ?? ''}</div>
+              {section?.school_address && (
+                <div style={{fontSize:'7pt'}}>{section.school_address}</div>
+              )}
+              {section?.school_id && (
+                <div style={{fontSize:'6.5pt', color:'#555'}}>School ID: {section.school_id}</div>
+              )}
             </div>
-            <img src="/depedlogo.webp" alt="School Logo" style={{width:'16mm', height:'16mm', objectFit:'contain', flexShrink:0}}/>
+            <img src="/depedlogo.webp" alt="School Logo" style={{width:'14mm', height:'14mm', objectFit:'contain', flexShrink:0}}/>
           </div>
 
-          <div style={{textAlign:'center', fontWeight:'bold', fontSize:'11pt', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'3mm'}}>
+          <div style={{textAlign:'center', fontWeight:'bold', fontSize:'10.5pt', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'1mm'}}>
             Learner&apos;s Performance Report
           </div>
-
-          <div style={{display:'flex', justifyContent:'flex-end', marginBottom:'1mm', fontSize:'7.5pt'}}>
-            <span style={{fontWeight:'bold'}}>School ID:&nbsp;</span>
-            <span style={{borderBottom:'1px solid black', minWidth:'88px', textAlign:'center', display:'inline-block', paddingBottom:'1px'}}>
-              {section?.school_id ?? ''}
-            </span>
-          </div>
-          <div style={{display:'flex', justifyContent:'flex-end', marginBottom:'2mm', fontSize:'7.5pt'}}>
-            <span style={{fontWeight:'bold'}}>LRN:&nbsp;</span>
-            <span style={{borderBottom:'1px solid black', minWidth:'88px', textAlign:'center', display:'inline-block', paddingBottom:'1px'}}>
-              {data.student.lrn}
-            </span>
+          <div style={{textAlign:'center', fontSize:'7.5pt', marginBottom:'2mm'}}>
+            School Year {section?.school_year ?? ''}
           </div>
 
-          <div style={{marginBottom:'2mm'}}>
-            <div style={{display:'flex', alignItems:'flex-end', gap:'2mm', marginBottom:'1px'}}>
-              <span style={{fontWeight:'bold', whiteSpace:'nowrap', fontSize:'8pt'}}>Name:</span>
-              <div style={{flex:1, borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px', fontSize:'8pt'}}>{lastName}</div>
-              <div style={{flex:1.5, borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px', fontSize:'8pt'}}>{firstName}</div>
-              <div style={{flex:0.7, borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px', fontSize:'8pt'}}>{middleName}</div>
+          {/* Compact 2-3 line student info, matching the official form's field arrangement */}
+          <div style={{fontSize:'8pt', marginBottom:'2mm'}}>
+            <div style={{display:'flex', alignItems:'flex-end', gap:'2mm', marginBottom:'1mm'}}>
+              <span style={{fontWeight:'bold', whiteSpace:'nowrap'}}>Name:</span>
+              <div style={{flex:1, borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px'}}>
+                {lastName}, {firstName} {middleName}
+              </div>
+              <span style={{fontWeight:'bold', whiteSpace:'nowrap', marginLeft:'2mm'}}>Age:</span>
+              <div style={{width:'20px', borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px'}}>{studentAge ?? ''}</div>
+              <span style={{fontWeight:'bold', whiteSpace:'nowrap', marginLeft:'2mm'}}>Sex:</span>
+              <div style={{width:'40px', borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px'}}>{data.student.sex==='M'?'Male':'Female'}</div>
             </div>
-            <div style={{display:'flex', fontSize:'6.5pt', color:'#555', marginBottom:'2mm'}}>
-              <div style={{flex:'none', width:'30px'}}></div>
-              <div style={{flex:1, textAlign:'center'}}>Last Name</div>
-              <div style={{flex:1.5, textAlign:'center'}}>First Name</div>
-              <div style={{flex:0.7, textAlign:'center'}}>Middle Name</div>
+            <div style={{display:'flex', alignItems:'flex-end', gap:'2mm', marginBottom: section?.shs_track ? '1mm' : 0}}>
+              <span style={{fontWeight:'bold', whiteSpace:'nowrap'}}>LRN:</span>
+              <div style={{flex:1, borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px'}}>{data.student.lrn}</div>
+              <span style={{fontWeight:'bold', whiteSpace:'nowrap', marginLeft:'2mm'}}>Grade:</span>
+              <div style={{width:'40px', borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px'}}>{section?.grade_level??''}</div>
+              <span style={{fontWeight:'bold', whiteSpace:'nowrap', marginLeft:'2mm'}}>Section:</span>
+              <div style={{width:'60px', borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px'}}>{section?.name??''}</div>
             </div>
+            {section?.shs_track && (
+              <div style={{display:'flex', alignItems:'flex-end', gap:'2mm'}}>
+                <span style={{fontWeight:'bold', whiteSpace:'nowrap', fontSize:'7.5pt'}}>Track (SHS only):</span>
+                <div style={{flex:1, borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px', fontSize:'7.5pt'}}>
+                  {section.shs_track === 'techpro' ? 'TechPro (TVL/Sports/Arts & Design)' : 'Academic'}
+                </div>
+              </div>
+            )}
           </div>
 
-          <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8pt', marginBottom:'3mm'}}>
-            <tbody>
-              <tr>
-                <td style={{padding:'1px 2px', whiteSpace:'nowrap'}}>Age:</td>
-                <td style={{borderBottom:'1px solid black', padding:'1px 4px', fontWeight:'bold'}}>{studentAge ?? ''}</td>
-                <td style={{padding:'1px 2px', whiteSpace:'nowrap'}}>Sex:</td>
-                <td style={{borderBottom:'1px solid black', padding:'1px 4px', fontWeight:'bold'}}>{data.student.sex==='M'?'Male':'Female'}</td>
-              </tr>
-              <tr>
-                <td style={{padding:'1px 2px', whiteSpace:'nowrap'}}>Grade:</td>
-                <td style={{borderBottom:'1px solid black', padding:'1px 4px', fontWeight:'bold'}}>{section?.grade_level??''}</td>
-                <td style={{padding:'1px 2px', whiteSpace:'nowrap'}}>Section:</td>
-                <td style={{borderBottom:'1px solid black', padding:'1px 4px', fontWeight:'bold'}}>{section?.name??''}</td>
-              </tr>
-              {section?.shs_track && (
-                <tr>
-                  <td style={{padding:'1px 2px', whiteSpace:'nowrap', fontSize:'7.5pt'}}>Track:</td>
-                  <td colSpan={3} style={{borderBottom:'1px solid black', padding:'1px 4px', fontWeight:'bold', fontSize:'7.5pt'}}>
-                    {section.shs_track === 'techpro' ? 'TechPro (TVL/Sports/Arts & Design)' : 'Academic'}
-                  </td>
-                </tr>
-              )}
-              <tr>
-                <td style={{padding:'1px 2px', whiteSpace:'nowrap', fontSize:'7.5pt'}}>School Year:</td>
-                <td colSpan={3} style={{borderBottom:'1px solid black', padding:'1px 4px', fontWeight:'bold'}}>{section?.school_year??''}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          <div style={{fontSize:'7.5pt', lineHeight:'1.4', marginBottom:'2mm'}}>
-            <p style={{marginBottom:'1mm'}}>Dear Parents,</p>
-            <p style={{marginBottom:'1mm'}}>
-              This Performance Report presents your child&apos;s progress and achievement in the different learning areas.
-            </p>
+          <div style={{fontSize:'7pt', lineHeight:'1.3', marginBottom:'1.5mm'}}>
+            <p>Dear Parents,</p>
             <p>
+              This Performance Report presents your child&apos;s progress and achievement in the different learning areas.
               The school welcomes you to reach out should you wish to know more about your child&apos;s learning and performance.
             </p>
           </div>
 
-          <div style={{display:'flex', justifyContent:'space-between', gap:'4mm', marginBottom:'3mm'}}>
-            <SigLine name="" title="School Head"/>
-            <SigLine name={adviserName} title="Adviser"/>
+          <div style={{display:'flex', justifyContent:'space-between', gap:'4mm', marginBottom:'2mm'}}>
+            <SigLine name="" title="School Head" marginTop="2mm"/>
+            <SigLine name={adviserName} title="Adviser" marginTop="2mm"/>
           </div>
 
-          <div style={{fontWeight:'bold', textAlign:'center', marginBottom:'2mm', fontSize:'8.5pt'}}>
+          <div style={{fontWeight:'bold', textAlign:'center', marginBottom:'1.5mm', fontSize:'8.5pt'}}>
             LEARNING PROGRESS AND ACHIEVEMENT
           </div>
           <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8pt'}}>
@@ -450,9 +424,11 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
           TEACHERHUB EXTRA — Report on Learner's Observed Values.
           Not part of the official DepEd SF9 template (the released
           form has no Core Values section) — kept here as an
-          in-app-only extra. Excluded from the .docx export.
+          IN-APP-ONLY extra: visible on screen, excluded from both
+          print and the .docx export (className="no-print" is
+          defined in page.tsx's @media print block).
           ══════════════════════════════════════════════════════ */}
-      <div style={{ width:'100%', border:'2px dashed #999', padding:'6mm', fontSize:'8pt', boxSizing:'border-box' as const }}>
+      <div className="no-print" style={{ width:'100%', border:'2px dashed #999', padding:'6mm', fontSize:'8pt', boxSizing:'border-box' as const }}>
         <div style={{textAlign:'center', marginBottom:'3mm'}}>
           <span style={{fontSize:'7pt', color:'#888', fontStyle:'italic'}}>
             TeacherHub Extra — not part of the official SF9, not included in the downloaded .docx

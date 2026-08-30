@@ -5,7 +5,7 @@
 import { useSection } from '../context/SectionContext';
 
 export function useActiveSection() {
-  const { activeSection, sections, loading } = useSection();
+  const { activeSection, sections, loading, loadSections } = useSection();
 
   return {
     // Section identifiers
@@ -29,5 +29,9 @@ export function useActiveSection() {
     sections,
     hasSection:  !!activeSection,
     loading,
+    // Re-fetches the active section from Supabase — call after any direct
+    // write to the `sections` row (e.g. SF9 Settings) so activeSection isn't
+    // stale until the next full page reload.
+    refreshSections: loadSections,
   };
 }

@@ -128,7 +128,7 @@ export default function SectionSF9Settings({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto text-gray-900">
         <div className="flex items-center justify-between px-5 py-4 border-b">
           <h2 className="text-lg font-semibold text-gray-900">
             SF9 Section Settings{band ? ` — ${band.label}` : ''}
@@ -153,7 +153,7 @@ export default function SectionSF9Settings({
                 type="text" value={form.school_address}
                 onChange={e => setField('school_address', e.target.value)}
                 placeholder="e.g. Sta. Ana, Davao City"
-                className="w-full border rounded px-3 py-2 text-sm"
+                className="w-full border rounded px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400"
               />
             </div>
 
@@ -164,7 +164,7 @@ export default function SectionSF9Settings({
                   type="text" value={form.region}
                   onChange={e => setField('region', e.target.value)}
                   placeholder="e.g. Region XI"
-                  className="w-full border rounded px-3 py-2 text-sm"
+                  className="w-full border rounded px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400"
                 />
               </div>
               <div>
@@ -173,7 +173,7 @@ export default function SectionSF9Settings({
                   type="text" value={form.division}
                   onChange={e => setField('division', e.target.value)}
                   placeholder="e.g. Division of Davao City"
-                  className="w-full border rounded px-3 py-2 text-sm"
+                  className="w-full border rounded px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400"
                 />
               </div>
             </div>
@@ -184,7 +184,7 @@ export default function SectionSF9Settings({
                 <select
                   value={form.header_scope_type}
                   onChange={e => setField('header_scope_type', e.target.value as 'district' | 'cluster')}
-                  className="w-full border rounded px-3 py-2 text-sm"
+                  className="w-full border rounded px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400"
                 >
                   <option value="district">District (Grade ≤6)</option>
                   <option value="cluster">Cluster (Grade 7-12)</option>
@@ -196,7 +196,7 @@ export default function SectionSF9Settings({
                   type="text" value={form.header_scope_name}
                   onChange={e => setField('header_scope_name', e.target.value)}
                   placeholder={form.header_scope_type === 'district' ? 'e.g. Sta. Ana District' : 'e.g. Cluster 1'}
-                  className="w-full border rounded px-3 py-2 text-sm"
+                  className="w-full border rounded px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400"
                 />
               </div>
             </div>
@@ -206,7 +206,7 @@ export default function SectionSF9Settings({
               <input
                 type="text" value={form.school_id}
                 onChange={e => setField('school_id', e.target.value)}
-                className="w-full border rounded px-3 py-2 text-sm max-w-[160px]"
+                className="w-full border rounded px-3 py-2 text-sm max-w-[160px] text-gray-900 bg-white placeholder:text-gray-400"
               />
             </div>
 
@@ -217,7 +217,7 @@ export default function SectionSF9Settings({
                   <select
                     value={form.shs_track}
                     onChange={e => setField('shs_track', e.target.value as SHSTrack)}
-                    className="w-full border rounded px-3 py-2 text-sm"
+                    className="w-full border rounded px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400"
                   >
                     <option value="">Select track…</option>
                     <option value="academic">Academic Track</option>
@@ -245,7 +245,7 @@ export default function SectionSF9Settings({
                             type="text" value={name}
                             onChange={e => setElective(idx, e.target.value)}
                             placeholder="Subject name"
-                            className="flex-1 border rounded px-3 py-1.5 text-sm"
+                            className="flex-1 border rounded px-3 py-1.5 text-sm text-gray-900 bg-white placeholder:text-gray-400"
                           />
                           <button onClick={() => removeElective(idx)} className="text-gray-400 hover:text-red-500">
                             <Trash2 size={16} />
