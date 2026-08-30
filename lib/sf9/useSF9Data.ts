@@ -51,6 +51,28 @@ function buildMonthKeys(schoolYear: string): { key: string; label: string }[] {
   }));
 }
 
+function monthDates(yearMonth: string): string[] {
+  const [year, month] = yearMonth.split('-').map(Number);
+  const last = new Date(year, month, 0).getDate();
+  return Array.from({ length: last }, (_, i) =>
+    `${yearMonth}-${String(i + 1).padStart(2, '0')}`
+  );
+}
+
+function isSchoolDay(date: string, holidaySet: Set<string>): boolean {
+  const d = new Date(`${date}T00:00:00`);
+  return d.getDay() !== 0 && d.getDay() !== 6 && !holidaySet.has(date);
+}
+
+function attendanceThroughToday(yearMonth: string, records: any[], holidaySet: Set<string>) {
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const days = monthDates(yearMonth).filter(date => date <= todayKey && isSchoolDay(date, holidaySet));
+  const absentDates = new Set(records.filter(r => r.status === 'A').map(r => r.date));
+  const absent = days.filter(date => absentDates.has(date)).length;
+  return { days: days.length, present: days.length - absent, absent };
+}
+
 /** Flatten front+continuation page rows to real storage keys (sub-row keys
  *  for computed parents, the row's own key otherwise). */
 function getLeafKeys(rows: SF9SubjectRow[]): string[] {
@@ -107,11 +129,13 @@ export function useSF9Data(
       .from('conduct_records').select('*').in('term',[1,2,3]);
 
     const monthKeys = buildMonthKeys(schoolYear);
-    const { data: attendRaw } = await supabase
-      .from('sf9_monthly_attendance').select('*')
-      .eq('section_id', sectionId)
-      .in('student_id', studentIds)
-      .in('year_month', monthKeys.map(m => m.key));
+    const attendanceDates = monthKeys.flatMap(month => monthDates(month.key));
+    const [{ data: attendRaw }, { data: holidayRaw }] = await Promise.all([
+      supabase.from('attendance').select('student_id,date,status')
+        .eq('section_id', sectionId).in('student_id', studentIds).in('date', attendanceDates),
+      supabase.from('holidays').select('date').eq('section_id', sectionId).in('date', attendanceDates),
+    ]);
+    const holidaySet = new Set((holidayRaw ?? []).map((row: any) => row.date));
 
     const sourceMap: Record<string,string> = {};
 
@@ -164,15 +188,14 @@ export function useSF9Data(
 
       const promotionRemark = getPromotionRemark(finalGrades, gaKeys);
 
-      // Monthly attendance, Jun-Apr, pulled from the sf9_monthly_attendance view
+      // The report covers the school-year months from June through April. Future
+      // dates are excluded; unmarked school days through today count as present,
+      // while an explicit A is absent, keeping days = present + absent.
       const attendance: MonthlyAttendance[] = monthKeys.map(({ key, label }) => {
-        const row = attendRaw?.find((a:any) => a.student_id === student.id && a.year_month === key);
-        return {
-          monthLabel: label,
-          days:    row?.class_days   ?? 0,
-          present: row?.days_present ?? 0,
-          absent:  row?.days_absent  ?? 0,
-        };
+        const monthlyRecords = (attendRaw ?? []).filter((row: any) =>
+          row.student_id === student.id && row.date.startsWith(`${key}-`)
+        );
+        return { monthLabel: label, ...attendanceThroughToday(key, monthlyRecords, holidaySet) };
       });
 
       const conduct: Record<string,string> = {};

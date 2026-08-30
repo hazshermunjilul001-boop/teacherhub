@@ -122,18 +122,38 @@ function buildGradesTable(rows: SF9SubjectRow[], data: LearnerSF9, width: number
 }
 
 function buildDescriptorLegend(width: number): Table {
-  const colW = [Math.round(width*0.4), Math.round(width*0.3), width - Math.round(width*0.4) - Math.round(width*0.3)];
+  // The preview uses a compact, borderless three-column legend rather than a
+  // second fully boxed table. Keep the same labels and ranges while matching
+  // that visual hierarchy in the exported document.
+  const colW = [Math.round(width*0.42), Math.round(width*0.28), width - Math.round(width*0.42) - Math.round(width*0.28)];
   const legend: [string,string,string][] = [
-    ['ADVANCING','90-100','Passed'], ['BENCHMARKING','80-89','Passed'], ['CONNECTING','75-79','Passed'],
-    ['DEVELOPING','65-74','Failed'], ['EMERGING','0-64','Failed'],
+    ['ADVANCING','90–100','Passed'], ['BENCHMARKING','80–89','Passed'], ['CONNECTING','75–79','Passed'],
+    ['DEVELOPING','65–74','Failed'], ['EMERGING','0–64','Failed'],
   ];
   return new Table({
     width:{size:width,type:WidthType.DXA}, columnWidths: colW,
     rows: [
-      new TableRow({ children: ['Descriptors','Grading Scale','Remarks'].map((h,i)=>cell([p(h,{bold:true,size:12})],{width:{size:colW[i],type:WidthType.DXA}, shading:HEADER_SHADING})) }),
-      ...legend.map(([d,s,r])=>new TableRow({ children: [d,s,r].map((v,i)=>cell([p(v,{size:12,align:i>0?AlignmentType.CENTER:undefined})],{width:{size:colW[i],type:WidthType.DXA}})) })),
+      new TableRow({ children: ['Descriptors','Grading Scale','Remarks'].map((h,i)=>cell([p(h,{bold:true,size:11,align:i===0?AlignmentType.LEFT:AlignmentType.CENTER})],{borders:NO_BORDERS,width:{size:colW[i],type:WidthType.DXA}})) }),
+      ...legend.map(([d,s,r])=>new TableRow({ children: [d,s,r].map((v,i)=>cell([p(v,{size:10,align:i===0?AlignmentType.LEFT:AlignmentType.CENTER})],{borders:NO_BORDERS,width:{size:colW[i],type:WidthType.DXA}})) })),
     ],
   });
+}
+
+function buildCommentBox(label: string, width: number): Table {
+  const rows = Array.from({length: 3}, (_, i) => new TableRow({ children: [
+    cell([p(i === 0 ? label : '', { bold: i === 0, size: 11 })], {
+      borders: ALL_BORDERS, width:{size:width,type:WidthType.DXA}, margins:{top:45,bottom:45,left:70,right:70},
+    }),
+  ]}));
+  return new Table({width:{size:width,type:WidthType.DXA}, columnWidths:[width], rows});
+}
+
+function buildSignatureLines(width: number, title: string): Table {
+  return new Table({ width:{size:width,type:WidthType.DXA}, columnWidths:[width], rows: [
+    new TableRow({ children: [cell([p('',{size:11}), p(title,{align:AlignmentType.CENTER,size:10})], { borders:{...NO_BORDERS, bottom:THIN_BORDER}, width:{size:width,type:WidthType.DXA}, margins:{top:90,bottom:30,left:70,right:70} })] }),
+    new TableRow({ children: [cell([p('',{size:11}), p(title,{align:AlignmentType.CENTER,size:10})], { borders:{...NO_BORDERS, bottom:THIN_BORDER}, width:{size:width,type:WidthType.DXA}, margins:{top:90,bottom:30,left:70,right:70} })] }),
+    new TableRow({ children: [cell([p('',{size:11}), p(title,{align:AlignmentType.CENTER,size:10})], { borders:{...NO_BORDERS, bottom:THIN_BORDER}, width:{size:width,type:WidthType.DXA}, margins:{top:90,bottom:30,left:70,right:70} })] }),
+  ]});
 }
 
 function buildAttendanceTable(data: LearnerSF9, width: number): Table {
@@ -236,32 +256,23 @@ export async function buildSF9Docx({ data, section, frontPage, continuationPage,
     p('REPORT ON ATTENDANCE', { align: AlignmentType.CENTER, bold: true, size: 15 }),
     buildAttendanceTable(data, RIGHT_W),
     new Paragraph({ text: '' }),
-    p('TEACHER\'S COMMENTS / REMARKS', { bold: true, size: 14 }),
-    ...['Term 1','Term 2','Term 3'].map(t => new Paragraph({
-      children: [ new TextRun({ text: `${t}: `, bold: true, size: 13 }) ],
-      border: { bottom: THIN_BORDER },
-      spacing: { after: 200 },
-    })),
+    p('TEACHER\'S COMMENTS / REMARKS', { align: AlignmentType.CENTER, bold: true, size: 14 }),
+    buildCommentBox('Term 1:', RIGHT_W),
+    buildCommentBox('Term 2:', RIGHT_W),
+    buildCommentBox('Term 3:', RIGHT_W),
     new Paragraph({ text: '' }),
     p('PARENT/S GUARDIAN\'S SIGNATURE', { align: AlignmentType.CENTER, bold: true, size: 14 }),
-    ...['Term 1','Term 2','Term 3'].map(t => new Paragraph({
-      children: [ new TextRun({ text: `${t}: `, size: 13 }) ],
-      border: { bottom: THIN_BORDER },
-      spacing: { after: 200 },
-    })),
+    buildSignatureLines(RIGHT_W, 'Parent/Guardian'),
     new Paragraph({ text: '' }),
     p('CERTIFICATE OF TRANSFER', { align: AlignmentType.CENTER, bold: true, size: 14 }),
-    p('This is to certify that the above-named learner has satisfactorily completed the requirements for the grade level indicated.', { size: 12 }),
-    p('Admitted to Grade: ____________', { size: 13 }),
-    p('Eligible for Admission to Grade: ____________', { size: 13 }),
-    new Paragraph({ text: '' }),
-    new Table({
-      width:{size:RIGHT_W,type:WidthType.DXA}, columnWidths:[RIGHT_W/2, RIGHT_W/2],
-      rows: [ new TableRow({ children: [
-        cell([p('School Head',{align:AlignmentType.CENTER,size:12})], { borders:{...NO_BORDERS, top:THIN_BORDER}, width:{size:RIGHT_W/2,type:WidthType.DXA} }),
-        cell([p('Adviser',{align:AlignmentType.CENTER,size:12})], { borders:{...NO_BORDERS, top:THIN_BORDER}, width:{size:RIGHT_W/2,type:WidthType.DXA} }),
-      ]})],
-    }),
+    p('This is to certify that the above-named learner has satisfactorily completed the requirements for the grade level indicated.', { size: 11 }),
+    p('Admitted to Grade: ____________________', { size: 12 }),
+    p('Eligible for Admission to Grade: ____________________', { size: 12 }),
+    p('Approved:', { size: 11 }),
+    buildSignatureLines(RIGHT_W, 'Adviser'),
+    p('Cancellation of Eligibility to Transfer', { align: AlignmentType.CENTER, bold: true, size: 12 }),
+    p('This learner is no longer eligible for transfer because of the following reason: ________________________________', { size: 10 }),
+    buildSignatureLines(RIGHT_W, 'School Head'),
   ];
 
   const outerTable = new Table({
@@ -281,7 +292,15 @@ export async function buildSF9Docx({ data, section, frontPage, continuationPage,
     bodyChildren.push(p('Learner\'s Report Card — Continuation Sheet', { align: AlignmentType.CENTER, bold: true, size: 18 }));
     bodyChildren.push(p(`${lastName}, ${firstMiddle}  |  LRN: ${data.student.lrn}  |  Grade ${section?.grade_level ?? ''} - ${section?.name ?? ''}`, { align: AlignmentType.CENTER, size: 13 }));
     bodyChildren.push(new Paragraph({ text: '' }));
-    bodyChildren.push(buildGradesTable(continuationPage, data, USABLE_W * 0.6, gaKeys));
+    const continuationWidth = Math.round(USABLE_W * 0.6);
+    bodyChildren.push(new Table({
+      width:{size:USABLE_W,type:WidthType.DXA}, columnWidths:[Math.round((USABLE_W-continuationWidth)/2), continuationWidth, Math.round((USABLE_W-continuationWidth)/2)],
+      rows:[new TableRow({ children:[
+        cell([p('')],{borders:NO_BORDERS,width:{size:Math.round((USABLE_W-continuationWidth)/2),type:WidthType.DXA}}),
+        cell([buildGradesTable(continuationPage, data, continuationWidth, gaKeys) as any],{borders:NO_BORDERS,width:{size:continuationWidth,type:WidthType.DXA}}),
+        cell([p('')],{borders:NO_BORDERS,width:{size:Math.round((USABLE_W-continuationWidth)/2),type:WidthType.DXA}}),
+      ]})]
+    }));
   }
 
   const doc = new Document({

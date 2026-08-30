@@ -79,6 +79,21 @@ function ManualGradePanel({
     }));
   };
 
+  // Enter moves down the selected term column, matching the class-record entry flow.
+  const handleGradeEnter = (e: React.KeyboardEvent<HTMLInputElement>, sid: string, termIdx: number) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const column = Array.from(document.querySelectorAll<HTMLInputElement>(
+      `input[data-manual-grade="${filterSubj}:${termIdx}"]`
+    ));
+    const current = column.findIndex(input => input.dataset.studentId === sid);
+    const next = column[current + 1];
+    if (next) {
+      next.focus();
+      next.select();
+    }
+  };
+
   const saveAll = async () => {
     setSaving(true);
     const { data: { user } } = await supabase.auth.getUser();
@@ -185,7 +200,10 @@ function ManualGradePanel({
                           <input
                             type="number" min={0} max={100}
                             value={grades[ti] || ''}
+                            data-manual-grade={`${filterSubj}:${ti}`}
+                            data-student-id={student.id}
                             onChange={e => setGrade(student.id, filterSubj, ti, e.target.value)}
+                            onKeyDown={e => handleGradeEnter(e, student.id, ti)}
                             placeholder="—"
                             className={`w-16 text-center rounded-xl py-2 text-white text-sm font-bold outline-none transition
                               bg-gray-800 border focus:border-blue-500
