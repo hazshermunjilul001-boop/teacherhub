@@ -22,7 +22,7 @@
 import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   WidthType, AlignmentType, BorderStyle, ShadingType, HeadingLevel,
-  PageOrientation, VerticalAlign, PageBreak,
+  PageOrientation, VerticalAlign, PageBreak, ImageRun,
 } from 'docx';
 import JSZip from 'jszip';
 import type { SF9SubjectRow } from '../../lib/sf9/sf9GradeBands';
@@ -194,15 +194,32 @@ function fieldRow(label: string, value: string, labelW=1600): TableRow {
 
 // ─────────────────────────────────────────────────────────────────────────
 
+export interface SF9PreviewImage {
+  dataUrl: string;
+  width: number;
+  height: number;
+}
+
 export interface SF9DocxParams {
   data: LearnerSF9;
   section: any;                 // sections row — includes Phase 1 fields
   frontPage: SF9SubjectRow[];
   continuationPage: SF9SubjectRow[];
   gaKeys: string[];
+  /** PNG snapshots of the exact visible preview pages. When present, these are
+   * embedded directly so DOCX output and browser print use one source of truth. */
+  previewImages?: SF9PreviewImage[];
 }
 
-export async function buildSF9Docx({ data, section, frontPage, continuationPage, gaKeys }: SF9DocxParams): Promise<Blob> {
+function dataUrlBytes(dataUrl: string): Uint8Array {
+  const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+export async function buildSF9Docx({ data, section, frontPage, continuationPage, gaKeys, previewImages }: SF9DocxParams): Promise<Blob> {
   const nameParts = data.student.full_name.split(',').map(s=>s.trim());
   const lastName = nameParts[0] ?? '';
   const firstMiddle = nameParts.slice(1).join(', ');
@@ -303,17 +320,33 @@ export async function buildSF9Docx({ data, section, frontPage, continuationPage,
     }));
   }
 
-  const doc = new Document({
-    sections: [{
-      properties: {
-        page: {
-          size: { width: PORTRAIT_W, height: PORTRAIT_H, orientation: PageOrientation.LANDSCAPE },
-          margin: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN },
-        },
-      },
-      children: bodyChildren,
-    }],
-  });
+  const pageProperties = {
+    page: {
+      size: { width: PORTRAIT_W, height: PORTRAIT_H, orientation: PageOrientation.LANDSCAPE },
+      margin: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN },
+    },
+  };
+
+  // Exact-preview mode is used by the interactive Download This action. Each
+  // preview page becomes one DOCX section/page, preserving the same wrapping,
+  // borders, images, whitespace, and continuation-page pagination as print.
+  const doc = previewImages?.length
+    ? new Document({
+        sections: previewImages.map(image => {
+          // ImageRun dimensions are pixels, not twips. 1050px is the usable
+          // width of an A4 landscape page at roughly 96dpi.
+          const width = 1050;
+          const height = Math.max(1, Math.round(width * image.height / image.width));
+          return {
+            properties: pageProperties,
+            children: [new Paragraph({
+              spacing: { before: 0, after: 0 },
+              children: [new ImageRun({ type: 'png', data: dataUrlBytes(image.dataUrl), transformation: { width, height } })],
+            })],
+          };
+        }),
+      })
+    : new Document({ sections: [{ properties: pageProperties, children: bodyChildren }] });
 
   return Packer.toBlob(doc);
 }

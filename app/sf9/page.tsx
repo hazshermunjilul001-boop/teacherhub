@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import html2canvas from 'html2canvas';
 import {
   ArrowLeft, Printer, RefreshCw, ChevronLeft, ChevronRight,
   GraduationCap, Users, Edit3, Save, X, Plus, Mail,
@@ -465,7 +466,16 @@ export default function SF9Page() {
     if (!current) return;
     setDownloadingId(current.student.id);
     try {
-      await downloadSF9Docx({ data: current, section: activeSection, frontPage, continuationPage, gaKeys });
+      const card = document.querySelector<HTMLElement>('[data-sf9-card="true"]');
+      const pageNodes = card ? Array.from(card.children).filter((node): node is HTMLElement =>
+        node instanceof HTMLElement && !node.classList.contains('no-print')
+      ) : [];
+      const nodes = pageNodes.length ? pageNodes : card ? [card] : [];
+      const previewImages = await Promise.all(nodes.map(async node => {
+        const canvas = await html2canvas(node, { backgroundColor: '#ffffff', scale: 2, useCORS: true });
+        return { dataUrl: canvas.toDataURL('image/png'), width: canvas.width, height: canvas.height };
+      }));
+      await downloadSF9Docx({ data: current, section: activeSection, frontPage, continuationPage, gaKeys, previewImages });
     } finally {
       setDownloadingId(null);
     }

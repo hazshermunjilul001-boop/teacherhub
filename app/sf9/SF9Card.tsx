@@ -200,7 +200,7 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
     data.attendance.reduce((s,a)=>s+((a as any)[key]||0),0);
 
   return (
-    <div className="sf9-card" style={{
+    <div className="sf9-card" data-sf9-card="true" style={{
       width:'278mm', margin:'0 auto', fontFamily:'Arial, sans-serif',
       fontSize:'9pt', color:'black', background:'white', boxSizing:'border-box' as const,
     }}>
