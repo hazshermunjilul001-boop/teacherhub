@@ -129,7 +129,7 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
     return (
       <>
         <tr key={row.key}>
-          <td style={{border:'1px solid black', padding:'2px 3px', fontWeight: isParentComputed ? 'bold' : undefined}}>
+          <td style={{border:'1px solid black', padding:'0.5px 3px', fontWeight: isParentComputed ? 'bold' : undefined}}>
             {row.label}
           </td>
           {cells.map((cell,i)=>gradeCell(cell,i))}
@@ -219,7 +219,7 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
 
         {/* ── LEFT: Header / Student Info / Learning Progress ── */}
         <div style={{ width: HALF_W, flexShrink:0, borderRight:'1px solid black', padding:'4mm 5mm', fontSize:'8pt', boxSizing:'border-box' as const }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'3mm', marginBottom:'2mm' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'2.5mm', marginBottom:'1mm' }}>
             <img src="/depedseal.webp" alt="DepEd Seal" style={{width:'14mm', height:'14mm', objectFit:'contain', flexShrink:0}}/>
             <div style={{textAlign:'center', flex:1}}>
               <div style={{fontSize:'7.5pt'}}>Republic of the Philippines</div>
@@ -244,17 +244,17 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
             <img src="/depedlogo.webp" alt="School Logo" style={{width:'14mm', height:'14mm', objectFit:'contain', flexShrink:0}}/>
           </div>
 
-          <div style={{textAlign:'center', fontWeight:'bold', fontSize:'10.5pt', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'1mm'}}>
+          <div style={{textAlign:'center', fontWeight:'bold', fontSize:'10pt', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'0.5mm'}}>
             Learner&apos;s Performance Report
           </div>
-          <div style={{textAlign:'center', fontSize:'7.5pt', marginBottom:'2mm'}}>
+          <div style={{textAlign:'center', fontSize:'7pt', marginBottom:'1mm'}}>
             School Year {section?.school_year ?? ''}
           </div>
 
           {/* Compact 2-3 line student info. Both rows share the exact same
               grid-column widths so Age lines up with Grade, and Sex lines
               up with Section, instead of drifting per row. */}
-          <div style={{fontSize:'8pt', marginBottom:'2mm'}}>
+          <div style={{fontSize:'8pt', marginBottom:'1mm'}}>
             <div style={{display:'grid', gridTemplateColumns:'34px 1fr 30px 46px 34px 60px', alignItems:'end', columnGap:'2mm', marginBottom:'1mm'}}>
               <span style={{fontWeight:'bold', whiteSpace:'nowrap'}}>Name:</span>
               <div style={{borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px'}}>
@@ -283,7 +283,7 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
             )}
           </div>
 
-          <div style={{fontSize:'7pt', lineHeight:'1.3', marginBottom:'1.5mm'}}>
+          <div style={{fontSize:'6.5pt', lineHeight:'1.15', marginBottom:'0.5mm'}}>
             <p>Dear Parents,</p>
             <p>
               This Performance Report presents your child&apos;s progress and achievement in the different learning areas.
@@ -291,12 +291,12 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
             </p>
           </div>
 
-          <div style={{display:'flex', justifyContent:'space-between', gap:'4mm', marginBottom:'2mm'}}>
-            <SigLine name={schoolHead} title="School Head" marginTop="2mm"/>
-            <SigLine name={adviserName} title="Adviser" marginTop="2mm"/>
+          <div style={{display:'flex', justifyContent:'space-between', gap:'4mm', marginBottom:'1mm'}}>
+            <SigLine name={schoolHead} title="School Head" marginTop="1mm"/>
+            <SigLine name={adviserName} title="Adviser" marginTop="1mm"/>
           </div>
 
-          <div style={{fontWeight:'bold', textAlign:'center', marginBottom:'1.5mm', fontSize:'8.5pt'}}>
+          <div style={{fontWeight:'bold', textAlign:'center', marginBottom:'1mm', fontSize:'8pt'}}>
             LEARNING PROGRESS AND ACHIEVEMENT
           </div>
           <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8pt'}}>
@@ -309,8 +309,8 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
 
           {/* Performance Descriptors — plain columns, no grid lines, matching
               the official form's borderless layout (Grading Scale first). */}
-          <div style={{marginTop:'3mm', fontSize:'7pt'}}>
-            <div style={{fontWeight:'bold', marginBottom:'1mm'}}>PERFORMANCE DESCRIPTORS</div>
+          <div style={{marginTop:'1.5mm', fontSize:'6.5pt'}}>
+            <div style={{fontWeight:'bold', marginBottom:'0.5mm'}}>PERFORMANCE DESCRIPTORS</div>
             <table style={{width:'100%', borderCollapse:'collapse'}}>
               <thead>
                 <tr>
