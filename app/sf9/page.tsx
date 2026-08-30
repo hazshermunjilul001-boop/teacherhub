@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import html2canvas from 'html2canvas';
+
 import {
   ArrowLeft, Printer, RefreshCw, ChevronLeft, ChevronRight,
   GraduationCap, Users, Edit3, Save, X, Plus, Mail,
@@ -466,16 +466,7 @@ export default function SF9Page() {
     if (!current) return;
     setDownloadingId(current.student.id);
     try {
-      const card = document.querySelector<HTMLElement>('[data-sf9-card="true"]');
-      const pageNodes = card ? Array.from(card.children).filter((node): node is HTMLElement =>
-        node instanceof HTMLElement && !node.classList.contains('no-print')
-      ) : [];
-      const nodes = pageNodes.length ? pageNodes : card ? [card] : [];
-      const previewImages = await Promise.all(nodes.map(async node => {
-        const canvas = await html2canvas(node, { backgroundColor: '#ffffff', scale: 2, useCORS: true });
-        return { dataUrl: canvas.toDataURL('image/png'), width: canvas.width, height: canvas.height };
-      }));
-      await downloadSF9Docx({ data: current, section: activeSection, frontPage, continuationPage, gaKeys, previewImages });
+      await downloadSF9Docx({ data: current, section: activeSection, frontPage, continuationPage, gaKeys });
     } finally {
       setDownloadingId(null);
     }
@@ -501,7 +492,7 @@ export default function SF9Page() {
           .no-print { display: none !important; }
           body { background: white !important; margin: 0; }
           @page { size: A4 landscape; margin: 6mm; }
-          .sf9-card { page-break-after: always; }
+          .sf9-card { width: 278mm; height: 190mm; max-height: 190mm; overflow: hidden; page-break-after: always; }
           .sf9-card:last-child { page-break-after: auto; }
         }
       `}</style>

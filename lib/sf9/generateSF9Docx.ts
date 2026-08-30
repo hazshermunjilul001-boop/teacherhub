@@ -22,7 +22,7 @@
 import {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
   WidthType, AlignmentType, BorderStyle, ShadingType, HeadingLevel,
-  PageOrientation, VerticalAlign, PageBreak, ImageRun,
+  PageOrientation, VerticalAlign, PageBreak,
 } from 'docx';
 import JSZip from 'jszip';
 import type { SF9SubjectRow } from '../../lib/sf9/sf9GradeBands';
@@ -68,18 +68,33 @@ function computedRowTermValues(row: SF9SubjectRow, data: LearnerSF9): number[] {
   });
 }
 
-function buildGradesTable(rows: SF9SubjectRow[], data: LearnerSF9, width: number, gaKeys: string[]): Table {
+function buildGradesTable(rows: SF9SubjectRow[], data: LearnerSF9, width: number, gaKeys: string[], grade2 = false): Table {
   const colW = [
     Math.round(width*0.34), Math.round(width*0.12), Math.round(width*0.12),
     Math.round(width*0.12), Math.round(width*0.14), Math.round(width*0.16),
   ];
 
-  const headerRow = new TableRow({
-    tableHeader: true,
-    children: ['Learning Areas','T1','T2','T3','Final Grade','Remarks'].map((h,i)=>
-      cell([p(h,{bold:true,size:14,align:AlignmentType.CENTER})], { width:{size:colW[i],type:WidthType.DXA}, shading: HEADER_SHADING })
-    ),
-  });
+  const headerRows = grade2
+    ? [
+        new TableRow({ tableHeader: true, children: [
+          cell([p('Learning Areas',{bold:true,size:12,align:AlignmentType.CENTER})], { width:{size:colW[0],type:WidthType.DXA}, shading:HEADER_SHADING }),
+          cell([p('TERM',{bold:true,size:12,align:AlignmentType.CENTER})], { columnSpan:3, width:{size:colW[1]+colW[2]+colW[3],type:WidthType.DXA}, shading:HEADER_SHADING }),
+          cell([p('Final\nGrade',{bold:true,size:11,align:AlignmentType.CENTER})], { width:{size:colW[4],type:WidthType.DXA}, shading:HEADER_SHADING }),
+          cell([p('Remarks',{bold:true,size:12,align:AlignmentType.CENTER})], { width:{size:colW[5],type:WidthType.DXA}, shading:HEADER_SHADING }),
+        ]}),
+        new TableRow({ children: [
+          cell([p('',{size:10})], { width:{size:colW[0],type:WidthType.DXA}, shading:HEADER_SHADING }),
+          ...['T1','T2','T3'].map((h,i)=>cell([p(h,{bold:true,size:11,align:AlignmentType.CENTER})], { width:{size:colW[i+1],type:WidthType.DXA}, shading:HEADER_SHADING })),
+          cell([p('',{size:10})], { width:{size:colW[4],type:WidthType.DXA}, shading:HEADER_SHADING }),
+          cell([p('',{size:10})], { width:{size:colW[5],type:WidthType.DXA}, shading:HEADER_SHADING }),
+        ]}),
+      ]
+    : [new TableRow({
+        tableHeader: true,
+        children: ['Learning Areas','T1','T2','T3','Final Grade','Remarks'].map((h,i)=>
+          cell([p(h,{bold:true,size:14,align:AlignmentType.CENTER})], { width:{size:colW[i],type:WidthType.DXA}, shading: HEADER_SHADING })
+        ),
+      })];
 
   const dataRows: TableRow[] = [];
   rows.forEach(row => {
@@ -118,7 +133,7 @@ function buildGradesTable(rows: SF9SubjectRow[], data: LearnerSF9, width: number
     cell([p(remarkText,{bold:true,align:AlignmentType.CENTER,size:11})], { width:{size:colW[5],type:WidthType.DXA} }),
   ]}));
 
-  return new Table({ width:{size:width,type:WidthType.DXA}, columnWidths: colW, rows: [headerRow, ...dataRows] });
+  return new Table({ width:{size:width,type:WidthType.DXA}, columnWidths: colW, rows: [...headerRows, ...dataRows] });
 }
 
 function buildDescriptorLegend(width: number): Table {
@@ -194,32 +209,15 @@ function fieldRow(label: string, value: string, labelW=1600): TableRow {
 
 // ─────────────────────────────────────────────────────────────────────────
 
-export interface SF9PreviewImage {
-  dataUrl: string;
-  width: number;
-  height: number;
-}
-
 export interface SF9DocxParams {
   data: LearnerSF9;
   section: any;                 // sections row — includes Phase 1 fields
   frontPage: SF9SubjectRow[];
   continuationPage: SF9SubjectRow[];
   gaKeys: string[];
-  /** PNG snapshots of the exact visible preview pages. When present, these are
-   * embedded directly so DOCX output and browser print use one source of truth. */
-  previewImages?: SF9PreviewImage[];
 }
 
-function dataUrlBytes(dataUrl: string): Uint8Array {
-  const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes;
-}
-
-export async function buildSF9Docx({ data, section, frontPage, continuationPage, gaKeys, previewImages }: SF9DocxParams): Promise<Blob> {
+export async function buildSF9Docx({ data, section, frontPage, continuationPage, gaKeys }: SF9DocxParams): Promise<Blob> {
   const nameParts = data.student.full_name.split(',').map(s=>s.trim());
   const lastName = nameParts[0] ?? '';
   const firstMiddle = nameParts.slice(1).join(', ');
@@ -263,7 +261,7 @@ export async function buildSF9Docx({ data, section, frontPage, continuationPage,
     }),
     new Paragraph({ text: '' }),
     p('LEARNING PROGRESS AND ACHIEVEMENT', { align: AlignmentType.CENTER, bold: true, size: 15 }),
-    buildGradesTable(frontPage, data, LEFT_W, gaKeys),
+    buildGradesTable(frontPage, data, LEFT_W, gaKeys, Number(section?.grade_number) <= 3),
     new Paragraph({ text: '' }),
     buildDescriptorLegend(LEFT_W),
   ];
@@ -314,7 +312,7 @@ export async function buildSF9Docx({ data, section, frontPage, continuationPage,
       width:{size:USABLE_W,type:WidthType.DXA}, columnWidths:[Math.round((USABLE_W-continuationWidth)/2), continuationWidth, Math.round((USABLE_W-continuationWidth)/2)],
       rows:[new TableRow({ children:[
         cell([p('')],{borders:NO_BORDERS,width:{size:Math.round((USABLE_W-continuationWidth)/2),type:WidthType.DXA}}),
-        cell([buildGradesTable(continuationPage, data, continuationWidth, gaKeys) as any],{borders:NO_BORDERS,width:{size:continuationWidth,type:WidthType.DXA}}),
+        cell([        buildGradesTable(continuationPage, data, continuationWidth, gaKeys, Number(section?.grade_number) <= 3) as any],{borders:NO_BORDERS,width:{size:continuationWidth,type:WidthType.DXA}}),
         cell([p('')],{borders:NO_BORDERS,width:{size:Math.round((USABLE_W-continuationWidth)/2),type:WidthType.DXA}}),
       ]})]
     }));
@@ -327,26 +325,9 @@ export async function buildSF9Docx({ data, section, frontPage, continuationPage,
     },
   };
 
-  // Exact-preview mode is used by the interactive Download This action. Each
-  // preview page becomes one DOCX section/page, preserving the same wrapping,
-  // borders, images, whitespace, and continuation-page pagination as print.
-  const doc = previewImages?.length
-    ? new Document({
-        sections: previewImages.map(image => {
-          // ImageRun dimensions are pixels, not twips. 1050px is the usable
-          // width of an A4 landscape page at roughly 96dpi.
-          const width = 1050;
-          const height = Math.max(1, Math.round(width * image.height / image.width));
-          return {
-            properties: pageProperties,
-            children: [new Paragraph({
-              spacing: { before: 0, after: 0 },
-              children: [new ImageRun({ type: 'png', data: dataUrlBytes(image.dataUrl), transformation: { width, height } })],
-            })],
-          };
-        }),
-      })
-    : new Document({ sections: [{ properties: pageProperties, children: bodyChildren }] });
+  // The export is intentionally built only from editable DOCX paragraphs and
+  // tables. It never embeds a screenshot of the preview.
+  const doc = new Document({ sections: [{ properties: pageProperties, children: bodyChildren }] });
 
   return Packer.toBlob(doc);
 }
