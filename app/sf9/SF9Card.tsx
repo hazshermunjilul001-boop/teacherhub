@@ -107,12 +107,12 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
   const SigLine = ({ name, title, marginTop='6mm' }: { name:string; title:string; marginTop?:string }) => (
     <div style={{textAlign:'center', marginTop}}>
       <div style={{
-        borderTop:'1px solid black', paddingTop:'2px', fontSize:'7.5pt',
-        whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
-        maxWidth:'100%', fontWeight:'bold',
+        fontSize:'7.5pt', whiteSpace:'nowrap', overflow:'hidden',
+        textOverflow:'ellipsis', maxWidth:'100%', fontWeight:'bold',
       }}>
         {name || '\u00a0'}
       </div>
+      <div style={{borderTop:'1px solid black', marginTop:'1px'}}></div>
       <div style={{fontSize:'7pt', fontStyle:'italic', marginTop:'1px'}}>{title}</div>
     </div>
   );
@@ -223,19 +223,20 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
             <img src="/depedseal.webp" alt="DepEd Seal" style={{width:'14mm', height:'14mm', objectFit:'contain', flexShrink:0}}/>
             <div style={{textAlign:'center', flex:1}}>
               <div style={{fontSize:'7.5pt'}}>Republic of the Philippines</div>
-              <div style={{fontWeight:'bold', fontSize:'9pt'}}>DEPARTMENT OF EDUCATION</div>
-              <div style={{fontSize:'7.5pt'}}>
-                {section?.region ?? 'Region XI'} &mdash; {section?.division ?? ''}
+              <div style={{fontWeight:'bold', fontSize:'9pt'}}>Department of Education</div>
+              <div style={{fontSize:'7.5pt', marginTop:'1mm'}}>{section?.region ?? ''}</div>
+              <div style={{fontWeight:'bold', fontSize:'8pt'}}>
+                SCHOOLS DIVISION OF {(section?.division ?? '').toString().toUpperCase()}
               </div>
               {section?.header_scope_name && (
                 <div style={{fontSize:'7pt'}}>{section.header_scope_name}</div>
               )}
-              <div style={{ fontWeight:'bold', textDecoration:'underline', fontSize:'9.5pt', marginTop:'1mm', textTransform:'uppercase' }}>
-                {section?.school_name ?? ''}
-              </div>
               {section?.school_address && (
                 <div style={{fontSize:'7pt'}}>{section.school_address}</div>
               )}
+              <div style={{ fontWeight:'bold', textDecoration:'underline', fontSize:'9.5pt', marginTop:'1mm', textTransform:'uppercase' }}>
+                {section?.school_name ?? ''}
+              </div>
               {section?.school_id && (
                 <div style={{fontSize:'6.5pt', color:'#555'}}>School ID: {section.school_id}</div>
               )}
@@ -250,25 +251,27 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
             School Year {section?.school_year ?? ''}
           </div>
 
-          {/* Compact 2-3 line student info, matching the official form's field arrangement */}
+          {/* Compact 2-3 line student info. Both rows share the exact same
+              grid-column widths so Age lines up with Grade, and Sex lines
+              up with Section, instead of drifting per row. */}
           <div style={{fontSize:'8pt', marginBottom:'2mm'}}>
-            <div style={{display:'flex', alignItems:'flex-end', gap:'2mm', marginBottom:'1mm'}}>
+            <div style={{display:'grid', gridTemplateColumns:'34px 1fr 30px 46px 34px 60px', alignItems:'end', columnGap:'2mm', marginBottom:'1mm'}}>
               <span style={{fontWeight:'bold', whiteSpace:'nowrap'}}>Name:</span>
-              <div style={{flex:1, borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px'}}>
+              <div style={{borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px'}}>
                 {lastName}, {firstName} {middleName}
               </div>
-              <span style={{fontWeight:'bold', whiteSpace:'nowrap', marginLeft:'2mm'}}>Age:</span>
-              <div style={{width:'20px', borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px'}}>{studentAge ?? ''}</div>
-              <span style={{fontWeight:'bold', whiteSpace:'nowrap', marginLeft:'2mm'}}>Sex:</span>
-              <div style={{width:'40px', borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px'}}>{data.student.sex==='M'?'Male':'Female'}</div>
+              <span style={{fontWeight:'bold', whiteSpace:'nowrap'}}>Age:</span>
+              <div style={{borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px'}}>{studentAge ?? ''}</div>
+              <span style={{fontWeight:'bold', whiteSpace:'nowrap'}}>Sex:</span>
+              <div style={{borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px'}}>{data.student.sex==='M'?'Male':'Female'}</div>
             </div>
-            <div style={{display:'flex', alignItems:'flex-end', gap:'2mm', marginBottom: section?.shs_track ? '1mm' : 0}}>
+            <div style={{display:'grid', gridTemplateColumns:'34px 1fr 30px 46px 34px 60px', alignItems:'end', columnGap:'2mm', marginBottom: section?.shs_track ? '1mm' : 0}}>
               <span style={{fontWeight:'bold', whiteSpace:'nowrap'}}>LRN:</span>
-              <div style={{flex:1, borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px'}}>{data.student.lrn}</div>
-              <span style={{fontWeight:'bold', whiteSpace:'nowrap', marginLeft:'2mm'}}>Grade:</span>
-              <div style={{width:'40px', borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px'}}>{section?.grade_level??''}</div>
-              <span style={{fontWeight:'bold', whiteSpace:'nowrap', marginLeft:'2mm'}}>Section:</span>
-              <div style={{width:'60px', borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px'}}>{section?.name??''}</div>
+              <div style={{borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px'}}>{data.student.lrn}</div>
+              <span style={{fontWeight:'bold', whiteSpace:'nowrap'}}>Grade:</span>
+              <div style={{borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px'}}>{section?.grade_number ?? ''}</div>
+              <span style={{fontWeight:'bold', whiteSpace:'nowrap'}}>Section:</span>
+              <div style={{borderBottom:'1px solid black', textAlign:'center', fontWeight:'bold', paddingBottom:'1px'}}>{section?.name??''}</div>
             </div>
             {section?.shs_track && (
               <div style={{display:'flex', alignItems:'flex-end', gap:'2mm'}}>
@@ -370,7 +373,7 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
           <div style={{fontWeight:'bold', marginBottom:'2mm', fontSize:'8pt'}}>TEACHER&apos;S COMMENTS / REMARKS</div>
           <div style={{display:'flex', flexDirection:'column', gap:'2mm', marginBottom:'4mm'}}>
             {['Term 1','Term 2','Term 3'].map(t=>(
-              <div key={t} style={{border:'1px solid black', minHeight:'12mm', padding:'2px 4px'}}>
+              <div key={t} style={{border:'1px solid black', minHeight:'9mm', padding:'2px 4px'}}>
                 <span style={{fontSize:'7.5pt', fontWeight:'bold'}}>{t}:</span>
               </div>
             ))}
@@ -380,7 +383,7 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
             PARENT/S GUARDIAN&apos;S SIGNATURE
           </div>
           {['Term 1','Term 2','Term 3'].map(t=>(
-            <div key={t} style={{display:'flex', alignItems:'flex-end', marginBottom:'5mm', gap:'2mm'}}>
+            <div key={t} style={{display:'flex', alignItems:'flex-end', marginBottom:'4mm', gap:'2mm'}}>
               <span style={{fontSize:'7.5pt', whiteSpace:'nowrap', minWidth:'50px'}}>{t}</span>
               <div style={{flex:1, borderBottom:'1px solid black', marginBottom:'1px'}}></div>
             </div>
@@ -391,32 +394,32 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
             <p style={{fontSize:'7pt', marginBottom:'2mm'}}>
               This is to certify that the above-named learner has satisfactorily completed the requirements for the grade level indicated.
             </p>
-            <div style={{marginBottom:'2mm'}}>Admitted to Grade: ______________</div>
-            <div style={{marginBottom:'4mm'}}>Eligible for Admission to Grade: ______________</div>
+            <div style={{marginBottom:'1.5mm'}}>Admitted to Grade: ______________</div>
+            <div style={{marginBottom:'3mm'}}>Eligible for Admission to Grade: ______________</div>
 
-            <div style={{display:'flex', alignItems:'flex-end', gap:'2mm', marginBottom:'6mm'}}>
+            <div style={{display:'flex', alignItems:'flex-end', gap:'2mm', marginBottom:'4mm'}}>
               <span style={{whiteSpace:'nowrap'}}>Approved:</span>
               <div style={{flex:1}}>
-                <div style={{borderBottom:'1px solid black', minHeight:'4mm'}}></div>
+                <div style={{borderBottom:'1px solid black', minHeight:'3mm'}}></div>
                 <div style={{textAlign:'center', fontStyle:'italic', fontSize:'7pt', marginTop:'1px'}}>Adviser</div>
               </div>
             </div>
             <div style={{width:'55%'}}>
-              <div style={{borderBottom:'1px solid black', minHeight:'4mm'}}></div>
+              <div style={{borderBottom:'1px solid black', minHeight:'3mm'}}></div>
               <div style={{textAlign:'center', fontStyle:'italic', fontSize:'7pt', marginTop:'1px'}}>School Head</div>
             </div>
 
-            <div style={{fontWeight:'bold', textAlign:'center', margin:'5mm 0 3mm', fontSize:'8pt'}}>
+            <div style={{fontWeight:'bold', textAlign:'center', margin:'3.5mm 0 2mm', fontSize:'8pt'}}>
               CANCELLATION OF ELIGIBILITY TO TRANSFER
             </div>
-            <div style={{display:'flex', gap:'4mm', marginBottom:'6mm'}}>
+            <div style={{display:'flex', gap:'4mm', marginBottom:'4mm'}}>
               <span style={{whiteSpace:'nowrap'}}>Admitted in:</span>
               <div style={{flex:1, borderBottom:'1px solid black'}}></div>
               <span style={{whiteSpace:'nowrap'}}>Date:</span>
               <div style={{width:'25mm', borderBottom:'1px solid black'}}></div>
             </div>
             <div style={{width:'55%'}}>
-              <div style={{borderBottom:'1px solid black', minHeight:'4mm'}}></div>
+              <div style={{borderBottom:'1px solid black', minHeight:'3mm'}}></div>
               <div style={{textAlign:'center', fontStyle:'italic', fontSize:'7pt', marginTop:'1px'}}>School Head</div>
             </div>
           </div>
@@ -436,7 +439,7 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
             </div>
             <div style={{fontSize:'7.5pt', marginTop:'1mm'}}>
               {lastName}, {firstName} {middleName} &nbsp;|&nbsp; LRN: {data.student.lrn} &nbsp;|&nbsp;
-              Grade {section?.grade_level ?? ''} &ndash; {section?.name ?? ''}
+              Grade {section?.grade_number ?? ''} &ndash; {section?.name ?? ''}
             </div>
           </div>
           <table style={{width:'60%', margin:'0 auto', borderCollapse:'collapse', fontSize:'8pt'}}>
