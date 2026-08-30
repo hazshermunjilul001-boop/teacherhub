@@ -937,8 +937,13 @@ function EditSectionModal({
 
   const save = async () => {
     setSaving(true);
+    const parsedGrade = parseInt(form.grade_level.match(/\d+/)?.[0] ?? '', 10);
+    const updatePayload = {
+      ...form,
+      grade_number: Number.isFinite(parsedGrade) ? parsedGrade : section.grade_number,
+    };
     const { data, error } = await supabase
-      .from('sections').update(form).eq('id', section.id).select().single();
+      .from('sections').update(updatePayload).eq('id', section.id).select().single();
     if (!error && data) { onUpdated(data); onClose(); }
     else alert('Error: ' + error?.message);
     setSaving(false);

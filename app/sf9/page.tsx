@@ -118,12 +118,32 @@ function ManualGradePanel({
       });
     });
 
+    // Reconcile the complete edit set: remove existing rows for these learners
+    // and subjects first, so clearing a field really removes its stored grade.
+    const studentIds = students.map(student => student.id);
+    const subjectKeys = subjects.map(subject => subject.key);
+    const { error: deleteError } = await supabase
+      .from('manual_grades')
+      .delete()
+      .eq('section_id', sectionId)
+      .in('student_id', studentIds)
+      .in('subject', subjectKeys);
+    if (deleteError) {
+      setSaving(false);
+      alert('Error clearing previous manual grades: ' + deleteError.message);
+      return;
+    }
     if (rows.length > 0) {
       for (let i = 0; i < rows.length; i += 50) {
-        await supabase.from('manual_grades').upsert(
+        const { error: upsertError } = await supabase.from('manual_grades').upsert(
           rows.slice(i, i+50),
           { onConflict: 'section_id,student_id,subject,term' }
         );
+        if (upsertError) {
+          setSaving(false);
+          alert('Error saving manual grades: ' + upsertError.message);
+          return;
+        }
       }
     }
     setSaving(false);
@@ -440,8 +460,13 @@ export default function SF9Page() {
   // actual integer field on Section, exposed by useActiveSection as gradeNumber.
   const { sectionId, sectionName, gradeLevel, gradeNumber, schoolYear, activeSection } = sectionCtx;
 
-  const numericGradeLevel = Number(gradeNumber) || 0;
-  const sectionExtra = activeSection as any; // Phase 1 columns not yet in the Section type — see note below
+  // Prefer the editable Grade Level text because older section rows may have a
+  // stale grade_number left over from before Manage Section persisted it.
+  const numericGradeLevel = Number(gradeLevel.match(/\d+/)?.[0]) || Number(gradeNumber) || 0;
+  const effectiveSection = activeSection
+    ? { ...activeSection, grade_number: numericGradeLevel, grade_level: gradeLevel }
+    : activeSection;
+  const sectionExtra = effectiveSection as any; // Phase 1 columns not yet in the Section type — see note below
   const shsTrack: SHSTrack | null = (sectionExtra?.shs_track as SHSTrack) ?? null;
   const electiveSubjectNames: string[] = sectionExtra?.elective_subjects ?? [];
 
@@ -466,7 +491,7 @@ export default function SF9Page() {
     if (!current) return;
     setDownloadingId(current.student.id);
     try {
-      await downloadSF9Docx({ data: current, section: activeSection, frontPage, continuationPage, gaKeys });
+      await downloadSF9Docx({ data: current, section: effectiveSection, frontPage, continuationPage, gaKeys });
     } finally {
       setDownloadingId(null);
     }
@@ -477,7 +502,7 @@ export default function SF9Page() {
     setBulkProgress({ done: 0, total: sf9Data.length });
     try {
       await downloadAllSF9Docx({
-        allData: sf9Data, section: activeSection, frontPage, continuationPage, gaKeys,
+        allData: sf9Data, section: effectiveSection, frontPage, continuationPage, gaKeys,
         onProgress: (done, total) => setBulkProgress({ done, total }),
       });
     } finally {
@@ -654,7 +679,7 @@ export default function SF9Page() {
               {/* Preview */}
               {current && (
                 <div className="bg-white rounded-2xl shadow-2xl overflow-auto">
-                  <SF9Card data={current} section={activeSection} frontPage={frontPage} continuationPage={continuationPage}/>
+                  <SF9Card data={current} section={effectiveSection} frontPage={frontPage} continuationPage={continuationPage}/>
                 </div>
               )}
             </div>
@@ -663,9 +688,9 @@ export default function SF9Page() {
             <div className="hidden print:block">
               {printAll
                 ? sf9Data.map(d=>
-                    <SF9Card key={d.student.id} data={d} section={activeSection} frontPage={frontPage} continuationPage={continuationPage}/>
+                    <SF9Card key={d.student.id} data={d} section={effectiveSection} frontPage={frontPage} continuationPage={continuationPage}/>
                   )
-                : current && <SF9Card data={current} section={activeSection} frontPage={frontPage} continuationPage={continuationPage}/>
+                : current && <SF9Card data={current} section={effectiveSection} frontPage={frontPage} continuationPage={continuationPage}/>
               }
             </div>
           </>
@@ -691,7 +716,7 @@ export default function SF9Page() {
       )}
       {showSettings && (
         <SectionSF9Settings
-          sectionId={sectionId}
+sectionId={sectionId}
           gradeLevel={numericGradeLevel}
           onClose={() => setShowSettings(false)}
           onSaved={() => { setDataVersion(v => v+1); sectionCtx.refreshSections?.(); }}
