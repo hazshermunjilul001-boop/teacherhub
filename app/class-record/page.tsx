@@ -1061,6 +1061,9 @@ function EClassRecordView({
   // Column count per learner row, matching the official layout: # + Name + WW(5+Total+PS+WS)
   // + PT(3+Total+PS+WS) + [EXs(3+3WS+PS+WS)] + Initial Grade + Term Grade + Descriptor
   const rowColCount = 2 + 8 + 6 + (hasTA ? 8 : 0) + 3;
+  const infoGradeCols = hasTA ? 6 : 4;
+  const infoTeacherCols = hasTA ? 10 : 6;
+  const infoSubjectCols = rowColCount - 2 - infoGradeCols - infoTeacherCols;
 
   const renderGroup = (group: Student[], label: string) => (
     <>
@@ -1106,39 +1109,16 @@ function EClassRecordView({
 
   const pageHeader = (
     <>
-      <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8px'}}>
-        <tbody>
-          <tr>
-            <td style={tdL}><strong>REGION:</strong> {region}</td>
-            <td style={tdL}><strong>DIVISION:</strong> {division}</td>
-            <td style={tdL}><strong>SCHOOL ID:</strong> {schoolId}</td>
-          </tr>
-          <tr>
-            <td colSpan={2} style={tdL}><strong>SCHOOL NAME:</strong> {schoolName}</td>
-            <td style={tdL}><strong>SCHOOL YEAR:</strong> {schoolYear}</td>
-          </tr>
-        </tbody>
-      </table>
-      <div style={{height:'3px', background:'#1e3a5f'}}/>
-      <table style={{width:'100%', borderCollapse:'collapse', marginBottom:'2px', fontSize:'8px'}}>
-        <tbody>
-          <tr>
-            <td rowSpan={2} style={{...td, textAlign:'left', verticalAlign:'middle', fontWeight:'bold', fontSize:'11px', width:'16%'}}>
-              {TERM_LABELS[currentTerm] ?? `TERM ${currentTerm}`}
-            </td>
-            <td style={tdL}><strong>GRADE LEVEL:</strong> {gradeLevel}</td>
-            <td rowSpan={2} style={{...td, textAlign:'left', verticalAlign:'middle'}}><strong>TEACHER:</strong><br/>{adviser?.toUpperCase()}</td>
-            <td rowSpan={2} style={{...td, textAlign:'left', verticalAlign:'middle'}}><strong>SUBJECT:</strong><br/>{subject}</td>
-          </tr>
-          <tr>
-            <td style={tdL}><strong>SECTION:</strong> {sectionName}</td>
-          </tr>
-        </tbody>
-      </table>
-      <div style={{fontSize:'7px', color:'#555', textAlign:'right', marginBottom:'2px'}}>
-        WEIGHTS: WW {(weights.ww*100).toFixed(0)}% | PT {(weights.pt*100).toFixed(0)}%
-        {hasTA ? ` | EXs ${((weights.ta??0)*100).toFixed(0)}%` : ''}
+      <div className="official-title">
+        <img src="/depedseal.webp" alt="DepEd seal" className="official-seal" />
+        <div className="official-title-text">CLASS RECORD - TERM {currentTerm}</div>
+        <img src="/depedlogo.webp" alt="Department of Education" className="official-wordmark" />
       </div>
+      <table className="official-meta"><tbody>
+        <tr><td><strong>REGION</strong><span>{region || ''}</span></td><td><strong>DIVISION</strong><span>{division || ''}</span></td><td><strong>SCHOOL ID</strong><span>{schoolId || ''}</span></td></tr>
+        <tr><td className="meta-wide" colSpan={2}><strong>SCHOOL NAME</strong><span>{schoolName || ''}</span></td><td><strong>SCHOOL YEAR</strong><span>{schoolYear || ''}</span></td></tr>
+      </tbody></table>
+      <div className="official-blue-rule" />
     </>
   );
 
@@ -1410,85 +1390,59 @@ function EClassRecordView({
         </div>
       </div>
 
-      <div className="eclass-print bg-white text-black p-4" style={{fontFamily:'Arial, sans-serif', minWidth:'1100px'}}>
-
-        {/* Title */}
-        <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'12px', marginBottom:'4px'}}>
-          <div style={{width:'34px', height:'34px', borderRadius:'50%', border:'2px solid #1e3a5f', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'6px', fontWeight:'bold', color:'#1e3a5f', textAlign:'center', lineHeight:1, flexShrink:0}}>
-            DepEd
-          </div>
-          <div>
-            <div style={{fontWeight:'bold', fontSize:'14px'}}>CLASS RECORD - {TERM_LABELS[currentTerm] ?? `TERM ${currentTerm}`}</div>
-            <div style={{fontSize:'8px', color:'#555'}}>{subject} &mdash; {schoolYear}</div>
-          </div>
-          <div style={{width:'34px', height:'34px', borderRadius:'50%', border:'2px solid #1e3a5f', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'6px', fontWeight:'bold', color:'#1e3a5f', textAlign:'center', lineHeight:1, flexShrink:0}}>
-            DepEd
-          </div>
-        </div>
+      <div className="eclass-print bg-white text-black">
         {pageHeader}
 
         {/* Class Record Table */}
-        <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8px', marginBottom:'8px'}}>
+        <table className="official-record-table">
+          <colgroup>
+            <col className="col-number" /><col className="col-name" />
+            {Array.from({length: 5}, (_, i) => <col key={`ww-${i}`} className="col-score" />)}<col className="col-total" /><col className="col-ps" /><col className="col-ws" />
+            {Array.from({length: 3}, (_, i) => <col key={`pt-${i}`} className="col-score" />)}<col className="col-total" /><col className="col-ps" /><col className="col-ws" />
+            {hasTA && <>{Array.from({length: 3}, (_, i) => <col key={`ex-${i}`} className="col-score" />)}{Array.from({length: 3}, (_, i) => <col key={`exws-${i}`} className="col-ws" />)}<col className="col-ps" /><col className="col-ws" /></>}
+            <col className="col-grade" /><col className="col-grade" /><col className="col-descriptor" />
+          </colgroup>
           <thead>
-            <tr>
-              <th style={th} rowSpan={3}>#</th>
-              <th style={{...th, textAlign:'left'}} rowSpan={3}>LEARNERS' NAMES</th>
-              <th style={th} colSpan={8}>WRITTEN / ORAL WORKS (WWs) &mdash; {(weights.ww*100).toFixed(0)}%</th>
-              <th style={th} colSpan={6}>PRODUCT / PERFORMANCE TASKS (PTs) &mdash; {(weights.pt*100).toFixed(0)}%</th>
-              {hasTA && <th style={th} colSpan={8}>EXAMINATIONS (EXs) &mdash; {((weights.ta??0)*100).toFixed(0)}%</th>}
-              <th style={{...th, background:'#f0fdf4'}} rowSpan={3}>Initial<br/>Grade</th>
-              <th style={th} rowSpan={3}>Term<br/>Grade</th>
-              <th style={th} rowSpan={3}>Descriptor</th>
+            <tr className="official-info-row">
+              <th colSpan={2} rowSpan={4} className="official-term-heading">{TERM_LABELS[currentTerm] ?? `TERM ${currentTerm}`}</th>
+              <th colSpan={infoGradeCols} className="official-field-heading"><strong>GRADE LEVEL</strong><span>{gradeLevel || ''}</span></th>
+              <th colSpan={infoTeacherCols} rowSpan={2} className="official-field-heading"><strong>TEACHER</strong><span>{adviser?.toUpperCase() || ''}</span></th>
+              <th colSpan={infoSubjectCols} rowSpan={2} className="official-field-heading"><strong>SUBJECT</strong><span>{subject || ''}</span></th>
             </tr>
-            <tr>
-              <th style={th} colSpan={5}>&nbsp;</th>
-              <th style={th}>Total</th>
-              <th style={{...th, background:'#dbeafe'}}>PS</th>
-              <th style={{...th, background:'#dbeafe'}}>WS</th>
-              <th style={th} colSpan={3}>&nbsp;</th>
-              <th style={th}>Total</th>
-              <th style={{...th, background:'#ede9fe'}}>PS</th>
-              <th style={{...th, background:'#ede9fe'}}>WS</th>
+            <tr className="official-info-row">
+              <th colSpan={infoGradeCols} className="official-field-heading"><strong>SECTION</strong><span>{sectionName || ''}</span></th>
+            </tr>
+            <tr className="official-group-row">
+              <th colSpan={8}>WRITTEN / ORAL WORKS (WWs)</th>
+              <th colSpan={6}>PRODUCT / PERFORMANCE<br/>TASKS (PTs)</th>
+              {hasTA && <th colSpan={8}>EXAMINATIONS (EXs)</th>}
+              <th rowSpan={3} className="official-grade-heading">Initial<br/>Grade</th>
+              <th rowSpan={3} className="official-grade-heading">Term<br/>Grade</th>
+              <th rowSpan={3} className="official-grade-heading">Descriptor</th>
+            </tr>
+            <tr className="official-subheader-row">
+              {highest.ww.map((v,i) => <th key={`ww-${i}`}>{i+1}</th>)}
+              <th>Total</th><th>PS</th><th>WS</th>
+              {highest.pt.map((v,i) => <th key={`pt-${i}`}>{i+1}</th>)}
+              <th>Total</th><th>PS</th><th>WS</th>
               {hasTA && <>
-                <th style={th}>ST1</th><th style={th}>ST2</th><th style={th}>TE</th>
-                <th style={th}>WS<br/>ST1</th><th style={th}>WS<br/>ST2</th><th style={th}>WS<br/>TE</th>
-                <th style={{...td, background:'#fef3c7', fontWeight:'bold'}}>PS</th>
-                <th style={{...td, background:'#fef3c7', fontWeight:'bold'}}>WS</th>
+                <th>ST1</th><th>ST2</th><th>TE</th>
+                <th>WS ST1</th><th>WS ST2</th><th>WS TE</th><th>PS</th><th>WS</th>
               </>}
             </tr>
-            <tr>
-              {highest.ww.map((v,i) => <th key={i} style={th}>{i+1}</th>)}
-              <th style={th}>&nbsp;</th><th style={th}>&nbsp;</th><th style={th}>&nbsp;</th>
-              {highest.pt.map((v,i) => <th key={i} style={th}>{i+1}</th>)}
-              <th style={th}>&nbsp;</th><th style={th}>&nbsp;</th><th style={th}>&nbsp;</th>
+            <tr className="official-hps-row">
+              <th colSpan={2}>HIGHEST POSSIBLE SCORE</th>
+              {highest.ww.map((v,i) => <th key={`hww-${i}`}>{v}</th>)}
+              <th>{highest.ww.reduce((a,b)=>a+b,0)}</th><th>100</th><th>{(weights.ww*100).toFixed(0)}%</th>
+              {highest.pt.map((v,i) => <th key={`hpt-${i}`}>{v}</th>)}
+              <th>{highest.pt.reduce((a,b)=>a+b,0)}</th><th>100</th><th>{(weights.pt*100).toFixed(0)}%</th>
               {hasTA && <>
-                <th style={th}>&nbsp;</th><th style={th}>&nbsp;</th><th style={th}>&nbsp;</th>
-                <th style={th}>&nbsp;</th><th style={th}>&nbsp;</th><th style={th}>&nbsp;</th>
-                <th style={th}>&nbsp;</th><th style={th}>&nbsp;</th>
+                <th>{highest.st[0]}</th><th>{highest.st[1]}</th><th>{highest.te}</th>
+                <th>30</th><th>30</th><th>40</th><th>100</th><th>{((weights.ta??0)*100).toFixed(0)}%</th>
               </>}
             </tr>
           </thead>
           <tbody>
-            <tr style={{background:'#f3f4f6'}}>
-              <td colSpan={2} style={{...td, textAlign:'left', fontWeight:'bold'}}>HIGHEST POSSIBLE SCORE</td>
-              {highest.ww.map((v,i) => <td key={i} style={td}>{v}</td>)}
-              <td style={td}>{highest.ww.reduce((a,b)=>a+b,0)}</td>
-              <td style={{...td, background:'#dbeafe'}}>100</td>
-              <td style={{...td, background:'#dbeafe'}}>{(weights.ww*100).toFixed(0)}%</td>
-              {highest.pt.map((v,i) => <td key={i} style={td}>{v}</td>)}
-              <td style={td}>{highest.pt.reduce((a,b)=>a+b,0)}</td>
-              <td style={{...td, background:'#ede9fe'}}>100</td>
-              <td style={{...td, background:'#ede9fe'}}>{(weights.pt*100).toFixed(0)}%</td>
-              {hasTA && <>
-                <td style={td}>{highest.st[0]}</td><td style={td}>{highest.st[1]}</td><td style={td}>{highest.te}</td>
-                <td style={td}>30</td><td style={td}>30</td><td style={td}>40</td>
-                <td style={{...td, background:'#fef3c7'}}>100</td>
-                <td style={{...td, background:'#fef3c7'}}>{((weights.ta??0)*100).toFixed(0)}%</td>
-              </>}
-              <td style={{...td, background:'#f0fdf4'}}>&nbsp;</td>
-              <td style={td}>&nbsp;</td>
-              <td style={td}>&nbsp;</td>
-            </tr>
             <tr>
               <td colSpan={rowColCount} style={{...td, background:'#1e3a5f', color:'white', fontWeight:'bold', textAlign:'left'}}>
                 LEARNERS' NAMES
@@ -1637,20 +1591,59 @@ function EClassRecordView({
       </div>
 
       <style>{`
+        .official-title { height: 25mm; display: grid; grid-template-columns: 30mm 1fr 38mm; align-items: center; column-gap: 3mm; }
+        .official-seal { width: 25mm; height: 25mm; object-fit: contain; justify-self: start; }
+        .official-wordmark { width: 34mm; height: 25mm; object-fit: contain; justify-self: end; }
+        .official-title-text { text-align: center; font-size: 14px; font-weight: 700; }
+        .official-meta, .official-submeta { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 8px; }
+        .official-meta { width: 72%; margin: 0 auto; }
+        .official-meta td, .official-submeta td { border: 1px solid #777; height: 6mm; padding: 0 2mm; white-space: nowrap; }
+        .official-meta td { width: 33.333%; }
+        .official-meta strong, .official-submeta strong { display: inline-block; min-width: 23mm; font-size: 7px; }
+        .official-meta span, .official-submeta span { display: inline-block; border-bottom: 1px solid #333; min-width: 18mm; text-align: center; }
+        .official-blue-rule { height: 3px; background: #102c66; margin-top: 3mm; }
+        .official-submeta { margin-top: 0; }
+        .official-submeta td { height: 7mm; vertical-align: middle; }
+        .official-submeta .official-term { width: 22%; text-align: center; font-size: 12px; font-weight: 700; }
+        .official-record-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 7px; margin-top: 0; }
+        .official-record-table th, .official-record-table td { border: 1px solid #111; padding: 0; height: 3.9mm; line-height: 1; text-align: center; overflow: hidden; }
+        .official-record-table th { background: #f1f1f1; font-weight: 700; }
+        .official-record-table .official-info-row th { height: 6mm; background: #f1f1f1; }
+        .official-record-table .official-term-heading { background: #f1f1f1; font-size: 12px; text-align: center; vertical-align: middle; }
+        .official-record-table .official-field-heading { padding: 0 1mm; text-align: left; font-weight: 400; }
+        .official-record-table .official-field-heading strong { display: inline-block; min-width: 20mm; font-size: 7px; }
+        .official-record-table .official-field-heading span { display: inline-block; min-width: 20mm; border-bottom: 1px solid #222; text-align: center; font-size: 8px; }
+        .official-record-table .official-group-row th { height: 7mm; background: #f1f1f1; font-size: 7px; vertical-align: middle; }
+        .official-record-table .official-subheader-row th { height: 4.5mm; background: #f1f1f1; font-size: 7px; white-space: nowrap; }
+        .official-record-table .official-hps-row th { height: 4.5mm; background: #f1f1f1; font-size: 7px; }
+        .official-record-table .official-hps-row th:first-child { text-align: right; font-style: italic; }
+        .official-record-table .official-grade-heading { background: #f1f1f1; font-size: 7px; }
+        .official-record-table .official-group-row th:nth-child(2), .official-record-table .official-subheader-row th:nth-child(9), .official-record-table .official-hps-row th:nth-child(10) { border-left-width: 2px; }
+        .official-record-table .official-group-row th { border-top: 2px solid #111; }
+        .official-record-table .official-hps-row th { border-bottom: 2px solid #111; }
+        .official-record-table .col-number { width: 5mm; }
+        .official-record-table .col-name { width: 55mm; }
+        .official-record-table .col-score { width: 5.2mm; }
+        .official-record-table .col-total { width: 7mm; }
+        .official-record-table .col-ps, .official-record-table .col-ws { width: 7mm; }
+        .official-record-table .col-grade { width: 9mm; }
+        .official-record-table .col-descriptor { width: 14mm; }
+        .official-record-table tbody tr:first-child td { height: 5mm; background: #f1f1f1; }
         @media screen {
-          .eclass-print { background: white; margin: 20px auto; max-width: 1200px; border-radius: 8px; padding: 16px; }
+          .eclass-print { background: white; margin: 20px auto; width: 1200px; max-width: calc(100vw - 40px); padding: 8mm 6mm; border-radius: 8px; box-sizing: border-box; }
+          .official-meta { width: 72%; min-width: 720px; }
+          .official-record-table { min-width: 100%; }
         }
         @media print {
           .no-print { display: none !important; }
-          /* Show this modal, hide the main live page */
           .eclass-modal-overlay { display: block !important; position: static !important; overflow: visible !important; background: white !important; }
           .min-h-screen { display: none !important; }
           body { background: white !important; margin: 0 !important; }
-          .eclass-print { padding: 4mm !important; width: 100% !important; min-width: unset !important; box-shadow: none !important; border-radius: 0 !important; }
-          table { page-break-inside: auto; }
-          tr { page-break-inside: avoid; page-break-after: auto; }
-          thead { display: table-header-group; }
-          @page { size: landscape; margin: 6mm; }
+          .eclass-print { width: 285mm !important; min-width: 285mm !important; max-width: 285mm !important; padding: 7mm 0 !important; margin: 0 auto !important; box-shadow: none !important; border-radius: 0 !important; }
+          .official-record-table { page-break-inside: auto; }
+          .official-record-table thead { display: table-row-group; }
+          .official-record-table tr { page-break-inside: avoid; page-break-after: auto; }
+          @page { size: A4 landscape; margin: 6mm; }
         }
       `}</style>
     </div>
