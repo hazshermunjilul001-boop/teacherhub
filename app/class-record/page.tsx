@@ -1478,7 +1478,6 @@ function EClassRecordView({
           </tbody>
         </table>
 
-        <div className="official-extra">
         {/* Test/Exam Result Analysis */}
         {hasTA && (
           <>
@@ -1600,7 +1599,7 @@ function EClassRecordView({
         )}
 
         {/* Signatures */}
-        <div className="official-extra" style={{display:'flex', justifyContent:'space-between', marginTop:'16px', fontSize:'8px'}}>
+        <div style={{display:'flex', justifyContent:'space-between', marginTop:'16px', fontSize:'8px'}}>
           <div style={{textAlign:'center', minWidth:'200px'}}>
             <div style={{fontWeight:'bold', borderTop:'1px solid black', paddingTop:'2px', marginTop:'20px'}}>{adviser?.toUpperCase()}</div>
             <div>Subject Teacher</div>
@@ -1614,11 +1613,9 @@ function EClassRecordView({
             <div>Date</div>
           </div>
         </div>
-        </div>
       </div>
 
       <style>{`
-        .official-extra { display: none; }
         .official-title { height: 25mm; display: grid; grid-template-columns: 28mm 1fr 35mm; align-items: center; column-gap: 3mm; }
         .official-seal { width: 21mm; height: 21mm; object-fit: contain; justify-self: start; }
         .official-wordmark { width: 30mm; height: 21mm; object-fit: contain; justify-self: end; }
