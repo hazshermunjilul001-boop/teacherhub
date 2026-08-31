@@ -1591,11 +1591,12 @@ function EClassRecordView({
       </div>
 
       <style>{`
-        .official-title { height: 25mm; display: grid; grid-template-columns: 28mm 1fr 35mm; align-items: center; column-gap: 3mm; }
-        .official-seal { width: 21mm; height: 21mm; object-fit: contain; justify-self: start; }
-        .official-wordmark { width: 30mm; height: 21mm; object-fit: contain; justify-self: end; }
+        .official-title { height: 25mm; display: grid; grid-template-columns: 30mm 1fr 38mm; align-items: center; column-gap: 3mm; }
+        .official-seal { width: 25mm; height: 25mm; object-fit: contain; justify-self: start; }
+        .official-wordmark { width: 34mm; height: 25mm; object-fit: contain; justify-self: end; }
         .official-title-text { text-align: center; font-size: 14px; font-weight: 700; }
         .official-meta, .official-submeta { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 8px; }
+        .official-meta { width: 72%; margin: 0 auto; }
         .official-meta td, .official-submeta td { border: 1px solid #777; height: 6mm; padding: 0 2mm; white-space: nowrap; }
         .official-meta td { width: 33.333%; }
         .official-meta strong, .official-submeta strong { display: inline-block; min-width: 23mm; font-size: 7px; }
@@ -1630,6 +1631,7 @@ function EClassRecordView({
         .official-record-table tbody tr:first-child td { height: 5mm; background: #f1f1f1; }
         @media screen {
           .eclass-print { background: white; margin: 20px auto; width: 1200px; max-width: calc(100vw - 40px); padding: 8mm 6mm; border-radius: 8px; box-sizing: border-box; }
+          .official-meta { width: 72%; min-width: 720px; }
           .official-record-table { min-width: 100%; }
         }
         @media print {
