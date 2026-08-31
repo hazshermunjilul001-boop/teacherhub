@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Save, X, Plus, Trash2 } from 'lucide-react';
+import { Save, X, Plus, Trash2, Upload, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getHeaderScope, getGradeBand, SHS_TRACK_CONFIG, type SHSTrack } from '../../lib/sf9/sf9GradeBands';
 
@@ -19,6 +19,7 @@ interface SectionSettingsForm {
   header_scope_type: 'district' | 'cluster';
   header_scope_name: string;
   school_id: string;
+  school_logo_url: string;
   shs_track: SHSTrack | '';
   elective_subjects: string[];
 }
@@ -30,6 +31,7 @@ const EMPTY_FORM: SectionSettingsForm = {
   header_scope_type: 'district',
   header_scope_name: '',
   school_id: '',
+  school_logo_url: '',
   shs_track: '',
   elective_subjects: [],
 };
@@ -41,6 +43,7 @@ export default function SectionSF9Settings({
   const [loading, setLoading] = useState(true);
   const [saving,  setSaving]  = useState(false);
   const [error,   setError]   = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const isSHS = gradeLevel === 11 || gradeLevel === 12;
   const band  = getGradeBand(gradeLevel);
@@ -50,7 +53,7 @@ export default function SectionSF9Settings({
     (async () => {
       const { data } = await supabase
         .from('sections')
-        .select('school_address, region, division, header_scope_type, header_scope_name, school_id, shs_track, elective_subjects')
+        .select('school_address, region, division, header_scope_type, header_scope_name, school_id, school_logo_url, shs_track, elective_subjects')
         .eq('id', sectionId)
         .single();
 
@@ -61,6 +64,7 @@ export default function SectionSF9Settings({
         header_scope_type:  data?.header_scope_type ?? getHeaderScope(gradeLevel),
         header_scope_name:  data?.header_scope_name ?? '',
         school_id:          data?.school_id ?? '',
+        school_logo_url:    data?.school_logo_url ?? '',
         shs_track:          data?.shs_track ?? '',
         elective_subjects:  data?.elective_subjects ?? [],
       });
@@ -94,6 +98,43 @@ export default function SectionSF9Settings({
     }));
   };
 
+  const handleLogoUpload = async (file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setError('Please choose a JPG, PNG, WebP, or other image file.'); return; }
+    if (file.size > 8 * 1024 * 1024) { setError('Please choose an image smaller than 8 MB.'); return; }
+    setUploadingLogo(true);
+    setError(null);
+    try {
+      const imageUrl = URL.createObjectURL(file);
+      const image = new Image();
+      image.src = imageUrl;
+      await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error('The selected image could not be read.')); });
+      const maxSide = 1200;
+      const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Could not prepare the image converter.');
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const webp = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/webp', 0.86));
+      URL.revokeObjectURL(imageUrl);
+      if (!webp) throw new Error('Could not convert the logo to WebP.');
+      const schoolKey = (form.school_id || sectionId).trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+      const path = `${schoolKey}/logo.webp`;
+      const { error: uploadError } = await supabase.storage.from('school-logos').upload(path, webp, {
+        cacheControl: '31536000', contentType: 'image/webp', upsert: true,
+      });
+      if (uploadError) throw uploadError;
+      const { data: publicData } = supabase.storage.from('school-logos').getPublicUrl(path);
+      setField('school_logo_url', `${publicData.publicUrl}?v=${Date.now()}`);
+    } catch (uploadError: any) {
+      setError(uploadError?.message ?? 'Logo upload failed.');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setError(null);
@@ -113,6 +154,7 @@ export default function SectionSF9Settings({
         header_scope_type:  form.header_scope_type,
         header_scope_name:  form.header_scope_name || null,
         school_id:          form.school_id || null,
+        school_logo_url:    form.school_logo_url || null,
         shs_track:          isSHS ? (form.shs_track || null) : null,
         elective_subjects:  isSHS ? form.elective_subjects.filter(e => e.trim()) : [],
       })
@@ -120,6 +162,9 @@ export default function SectionSF9Settings({
 
     setSaving(false);
     if (updateError) { setError(updateError.message); return; }
+    if (form.school_id.trim() && form.school_logo_url) {
+      await supabase.from('sections').update({ school_logo_url: form.school_logo_url }).eq('school_id', form.school_id.trim());
+    }
     onSaved();
     onClose();
   };
@@ -208,6 +253,21 @@ export default function SectionSF9Settings({
                 onChange={e => setField('school_id', e.target.value)}
                 className="w-full border rounded px-3 py-2 text-sm max-w-[160px] text-gray-900 bg-white placeholder:text-gray-400"
               />
+            </div>
+
+            <div className="border-t pt-4">
+              <label className="block text-xs font-medium text-gray-700 mb-1">School Logo</label>
+              <p className="text-xs text-gray-500 mb-2">This replaces only the right-side logo. JPG, PNG, WebP, and other common image formats are converted to an optimized WebP.</p>
+              <div className="flex items-center gap-3">
+                <div className="flex h-16 w-16 items-center justify-center rounded border bg-gray-50 p-1">
+                  {form.school_logo_url ? <img src={form.school_logo_url} alt="School logo preview" className="max-h-full max-w-full object-contain" /> : <span className="text-center text-[10px] text-gray-400">No logo</span>}
+                </div>
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded bg-gray-800 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700">
+                  {uploadingLogo ? <RefreshCw size={15} className="animate-spin" /> : <Upload size={15} />}
+                  {uploadingLogo ? 'Converting…' : 'Upload Logo'}
+                  <input type="file" accept="image/*" className="hidden" disabled={uploadingLogo} onChange={e => { handleLogoUpload(e.target.files?.[0]); e.currentTarget.value = ''; }} />
+                </label>
+              </div>
             </div>
 
             {isSHS && (

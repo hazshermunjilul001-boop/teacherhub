@@ -14,6 +14,7 @@ export interface Section {
   school_year: string;
   school_name: string;
   school_id: string;
+  school_logo_url?: string;
   district?: string;
   division: string;
   region: string;

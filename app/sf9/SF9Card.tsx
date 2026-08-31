@@ -105,7 +105,7 @@ function ElementarySF9Card({ data, section, frontPage }: SF9CardProps) {
               {section?.school_address && <div style={{fontSize:'6.5pt'}}>{section.school_address}</div>}
               <div style={{fontWeight:'bold',textDecoration:'underline',fontSize:'8.5pt',textTransform:'uppercase'}}>{section?.school_name ?? ''}</div>
             </div>
-            <div style={{width:'17mm',height:'17mm',borderRadius:'50%',border:'1px solid #aaa',display:'flex',alignItems:'center',justifyContent:'center',fontStyle:'italic',fontSize:'6.5pt'}}>Insert<br/>School<br/>Logo</div>
+            {section?.school_logo_url ? <img src={section.school_logo_url} alt="School Logo" style={{width:'17mm',height:'17mm',objectFit:'contain',flexShrink:0}}/> : <div style={{width:'17mm',height:'17mm',borderRadius:'50%',border:'1px solid #aaa',display:'flex',alignItems:'center',justifyContent:'center',fontStyle:'italic',fontSize:'6.5pt'}}>Insert<br/>School<br/>Logo</div>}
           </div>
           <div style={{textAlign:'center',fontWeight:'bold',fontSize:'9pt'}}>LEARNER&apos;S PERFORMANCE REPORT</div>
           <div style={{textAlign:'center',fontSize:'7pt',marginBottom:'2mm'}}>School Year {section?.school_year ?? ''}</div>
@@ -300,7 +300,7 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
                 <div style={{fontSize:'6.5pt', color:'#555'}}>School ID: {section.school_id}</div>
               )}
             </div>
-            <img src="/depedlogo.webp" alt="School Logo" style={{width:'14mm', height:'14mm', objectFit:'contain', flexShrink:0}}/>
+            <img src={section?.school_logo_url || '/depedlogo.webp'} alt="School Logo" style={{width:'14mm', height:'14mm', objectFit:'contain', flexShrink:0}}/>
           </div>
 
           <div style={{textAlign:'center', fontWeight:'bold', fontSize:'10pt', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'0.5mm'}}>
