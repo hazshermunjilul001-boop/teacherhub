@@ -1404,7 +1404,7 @@ function EClassRecordView({
           </colgroup>
           <thead>
             <tr className="official-info-row">
-              <th colSpan={2} rowSpan={5} className="official-term-heading">{TERM_LABELS[currentTerm] ?? `TERM ${currentTerm}`}</th>
+              <th colSpan={2} rowSpan={4} className="official-term-heading">{TERM_LABELS[currentTerm] ?? `TERM ${currentTerm}`}</th>
               <th colSpan={infoGradeCols} className="official-field-heading"><strong>GRADE LEVEL</strong><span>{gradeLevel || ''}</span></th>
               <th colSpan={infoTeacherCols} rowSpan={2} className="official-field-heading"><strong>TEACHER</strong><span>{adviser?.toUpperCase() || ''}</span></th>
               <th colSpan={infoSubjectCols} rowSpan={2} className="official-field-heading"><strong>SUBJECT</strong><span>{subject || ''}</span></th>
