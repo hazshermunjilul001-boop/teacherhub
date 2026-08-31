@@ -521,8 +521,8 @@ export default function SF9Page() {
           .no-print { display: none !important; }
           body { background: white !important; margin: 0; }
           @page { size: A4 landscape; margin: 6mm; }
-          .sf9-card { width: 278mm; height: 198mm; max-height: 198mm; overflow: visible; page-break-after: always; }
-          .sf9-card:last-child { page-break-after: auto; }
+          .sf9-card { width: 278mm; height: 196mm; min-height: 0; max-height: 196mm; overflow: hidden; page-break-inside: avoid; break-inside: avoid; page-break-after: always; break-after: page; }
+          .sf9-card:last-child { page-break-after: auto; break-after: auto; }
         }
       `}</style>
 
