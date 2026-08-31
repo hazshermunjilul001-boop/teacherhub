@@ -1061,6 +1061,9 @@ function EClassRecordView({
   // Column count per learner row, matching the official layout: # + Name + WW(5+Total+PS+WS)
   // + PT(3+Total+PS+WS) + [EXs(3+3WS+PS+WS)] + Initial Grade + Term Grade + Descriptor
   const rowColCount = 2 + 8 + 6 + (hasTA ? 8 : 0) + 3;
+  const infoGradeCols = hasTA ? 6 : 4;
+  const infoTeacherCols = hasTA ? 10 : 6;
+  const infoSubjectCols = rowColCount - 2 - infoGradeCols - infoTeacherCols;
 
   const renderGroup = (group: Student[], label: string) => (
     <>
@@ -1409,65 +1412,47 @@ function EClassRecordView({
             <col className="col-grade" /><col className="col-grade" /><col className="col-descriptor" />
           </colgroup>
           <thead>
-            <tr>
-              <th style={th} rowSpan={3}>#</th>
-              <th style={{...th, textAlign:'left'}} rowSpan={3}>LEARNERS' NAMES</th>
-              <th style={th} colSpan={8}>WRITTEN / ORAL WORKS (WWs) &mdash; {(weights.ww*100).toFixed(0)}%</th>
-              <th style={th} colSpan={6}>PRODUCT / PERFORMANCE TASKS (PTs) &mdash; {(weights.pt*100).toFixed(0)}%</th>
-              {hasTA && <th style={th} colSpan={8}>EXAMINATIONS (EXs) &mdash; {((weights.ta??0)*100).toFixed(0)}%</th>}
-              <th style={{...th, background:'#f0fdf4'}} rowSpan={3}>Initial<br/>Grade</th>
-              <th style={th} rowSpan={3}>Term<br/>Grade</th>
-              <th style={th} rowSpan={3}>Descriptor</th>
+            <tr className="official-info-row">
+              <th colSpan={2} rowSpan={5} className="official-term-heading">{TERM_LABELS[currentTerm] ?? `TERM ${currentTerm}`}</th>
+              <th colSpan={infoGradeCols} className="official-field-heading"><strong>GRADE LEVEL</strong><span>{gradeLevel || ''}</span></th>
+              <th colSpan={infoTeacherCols} rowSpan={2} className="official-field-heading"><strong>TEACHER</strong><span>{adviser?.toUpperCase() || ''}</span></th>
+              <th colSpan={infoSubjectCols} rowSpan={2} className="official-field-heading"><strong>SUBJECT</strong><span>{subject || ''}</span></th>
             </tr>
-            <tr>
-              <th style={th} colSpan={5}>&nbsp;</th>
-              <th style={th}>Total</th>
-              <th style={{...th, background:'#dbeafe'}}>PS</th>
-              <th style={{...th, background:'#dbeafe'}}>WS</th>
-              <th style={th} colSpan={3}>&nbsp;</th>
-              <th style={th}>Total</th>
-              <th style={{...th, background:'#ede9fe'}}>PS</th>
-              <th style={{...th, background:'#ede9fe'}}>WS</th>
+            <tr className="official-info-row">
+              <th colSpan={infoGradeCols} className="official-field-heading"><strong>SECTION</strong><span>{sectionName || ''}</span></th>
+            </tr>
+            <tr className="official-group-row">
+              <th colSpan={8}>WRITTEN / ORAL WORKS (WWs)</th>
+              <th colSpan={6}>PRODUCT / PERFORMANCE<br/>TASKS (PTs)</th>
+              {hasTA && <th colSpan={8}>EXAMINATIONS (EXs)</th>}
+              <th rowSpan={2} className="official-grade-heading">Initial<br/>Grade</th>
+              <th rowSpan={2} className="official-grade-heading">Term<br/>Grade</th>
+              <th rowSpan={2} className="official-grade-heading">Descriptor</th>
+            </tr>
+            <tr className="official-subheader-row">
+              {highest.ww.map((v,i) => <th key={`ww-${i}`}>{i+1}</th>)}
+              <th>Total</th><th>PS</th><th>WS</th>
+              {highest.pt.map((v,i) => <th key={`pt-${i}`}>{i+1}</th>)}
+              <th>Total</th><th>PS</th><th>WS</th>
               {hasTA && <>
-                <th style={th}>ST1</th><th style={th}>ST2</th><th style={th}>TE</th>
-                <th style={th}>WS<br/>ST1</th><th style={th}>WS<br/>ST2</th><th style={th}>WS<br/>TE</th>
-                <th style={{...td, background:'#fef3c7', fontWeight:'bold'}}>PS</th>
-                <th style={{...td, background:'#fef3c7', fontWeight:'bold'}}>WS</th>
+                <th>ST1</th><th>ST2</th><th>TE</th>
+                <th>WS ST1</th><th>WS ST2</th><th>WS TE</th><th>PS</th><th>WS</th>
               </>}
             </tr>
-            <tr>
-              {highest.ww.map((v,i) => <th key={i} style={th}>{i+1}</th>)}
-              <th style={th}>&nbsp;</th><th style={th}>&nbsp;</th><th style={th}>&nbsp;</th>
-              {highest.pt.map((v,i) => <th key={i} style={th}>{i+1}</th>)}
-              <th style={th}>&nbsp;</th><th style={th}>&nbsp;</th><th style={th}>&nbsp;</th>
+            <tr className="official-hps-row">
+              <th colSpan={2}>HIGHEST POSSIBLE SCORE</th>
+              {highest.ww.map((v,i) => <th key={`hww-${i}`}>{v}</th>)}
+              <th>{highest.ww.reduce((a,b)=>a+b,0)}</th><th>100</th><th>{(weights.ww*100).toFixed(0)}%</th>
+              {highest.pt.map((v,i) => <th key={`hpt-${i}`}>{v}</th>)}
+              <th>{highest.pt.reduce((a,b)=>a+b,0)}</th><th>100</th><th>{(weights.pt*100).toFixed(0)}%</th>
               {hasTA && <>
-                <th style={th}>&nbsp;</th><th style={th}>&nbsp;</th><th style={th}>&nbsp;</th>
-                <th style={th}>&nbsp;</th><th style={th}>&nbsp;</th><th style={th}>&nbsp;</th>
-                <th style={th}>&nbsp;</th><th style={th}>&nbsp;</th>
+                <th>{highest.st[0]}</th><th>{highest.st[1]}</th><th>{highest.te}</th>
+                <th>30</th><th>30</th><th>40</th><th>100</th><th>{((weights.ta??0)*100).toFixed(0)}%</th>
               </>}
+              <th></th><th></th><th></th>
             </tr>
           </thead>
           <tbody>
-            <tr style={{background:'#f3f4f6'}}>
-              <td colSpan={2} style={{...td, textAlign:'left', fontWeight:'bold'}}>HIGHEST POSSIBLE SCORE</td>
-              {highest.ww.map((v,i) => <td key={i} style={td}>{v}</td>)}
-              <td style={td}>{highest.ww.reduce((a,b)=>a+b,0)}</td>
-              <td style={{...td, background:'#dbeafe'}}>100</td>
-              <td style={{...td, background:'#dbeafe'}}>{(weights.ww*100).toFixed(0)}%</td>
-              {highest.pt.map((v,i) => <td key={i} style={td}>{v}</td>)}
-              <td style={td}>{highest.pt.reduce((a,b)=>a+b,0)}</td>
-              <td style={{...td, background:'#ede9fe'}}>100</td>
-              <td style={{...td, background:'#ede9fe'}}>{(weights.pt*100).toFixed(0)}%</td>
-              {hasTA && <>
-                <td style={td}>{highest.st[0]}</td><td style={td}>{highest.st[1]}</td><td style={td}>{highest.te}</td>
-                <td style={td}>30</td><td style={td}>30</td><td style={td}>40</td>
-                <td style={{...td, background:'#fef3c7'}}>100</td>
-                <td style={{...td, background:'#fef3c7'}}>{((weights.ta??0)*100).toFixed(0)}%</td>
-              </>}
-              <td style={{...td, background:'#f0fdf4'}}>&nbsp;</td>
-              <td style={td}>&nbsp;</td>
-              <td style={td}>&nbsp;</td>
-            </tr>
             <tr>
               <td colSpan={rowColCount} style={{...td, background:'#1e3a5f', color:'white', fontWeight:'bold', textAlign:'left'}}>
                 LEARNERS' NAMES
@@ -1632,9 +1617,19 @@ function EClassRecordView({
         .official-record-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 7px; margin-top: 0; }
         .official-record-table th, .official-record-table td { border: 1px solid #111; padding: 0; height: 3.9mm; line-height: 1; text-align: center; overflow: hidden; }
         .official-record-table th { background: #f1f1f1; font-weight: 700; }
-        .official-record-table thead tr:nth-child(1) th { height: 8mm; }
-        .official-record-table thead tr:nth-child(2) th { height: 6mm; }
-        .official-record-table thead tr:nth-child(3) th { height: 4mm; }
+        .official-record-table .official-info-row th { height: 6mm; background: #f1f1f1; }
+        .official-record-table .official-term-heading { background: #f1f1f1; font-size: 12px; text-align: center; vertical-align: middle; }
+        .official-record-table .official-field-heading { padding: 0 1mm; text-align: left; font-weight: 400; }
+        .official-record-table .official-field-heading strong { display: inline-block; min-width: 20mm; font-size: 7px; }
+        .official-record-table .official-field-heading span { display: inline-block; min-width: 20mm; border-bottom: 1px solid #222; text-align: center; font-size: 8px; }
+        .official-record-table .official-group-row th { height: 7mm; background: #f1f1f1; font-size: 7px; vertical-align: middle; }
+        .official-record-table .official-subheader-row th { height: 4.5mm; background: #f1f1f1; font-size: 7px; white-space: nowrap; }
+        .official-record-table .official-hps-row th { height: 4.5mm; background: #f1f1f1; font-size: 7px; }
+        .official-record-table .official-hps-row th:first-child { text-align: right; font-style: italic; }
+        .official-record-table .official-grade-heading { background: #f1f1f1; font-size: 7px; }
+        .official-record-table .official-group-row th:nth-child(2), .official-record-table .official-subheader-row th:nth-child(9), .official-record-table .official-hps-row th:nth-child(10) { border-left-width: 2px; }
+        .official-record-table .official-group-row th { border-top: 2px solid #111; }
+        .official-record-table .official-hps-row th { border-bottom: 2px solid #111; }
         .official-record-table .col-number { width: 5mm; }
         .official-record-table .col-name { width: 55mm; }
         .official-record-table .col-score { width: 5.2mm; }
