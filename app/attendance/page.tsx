@@ -722,15 +722,32 @@ export default function AttendancePage() {
     const sf2ConsecF = sf2Females.filter(s => sf2HasConsecAbsences(s)).length;
     const sf2ConsecTotal = sf2ConsecM + sf2ConsecF;
 
-    // Registered learners at end of month = active + transferred in
-    const regEndM = mEnroll + mTransIn;
-    const regEndF = fEnroll + fTransIn;
+    // The school’s first attendance day for SY 2026–2027 is June 8, 2026.
+    // A Grade 7 learner may correctly be marked TRANSFERRED IN so the previous
+    // school appears in Remarks, but a transfer dated on the first attendance day
+    // is part of the opening roster and is not late enrollment. Only a dated
+    // transfer after June 8 is counted as late enrollment during the month.
+    const FIRST_ATTENDANCE_DAY = '2026-06-08';
+    const isLateEnrollment = (student: Student) =>
+      student.status === 'transferred_in' &&
+      !!student.status_date &&
+      student.status_date.trim().slice(0, 10) > FIRST_ATTENDANCE_DAY;
+    const lateEnrollmentStudents = students.filter(isLateEnrollment);
+    const baselineStudents = students.filter(s => !isLateEnrollment(s));
+
+    // Registered learners at end of month excludes dropped and transferred-out learners.
+    const registeredAtEnd = students.filter(s => s.status !== 'dropped' && s.status !== 'transferred_out');
+    const regEndM = registeredAtEnd.filter(s => s.sex === 'M').length;
+    const regEndF = registeredAtEnd.filter(s => s.sex === 'F').length;
     const regEnd  = regEndM + regEndF;
 
-    // Initial enrollment (1st Friday of June baseline) = active + dropped + transferred_out
-    const initEnrollM = mEnroll + mDropped + mTransOut;
-    const initEnrollF = fEnroll + fDropped + fTransOut;
+    // Initial enrollment includes the full opening-day roster, including transferred-in
+    // learners dated June 8 or earlier, but excludes only genuine post-opening late enrollees.
+    const initEnrollM = baselineStudents.filter(s => s.sex === 'M').length;
+    const initEnrollF = baselineStudents.filter(s => s.sex === 'F').length;
     const initEnroll  = initEnrollM + initEnrollF;
+    const lateEnrollM = lateEnrollmentStudents.filter(s => s.sex === 'M').length;
+    const lateEnrollF = lateEnrollmentStudents.filter(s => s.sex === 'F').length;
 
     // Per-gender breakdowns for the summary box (Percentage of Enrolment, ADA, Percentage of Attendance)
     // Uses the full roster (sf2Males/sf2Females) so partial-month presence from dropped,
@@ -1154,9 +1171,9 @@ export default function AttendancePage() {
                   </tr>
                   <tr>
                     <td colSpan={2} style={{...td, fontStyle:'italic', fontSize:'7px'}}>Late Enrollment <strong>during the month</strong> (beyond cut-off)</td>
-                    <td style={tdC}>{mTransIn}</td>
-                    <td style={tdC}>{fTransIn}</td>
-                    <td style={{...tdC, fontWeight:'bold'}}>{mTransIn + fTransIn}</td>
+                    <td style={tdC}>{lateEnrollM || ''}</td>
+                    <td style={tdC}>{lateEnrollF || ''}</td>
+                    <td style={{...tdC, fontWeight:'bold'}}>{lateEnrollM + lateEnrollF || ''}</td>
                   </tr>
                   <tr>
                     <td colSpan={2} style={{...td, fontStyle:'italic', fontSize:'7px'}}>Registered Learner as of <strong>end of the month</strong></td>
