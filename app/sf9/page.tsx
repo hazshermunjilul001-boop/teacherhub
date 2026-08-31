@@ -16,6 +16,7 @@ import { downloadSF9Docx, downloadAllSF9Docx } from '../../lib/sf9/generateSF9Do
 import { downloadSF9Pdf } from '../../lib/sf9/generateSF9Pdf';
 import SectionSF9Settings from './SectionSF9Settings';
 import SF9Card from './SF9Card';
+import SF9CommentsEditor from './SF9CommentsEditor';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Flatten a section's subject rows into leaf-level {key,label} pairs — this is
@@ -474,6 +475,7 @@ export default function SF9Page() {
   const [selected,      setSelected]      = useState(0);
   const [printAll,      setPrintAll]      = useState(false);
   const [showManual,    setShowManual]    = useState(false);
+  const [showComments,  setShowComments]  = useState(false);
   const [showCollab,    setShowCollab]    = useState(false);
   const [showSettings,  setShowSettings]  = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -563,6 +565,10 @@ export default function SF9Page() {
             <button onClick={()=>setShowManual(true)}
               className="flex items-center gap-2 bg-amber-700 hover:bg-amber-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
               <Edit3 size={16}/> Manual Grade Entry
+            </button>
+            <button onClick={()=>setShowComments(true)} disabled={!current}
+              className="flex items-center gap-2 bg-teal-700 hover:bg-teal-600 px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
+              <Edit3 size={16}/> Teacher Comments
             </button>
 
             <button onClick={()=>setShowCollab(true)}
@@ -702,6 +708,14 @@ export default function SF9Page() {
       </div>
 
       {/* Modals */}
+      {showComments && current && (
+        <SF9CommentsEditor
+          sectionId={sectionId}
+          learner={current}
+          onClose={() => setShowComments(false)}
+          onSaved={() => setDataVersion(v => v + 1)}
+        />
+      )}
       {showManual && (
         <ManualGradePanel
           students={students}

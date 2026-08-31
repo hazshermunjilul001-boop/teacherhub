@@ -29,6 +29,7 @@ export interface LearnerSF9 {
   genAverage:   number;
   attendance:   MonthlyAttendance[];            // Jun through Apr, in order
   conduct:      Record<string,string>;
+  comments:      Record<string,string>; // term number -> teacher comment
   promotionRemark: PromotionRemark | null;
 }
 
@@ -128,6 +129,10 @@ export function useSF9Data(
     const { data: conductRaw } = await supabase
       .from('conduct_records').select('*').in('term',[1,2,3]);
 
+    const { data: commentsRaw } = await supabase
+      .from('sf9_comments').select('student_id,term,comment')
+      .eq('section_id', sectionId).in('student_id', studentIds);
+
     const monthKeys = buildMonthKeys(schoolYear);
     const attendanceDates = monthKeys.flatMap(month => monthDates(month.key));
     const [{ data: attendRaw }, { data: holidayRaw }] = await Promise.all([
@@ -199,6 +204,10 @@ export function useSF9Data(
       });
 
       const conduct: Record<string,string> = {};
+      const comments: Record<string,string> = {};
+      (commentsRaw ?? []).filter((row: any) => row.student_id === student.id).forEach((row: any) => {
+        comments[String(row.term)] = row.comment ?? '';
+      });
       [1,2,3].forEach(term => {
         const rec = conductRaw?.find((c:any)=>c.student_id===student.id&&c.term===term);
         if (rec?.ratings) {
@@ -208,7 +217,7 @@ export function useSF9Data(
         }
       });
 
-      return { student, grades, finalGrades, genAverage, attendance, conduct, promotionRemark };
+      return { student, grades, finalGrades, genAverage, attendance, conduct, comments, promotionRemark };
     });
 
     setSF9Data(result);
