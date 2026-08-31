@@ -12,22 +12,75 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
-  font-family: 'Inter', system-ui, sans-serif;
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', Arial, Helvetica, sans-serif;
+  transition: background-color .2s ease, color .2s ease;
+}
+
+/* Theme-aware application surface. The existing pages use Tailwind dark utility
+   classes directly, so these overrides provide a consistent light mode without
+   changing each module's business logic. */
+html.theme-light {
+  color-scheme: light;
+  --background: #f8fafc;
+  --foreground: #111827;
+}
+
+html.theme-dark {
+  color-scheme: dark;
+  --background: #030712;
+  --foreground: #f3f4f6;
+}
+
+html.theme-light body {
+  background: #f8fafc !important;
+  color: #111827 !important;
+}
+
+html.theme-light .bg-gray-950 { background-color: #f8fafc !important; }
+html.theme-light .bg-gray-900 { background-color: #ffffff !important; }
+html.theme-light .bg-gray-800 { background-color: #f1f5f9 !important; }
+html.theme-light .bg-gray-700 { background-color: #e2e8f0 !important; }
+html.theme-light .bg-gray-600 { background-color: #cbd5e1 !important; }
+html.theme-light .text-white { color: #111827 !important; }
+html.theme-light .text-gray-300 { color: #334155 !important; }
+html.theme-light .text-gray-400 { color: #475569 !important; }
+html.theme-light .text-gray-500 { color: #64748b !important; }
+html.theme-light .text-gray-600 { color: #64748b !important; }
+html.theme-light .text-gray-700 { color: #334155 !important; }
+html.theme-light .border-gray-800 { border-color: #cbd5e1 !important; }
+html.theme-light .border-gray-700 { border-color: #cbd5e1 !important; }
+html.theme-light .border-gray-600 { border-color: #94a3b8 !important; }
+html.theme-light .hover\:bg-gray-800:hover { background-color: #e2e8f0 !important; }
+html.theme-light .hover\:bg-gray-700:hover { background-color: #cbd5e1 !important; }
+html.theme-light .placeholder-blue-300::placeholder { color: #64748b !important; }
+
+/* Keep text readable on colored controls after the general text-white rule. */
+html.theme-light .bg-blue-500.text-white,
+html.theme-light .bg-blue-600.text-white,
+html.theme-light .bg-blue-700.text-white,
+html.theme-light .bg-emerald-600.text-white,
+html.theme-light .bg-red-600.text-white,
+html.theme-light .bg-purple-600.text-white,
+html.theme-light .bg-amber-600.text-white,
+html.theme-light .bg-green-600.text-white {
+  color: #ffffff !important;
+}
+
+/* Printable DepEd forms must remain white and black in either app theme. */
+@media print {
+  html.theme-light body,
+  html.theme-dark body,
+  .sf2-print,
+  .eclass-print {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
 }

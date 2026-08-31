@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { SectionProvider } from '../context/SectionContext';
 import { RegisterSW } from './register-sw';
+import { ThemeProvider } from '../components/ThemeProvider';
 
 export const metadata: Metadata = {
   title: 'TeacherHub PH',
@@ -26,12 +27,24 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body>
+        <script dangerouslySetInnerHTML={{__html: `
+          (function () {
+            try {
+              var theme = localStorage.getItem('teacherhub-theme') === 'light' ? 'light' : 'dark';
+              document.documentElement.classList.add(theme === 'light' ? 'theme-light' : 'theme-dark');
+            } catch (_) {
+              document.documentElement.classList.add('theme-dark');
+            }
+          })();
+        `}} />
         <RegisterSW />
-        <SectionProvider>
-          {children}
-        </SectionProvider>
+        <ThemeProvider>
+          <SectionProvider>
+            {children}
+          </SectionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

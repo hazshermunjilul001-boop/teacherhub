@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation';
 import {
   Mail, Lock, Menu, LogOut, BookOpen, Users, Calendar,
   Heart, Award, FileText, ChevronRight, BarChart2,
-  GraduationCap, Bell, ChevronDown, Settings, Plus,
+  GraduationCap, Bell, ChevronDown, Settings, Plus, Sun, Moon,
   CheckCircle, CreditCard, Shield, Trophy,
 } from 'lucide-react';
 import { useSubscription } from '../lib/useSubscription';
 import { supabase } from '../lib/supabase';
 import { useSection, type Section } from '../context/SectionContext';
+import { useTheme } from '../components/ThemeProvider';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NAV ITEMS
@@ -240,6 +241,7 @@ function Dashboard({ user }: { user: any }) {
   const router = useRouter();
   const { activeSection, sections } = useSection();
   const { planName, isFree, daysLeft } = useSubscription();
+  const { theme, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activePath,  setActivePath]  = useState('/');
   const [stats, setStats] = useState({ students: 0, average: 0, passing: 0, days: 0 });
@@ -438,6 +440,14 @@ function Dashboard({ user }: { user: any }) {
               </button>
             )}
           </div>
+          <button
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-800 hover:text-white transition"
+          >
+            {theme === 'dark' ? <Sun size={18}/> : <Moon size={18}/>}
+          </button>
           <button className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-800 hover:text-white transition">
             <Bell size={18}/>
           </button>
