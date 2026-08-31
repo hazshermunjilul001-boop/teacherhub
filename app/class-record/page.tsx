@@ -1106,39 +1106,25 @@ function EClassRecordView({
 
   const pageHeader = (
     <>
-      <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8px'}}>
-        <tbody>
-          <tr>
-            <td style={tdL}><strong>REGION:</strong> {region}</td>
-            <td style={tdL}><strong>DIVISION:</strong> {division}</td>
-            <td style={tdL}><strong>SCHOOL ID:</strong> {schoolId}</td>
-          </tr>
-          <tr>
-            <td colSpan={2} style={tdL}><strong>SCHOOL NAME:</strong> {schoolName}</td>
-            <td style={tdL}><strong>SCHOOL YEAR:</strong> {schoolYear}</td>
-          </tr>
-        </tbody>
-      </table>
-      <div style={{height:'3px', background:'#1e3a5f'}}/>
-      <table style={{width:'100%', borderCollapse:'collapse', marginBottom:'2px', fontSize:'8px'}}>
-        <tbody>
-          <tr>
-            <td rowSpan={2} style={{...td, textAlign:'left', verticalAlign:'middle', fontWeight:'bold', fontSize:'11px', width:'16%'}}>
-              {TERM_LABELS[currentTerm] ?? `TERM ${currentTerm}`}
-            </td>
-            <td style={tdL}><strong>GRADE LEVEL:</strong> {gradeLevel}</td>
-            <td rowSpan={2} style={{...td, textAlign:'left', verticalAlign:'middle'}}><strong>TEACHER:</strong><br/>{adviser?.toUpperCase()}</td>
-            <td rowSpan={2} style={{...td, textAlign:'left', verticalAlign:'middle'}}><strong>SUBJECT:</strong><br/>{subject}</td>
-          </tr>
-          <tr>
-            <td style={tdL}><strong>SECTION:</strong> {sectionName}</td>
-          </tr>
-        </tbody>
-      </table>
-      <div style={{fontSize:'7px', color:'#555', textAlign:'right', marginBottom:'2px'}}>
-        WEIGHTS: WW {(weights.ww*100).toFixed(0)}% | PT {(weights.pt*100).toFixed(0)}%
-        {hasTA ? ` | EXs ${((weights.ta??0)*100).toFixed(0)}%` : ''}
+      <div className="official-title">
+        <img src="/depedseal.webp" alt="DepEd seal" className="official-seal" />
+        <div className="official-title-text">CLASS RECORD - TERM {currentTerm}</div>
+        <img src="/depedlogo.webp" alt="Department of Education" className="official-wordmark" />
       </div>
+      <table className="official-meta"><tbody>
+        <tr><td><strong>REGION</strong><span>{region || ''}</span></td><td><strong>DIVISION</strong><span>{division || ''}</span></td><td><strong>SCHOOL ID</strong><span>{schoolId || ''}</span></td></tr>
+        <tr><td className="meta-wide" colSpan={2}><strong>SCHOOL NAME</strong><span>{schoolName || ''}</span></td><td><strong>SCHOOL YEAR</strong><span>{schoolYear || ''}</span></td></tr>
+      </tbody></table>
+      <div className="official-blue-rule" />
+      <table className="official-submeta"><tbody>
+        <tr>
+          <td rowSpan={2} className="official-term">{TERM_LABELS[currentTerm] ?? `TERM ${currentTerm}`}</td>
+          <td><strong>GRADE LEVEL</strong><span>{gradeLevel || ''}</span></td>
+          <td rowSpan={2}><strong>TEACHER</strong><span>{adviser?.toUpperCase() || ''}</span></td>
+          <td rowSpan={2}><strong>SUBJECT</strong><span>{subject || ''}</span></td>
+        </tr>
+        <tr><td><strong>SECTION</strong><span>{sectionName || ''}</span></td></tr>
+      </tbody></table>
     </>
   );
 
@@ -1410,25 +1396,18 @@ function EClassRecordView({
         </div>
       </div>
 
-      <div className="eclass-print bg-white text-black p-4" style={{fontFamily:'Arial, sans-serif', minWidth:'1100px'}}>
-
-        {/* Title */}
-        <div style={{display:'flex', alignItems:'center', justifyContent:'center', gap:'12px', marginBottom:'4px'}}>
-          <div style={{width:'34px', height:'34px', borderRadius:'50%', border:'2px solid #1e3a5f', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'6px', fontWeight:'bold', color:'#1e3a5f', textAlign:'center', lineHeight:1, flexShrink:0}}>
-            DepEd
-          </div>
-          <div>
-            <div style={{fontWeight:'bold', fontSize:'14px'}}>CLASS RECORD - {TERM_LABELS[currentTerm] ?? `TERM ${currentTerm}`}</div>
-            <div style={{fontSize:'8px', color:'#555'}}>{subject} &mdash; {schoolYear}</div>
-          </div>
-          <div style={{width:'34px', height:'34px', borderRadius:'50%', border:'2px solid #1e3a5f', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'6px', fontWeight:'bold', color:'#1e3a5f', textAlign:'center', lineHeight:1, flexShrink:0}}>
-            DepEd
-          </div>
-        </div>
+      <div className="eclass-print bg-white text-black">
         {pageHeader}
 
         {/* Class Record Table */}
-        <table style={{width:'100%', borderCollapse:'collapse', fontSize:'8px', marginBottom:'8px'}}>
+        <table className="official-record-table">
+          <colgroup>
+            <col className="col-number" /><col className="col-name" />
+            {Array.from({length: 5}, (_, i) => <col key={`ww-${i}`} className="col-score" />)}<col className="col-total" /><col className="col-ps" /><col className="col-ws" />
+            {Array.from({length: 3}, (_, i) => <col key={`pt-${i}`} className="col-score" />)}<col className="col-total" /><col className="col-ps" /><col className="col-ws" />
+            {hasTA && <>{Array.from({length: 3}, (_, i) => <col key={`ex-${i}`} className="col-score" />)}{Array.from({length: 3}, (_, i) => <col key={`exws-${i}`} className="col-ws" />)}<col className="col-ps" /><col className="col-ws" /></>}
+            <col className="col-grade" /><col className="col-grade" /><col className="col-descriptor" />
+          </colgroup>
           <thead>
             <tr>
               <th style={th} rowSpan={3}>#</th>
@@ -1499,6 +1478,7 @@ function EClassRecordView({
           </tbody>
         </table>
 
+        <div className="official-extra">
         {/* Test/Exam Result Analysis */}
         {hasTA && (
           <>
@@ -1620,7 +1600,7 @@ function EClassRecordView({
         )}
 
         {/* Signatures */}
-        <div style={{display:'flex', justifyContent:'space-between', marginTop:'16px', fontSize:'8px'}}>
+        <div className="official-extra" style={{display:'flex', justifyContent:'space-between', marginTop:'16px', fontSize:'8px'}}>
           <div style={{textAlign:'center', minWidth:'200px'}}>
             <div style={{fontWeight:'bold', borderTop:'1px solid black', paddingTop:'2px', marginTop:'20px'}}>{adviser?.toUpperCase()}</div>
             <div>Subject Teacher</div>
@@ -1634,23 +1614,52 @@ function EClassRecordView({
             <div>Date</div>
           </div>
         </div>
+        </div>
       </div>
 
       <style>{`
+        .official-extra { display: none; }
+        .official-title { height: 25mm; display: grid; grid-template-columns: 28mm 1fr 35mm; align-items: center; column-gap: 3mm; }
+        .official-seal { width: 21mm; height: 21mm; object-fit: contain; justify-self: start; }
+        .official-wordmark { width: 30mm; height: 21mm; object-fit: contain; justify-self: end; }
+        .official-title-text { text-align: center; font-size: 14px; font-weight: 700; }
+        .official-meta, .official-submeta { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 8px; }
+        .official-meta td, .official-submeta td { border: 1px solid #777; height: 6mm; padding: 0 2mm; white-space: nowrap; }
+        .official-meta td { width: 33.333%; }
+        .official-meta strong, .official-submeta strong { display: inline-block; min-width: 23mm; font-size: 7px; }
+        .official-meta span, .official-submeta span { display: inline-block; border-bottom: 1px solid #333; min-width: 18mm; text-align: center; }
+        .official-blue-rule { height: 3px; background: #102c66; margin-top: 3mm; }
+        .official-submeta { margin-top: 0; }
+        .official-submeta td { height: 7mm; vertical-align: middle; }
+        .official-submeta .official-term { width: 22%; text-align: center; font-size: 12px; font-weight: 700; }
+        .official-record-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 7px; margin-top: 0; }
+        .official-record-table th, .official-record-table td { border: 1px solid #111; padding: 0; height: 3.9mm; line-height: 1; text-align: center; overflow: hidden; }
+        .official-record-table th { background: #f1f1f1; font-weight: 700; }
+        .official-record-table thead tr:nth-child(1) th { height: 8mm; }
+        .official-record-table thead tr:nth-child(2) th { height: 6mm; }
+        .official-record-table thead tr:nth-child(3) th { height: 4mm; }
+        .official-record-table .col-number { width: 5mm; }
+        .official-record-table .col-name { width: 55mm; }
+        .official-record-table .col-score { width: 5.2mm; }
+        .official-record-table .col-total { width: 7mm; }
+        .official-record-table .col-ps, .official-record-table .col-ws { width: 7mm; }
+        .official-record-table .col-grade { width: 9mm; }
+        .official-record-table .col-descriptor { width: 14mm; }
+        .official-record-table tbody tr:first-child td { height: 5mm; background: #f1f1f1; }
         @media screen {
-          .eclass-print { background: white; margin: 20px auto; max-width: 1200px; border-radius: 8px; padding: 16px; }
+          .eclass-print { background: white; margin: 20px auto; width: 1200px; max-width: calc(100vw - 40px); padding: 8mm 6mm; border-radius: 8px; box-sizing: border-box; }
+          .official-record-table { min-width: 100%; }
         }
         @media print {
           .no-print { display: none !important; }
-          /* Show this modal, hide the main live page */
           .eclass-modal-overlay { display: block !important; position: static !important; overflow: visible !important; background: white !important; }
           .min-h-screen { display: none !important; }
           body { background: white !important; margin: 0 !important; }
-          .eclass-print { padding: 4mm !important; width: 100% !important; min-width: unset !important; box-shadow: none !important; border-radius: 0 !important; }
-          table { page-break-inside: auto; }
-          tr { page-break-inside: avoid; page-break-after: auto; }
-          thead { display: table-header-group; }
-          @page { size: landscape; margin: 6mm; }
+          .eclass-print { width: 285mm !important; min-width: 285mm !important; max-width: 285mm !important; padding: 7mm 0 !important; margin: 0 auto !important; box-shadow: none !important; border-radius: 0 !important; }
+          .official-record-table { page-break-inside: auto; }
+          .official-record-table thead { display: table-row-group; }
+          .official-record-table tr { page-break-inside: avoid; page-break-after: auto; }
+          @page { size: A4 landscape; margin: 6mm; }
         }
       `}</style>
     </div>
