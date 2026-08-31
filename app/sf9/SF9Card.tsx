@@ -84,7 +84,7 @@ function ElementarySF9Card({ data, section, frontPage }: SF9CardProps) {
   const schoolHead = (section?.school_head ?? '').toUpperCase();
   const adviser = (section?.adviser ?? '').toUpperCase();
   const border: CSSProperties = { border: '1px solid black' };
-  const td: CSSProperties = { ...border, padding: '4px 4px', fontSize: '7pt', verticalAlign: 'middle', lineHeight: '1.25' };
+  const td: CSSProperties = { ...border, padding: '6px 5px', fontSize: '7pt', verticalAlign: 'middle', lineHeight: '1.3' };
   const center: CSSProperties = { ...td, textAlign: 'center' };
   const months = data.attendance.map(a => a.monthLabel);
   const total = (key: 'days'|'present'|'absent') => data.attendance.reduce((s,a) => s + (a[key] || 0), 0);
@@ -153,8 +153,8 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
   const HALF_W = '138mm';
 
   const cellStyle = (bg='white'): CSSProperties => ({
-    border:'1px solid black', textAlign:'center', padding:'4px 4px',
-    verticalAlign:'middle', lineHeight:'1.25', fontSize:'8pt', background: bg,
+    border:'1px solid black', textAlign:'center', padding:'6px 5px',
+    verticalAlign:'middle', lineHeight:'1.3', fontSize:'8pt', background: bg,
   });
 
   const gradeCell = (cell: GradeCell, key: string|number) => (
@@ -188,12 +188,12 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
     return (
       <>
         <tr key={row.key}>
-          <td style={{border:'1px solid black', padding:'4px 4px', verticalAlign:'middle', lineHeight:'1.25', fontWeight: isParentComputed ? 'bold' : undefined}}>
+          <td style={{border:'1px solid black', padding:'6px 5px', verticalAlign:'middle', lineHeight:'1.3', fontWeight: isParentComputed ? 'bold' : undefined}}>
             {row.label}
           </td>
           {cells.map((cell,i)=>gradeCell(cell,i))}
           <td style={cellStyle(failed?'#fee2e2':'white')}><b>{final||''}</b></td>
-          <td style={{border:'1px solid black', textAlign:'center', padding:'4px 4px', verticalAlign:'middle', lineHeight:'1.25',
+          <td style={{border:'1px solid black', textAlign:'center', padding:'6px 5px', verticalAlign:'middle', lineHeight:'1.3',
             fontSize:'7.5pt', color:failed?'red':'inherit'}}>
             {final>0?(failed?'Failed':'Passed'):''}
           </td>
@@ -205,15 +205,15 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
           const subFinal = data.finalGrades[sub.key] ?? 0;
           return (
             <tr key={sub.key}>
-              <td style={{border:'1px solid black', padding:'4px 4px 4px 10px', verticalAlign:'middle', lineHeight:'1.25', fontSize:'7.5pt', color:'#555', fontStyle:'italic'}}>
+              <td style={{border:'1px solid black', padding:'6px 5px 6px 10px', verticalAlign:'middle', lineHeight:'1.3', fontSize:'7.5pt', color:'#555', fontStyle:'italic'}}>
                 {sub.label}
               </td>
               {subCells.map((cell,i)=>(
-                <td key={i} style={{border:'1px solid black', textAlign:'center', padding:'4px 4px', verticalAlign:'middle', lineHeight:'1.25', fontSize:'7.5pt', color:'#666'}}>
+                <td key={i} style={{border:'1px solid black', textAlign:'center', padding:'6px 5px', verticalAlign:'middle', lineHeight:'1.3', fontSize:'7.5pt', color:'#666'}}>
                   {cell.value||''}
                 </td>
               ))}
-              <td style={{border:'1px solid black', textAlign:'center', padding:'4px 4px', verticalAlign:'middle', lineHeight:'1.25', fontSize:'7.5pt', color:'#666'}}>
+              <td style={{border:'1px solid black', textAlign:'center', padding:'6px 5px', verticalAlign:'middle', lineHeight:'1.3', fontSize:'7.5pt', color:'#666'}}>
                 {subFinal||''}
               </td>
               <td style={{border:'1px solid black'}}></td>
@@ -226,16 +226,16 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
 
   const GeneralAverageRow = () => (
     <tr style={{background:'#f0fdf4'}}>
-      <td colSpan={4} style={{border:'1px solid black', padding:'4px 4px', fontWeight:'bold', textAlign:'right', fontSize:'8.5pt'}}>
+      <td colSpan={4} style={{border:'1px solid black', padding:'6px 5px', fontWeight:'bold', textAlign:'right', fontSize:'8.5pt'}}>
         General Average
       </td>
-      <td style={{border:'1px solid black', textAlign:'center', fontWeight:'bold', fontSize:'11pt', padding:'4px 4px', verticalAlign:'middle',
+      <td style={{border:'1px solid black', textAlign:'center', fontWeight:'bold', fontSize:'11pt', padding:'6px 5px', verticalAlign:'middle',
         background: data.genAverage>0 && data.genAverage<75 ? '#fee2e2' : '#dcfce7'}}>
         {data.genAverage||''}
       </td>
       <td style={{border:'1px solid black', textAlign:'center', fontWeight:'bold',
         color: data.promotionRemark ? PROMOTION_COLOR[data.promotionRemark] : 'inherit',
-        fontSize:'7.5pt', padding:'4px 4px', verticalAlign:'middle'}}>
+        fontSize:'7.5pt', padding:'6px 5px', verticalAlign:'middle'}}>
         {data.promotionRemark ? data.promotionRemark.toUpperCase() : ''}
       </td>
     </tr>
@@ -401,9 +401,9 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
               <tr>
                 <td style={{border:'1px solid black', padding:'1px'}}></td>
                 {MONTH_LABELS.map(m=>(
-                  <td key={m} style={{border:'1px solid black', padding:'3px 4px', verticalAlign:'middle', textAlign:'center', fontWeight:'bold'}}>{m}</td>
+                  <td key={m} style={{border:'1px solid black', padding:'4px 5px', verticalAlign:'middle', textAlign:'center', fontWeight:'bold'}}>{m}</td>
                 ))}
-                <td style={{border:'1px solid black', padding:'3px 4px', verticalAlign:'middle', textAlign:'center', fontWeight:'bold'}}>Total</td>
+                <td style={{border:'1px solid black', padding:'4px 5px', verticalAlign:'middle', textAlign:'center', fontWeight:'bold'}}>Total</td>
               </tr>
             </thead>
             <tbody>
@@ -415,11 +415,11 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
                 <tr key={row.key}>
                   <td style={{border:'1px solid black', padding:'1px 2px', fontSize:'6pt', whiteSpace:'nowrap'}}>{row.label}</td>
                   {data.attendance.map((att,i)=>(
-                    <td key={i} style={{border:'1px solid black', textAlign:'center', padding:'3px 4px', verticalAlign:'middle'}}>
+                    <td key={i} style={{border:'1px solid black', textAlign:'center', padding:'4px 5px', verticalAlign:'middle'}}>
                       {(att as any)[row.key]||''}
                     </td>
                   ))}
-                  <td style={{border:'1px solid black', textAlign:'center', fontWeight:'bold', padding:'3px 4px', verticalAlign:'middle'}}>
+                  <td style={{border:'1px solid black', textAlign:'center', fontWeight:'bold', padding:'4px 5px', verticalAlign:'middle'}}>
                     {attendanceTotal(row.key as 'days'|'present'|'absent')||''}
                   </td>
                 </tr>
