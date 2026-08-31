@@ -1119,15 +1119,6 @@ function EClassRecordView({
         <tr><td className="meta-wide" colSpan={2}><strong>SCHOOL NAME</strong><span>{schoolName || ''}</span></td><td><strong>SCHOOL YEAR</strong><span>{schoolYear || ''}</span></td></tr>
       </tbody></table>
       <div className="official-blue-rule" />
-      <table className="official-submeta"><tbody>
-        <tr>
-          <td rowSpan={2} className="official-term">{TERM_LABELS[currentTerm] ?? `TERM ${currentTerm}`}</td>
-          <td><strong>GRADE LEVEL</strong><span>{gradeLevel || ''}</span></td>
-          <td rowSpan={2}><strong>TEACHER</strong><span>{adviser?.toUpperCase() || ''}</span></td>
-          <td rowSpan={2}><strong>SUBJECT</strong><span>{subject || ''}</span></td>
-        </tr>
-        <tr><td><strong>SECTION</strong><span>{sectionName || ''}</span></td></tr>
-      </tbody></table>
     </>
   );
 
@@ -1425,9 +1416,9 @@ function EClassRecordView({
               <th colSpan={8}>WRITTEN / ORAL WORKS (WWs)</th>
               <th colSpan={6}>PRODUCT / PERFORMANCE<br/>TASKS (PTs)</th>
               {hasTA && <th colSpan={8}>EXAMINATIONS (EXs)</th>}
-              <th rowSpan={2} className="official-grade-heading">Initial<br/>Grade</th>
-              <th rowSpan={2} className="official-grade-heading">Term<br/>Grade</th>
-              <th rowSpan={2} className="official-grade-heading">Descriptor</th>
+              <th rowSpan={3} className="official-grade-heading">Initial<br/>Grade</th>
+              <th rowSpan={3} className="official-grade-heading">Term<br/>Grade</th>
+              <th rowSpan={3} className="official-grade-heading">Descriptor</th>
             </tr>
             <tr className="official-subheader-row">
               {highest.ww.map((v,i) => <th key={`ww-${i}`}>{i+1}</th>)}
@@ -1449,7 +1440,6 @@ function EClassRecordView({
                 <th>{highest.st[0]}</th><th>{highest.st[1]}</th><th>{highest.te}</th>
                 <th>30</th><th>30</th><th>40</th><th>100</th><th>{((weights.ta??0)*100).toFixed(0)}%</th>
               </>}
-              <th></th><th></th><th></th>
             </tr>
           </thead>
           <tbody>
