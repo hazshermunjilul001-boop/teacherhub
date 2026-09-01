@@ -36,8 +36,8 @@ function flattenLeafSubjects(rows: SF9SubjectRow[]): { key: string; label: strin
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ManualGradePanel({
-  students, sectionId, subjects, onClose, onSaved,
-}: { students:Student[]; sectionId:string; subjects:{key:string;label:string}[]; onClose:()=>void; onSaved:()=>void }) {
+  students, sectionId, subjects, allowedPeriods, canEditManual, onClose, onSaved,
+}: { students:Student[]; sectionId:string; subjects:{key:string;label:string}[]; allowedPeriods:number[]; canEditManual:boolean; onClose:()=>void; onSaved:()=>void }) {
   const [manualGrades, setManualGrades] = useState<Record<string,Record<string,number[]>>>({});
   const [saving,       setSaving]       = useState(false);
   const [loaded,       setLoaded]       = useState(false);
@@ -71,6 +71,7 @@ function ManualGradePanel({
   }, [sectionId, students, subjects]);
 
   const setGrade = (sid:string, subj:string, termIdx:number, val:string) => {
+    if (!canEditManual || !allowedPeriods.includes(termIdx + 1)) return;
     const v = Math.min(100, Math.max(0, parseInt(val) || 0));
     setManualGrades(prev => ({
       ...prev,
@@ -105,7 +106,7 @@ function ManualGradePanel({
       subjects.forEach(subj => {
         const grades = manualGrades[student.id]?.[subj.key] ?? [0,0,0];
         grades.forEach((grade, i) => {
-          if (grade >= 60) {
+          if (canEditManual && allowedPeriods.includes(i + 1) && grade >= 60) {
             rows.push({
               section_id: sectionId,
               student_id: student.id,
@@ -226,7 +227,8 @@ function ManualGradePanel({
                             data-student-id={student.id}
                             onChange={e => setGrade(student.id, filterSubj, ti, e.target.value)}
                             onKeyDown={e => handleGradeEnter(e, student.id, ti)}
-                            placeholder="—"
+                            disabled={!canEditManual || !allowedPeriods.includes(ti + 1)}
+                            placeholder={!canEditManual ? 'Class Record only' : '—'}
                             className={`w-16 text-center rounded-xl py-2 text-white text-sm font-bold outline-none transition
                               bg-gray-800 border focus:border-blue-500
                               ${grades[ti] >= 75 ? 'border-gray-600' : grades[ti] >= 60 ? 'border-red-700' : 'border-gray-700'}`}
@@ -256,10 +258,11 @@ function ManualGradePanel({
             <button onClick={onClose} className="px-5 py-2.5 rounded-xl border border-gray-600 hover:bg-gray-800 transition text-sm">
               Cancel
             </button>
-            <button onClick={saveAll} disabled={saving || !loaded}
+                        <button onClick={saveAll} disabled={saving || !loaded || !canEditManual}
+
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 font-semibold transition text-sm disabled:opacity-60">
               {saving ? <RefreshCw size={16} className="animate-spin"/> : <Save size={16}/>}
-              {saving ? 'Saving all grades…' : 'Save All Grades'}
+              {!canEditManual ? 'Class Record entry required' : saving ? 'Saving all grades…' : 'Save All Grades'}
             </button>
           </div>
         </div>
@@ -278,6 +281,8 @@ function CollabPanel({
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [inviteEmail,   setInviteEmail]   = useState('');
   const [inviteSubjects,setInviteSubjects]= useState<string[]>([]);
+  const [invitePeriods, setInvitePeriods] = useState<number[]>([1, 2, 3]);
+  const [inviteComponents, setInviteComponents] = useState<string[]>(['ww', 'pt', 'st', 'te']);
   const [loading,       setLoading]       = useState(true);
   const [saving,        setSaving]        = useState(false);
 
@@ -302,6 +307,8 @@ function CollabPanel({
       section_id:  sectionId,
       email,
       subjects:    inviteSubjects,
+      grading_periods: invitePeriods,
+      components: inviteComponents,
       role:        'subject_teacher',
       status:      'pending',
       user_id:    null,
@@ -312,6 +319,8 @@ function CollabPanel({
       setCollaborators(prev => [...prev.filter(c=>c.email!==data.email), data]);
       setInviteEmail('');
       setInviteSubjects([]);
+      setInvitePeriods([1, 2, 3]);
+      setInviteComponents(['ww', 'pt', 'st', 'te']);
     } else {
       alert('Error: ' + error?.message);
     }
@@ -386,7 +395,32 @@ function CollabPanel({
               </div>
             </div>
 
+                        <div>
+              <label className="block text-sm text-gray-400 mb-2">Allowed Grading Periods</label>
+              <div className="flex gap-2">
+                {[1, 2, 3].map(period => (
+                  <button key={period} onClick={() => setInvitePeriods(prev => prev.includes(period) ? prev.filter(p => p !== period) : [...prev, period].sort())}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition ${invitePeriods.includes(period) ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
+                    Term {period}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">Allowed Grade Components</label>
+              <div className="flex flex-wrap gap-2">
+                {[['ww', 'Written Works'], ['pt', 'Performance Tasks'], ['st', 'Summative Tests'], ['te', 'Term Exam']].map(([key, label]) => (
+                  <button key={key} onClick={() => setInviteComponents(prev => prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key])}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium transition ${inviteComponents.includes(key) ? 'bg-emerald-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <button onClick={invite}
+
               disabled={saving || !inviteEmail.trim() || inviteSubjects.length === 0}
               className="w-full flex items-center justify-center gap-2 py-3 bg-purple-600 hover:bg-purple-700 rounded-xl font-semibold text-sm transition disabled:opacity-50">
               {saving ? <RefreshCw size={16} className="animate-spin"/> : <Plus size={16}/>}
@@ -487,6 +521,15 @@ export default function SF9Page() {
   } = useSF9Data(sectionId, numericGradeLevel, shsTrack, electiveSubjectNames, schoolYear, dataVersion);
 
   const leafSubjects = flattenLeafSubjects([...frontPage, ...continuationPage]);
+  const isSubjectTeacher = activeSection?._role === 'subject_teacher';
+  const assignedSubjects: string[] = activeSection?._subjects ?? [];
+  const visibleLeafSubjects = isSubjectTeacher
+    ? leafSubjects.filter(subject => assignedSubjects.includes(subject.key))
+    : leafSubjects;
+  const allowedPeriods: number[] = activeSection?._gradingPeriods?.length ? activeSection._gradingPeriods : [1, 2, 3];
+  // Manual SF9 grades are adviser-only; subject teachers encode through Class Record,
+  // where the assigned component and grading-period restrictions are enforced.
+  const canEditManual = !isSubjectTeacher;
   const current = sf9Data[selected];
 
   const handleDownloadDocx = async () => {
@@ -707,7 +750,9 @@ export default function SF9Page() {
         <ManualGradePanel
           students={students}
           sectionId={sectionId}
-          subjects={leafSubjects}
+          subjects={visibleLeafSubjects}
+          allowedPeriods={allowedPeriods}
+          canEditManual={canEditManual}
           onClose={() => setShowManual(false)}
           onSaved={() => setDataVersion(v => v+1)}
         />

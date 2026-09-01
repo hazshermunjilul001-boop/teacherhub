@@ -239,7 +239,7 @@ function SectionSwitcher({ sidebarOpen, onManage }: { sidebarOpen: boolean; onMa
 
 function Dashboard({ user }: { user: any }) {
   const router = useRouter();
-  const { activeSection, sections } = useSection();
+  const { activeSection, sections, linkNotifications, clearLinkNotifications } = useSection();
   const { planName, isFree, daysLeft } = useSubscription();
   const { theme, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -441,15 +441,28 @@ function Dashboard({ user }: { user: any }) {
             )}
           </div>
           <button
+            onClick={() => {
+              clearLinkNotifications();
+              router.push('/sections');
+            }}
+            title={linkNotifications > 0 ? `${linkNotifications} section link${linkNotifications === 1 ? '' : 's'} available` : 'View section links'}
+            aria-label="View section links"
+            className="relative w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-800 hover:text-white transition"
+          >
+            <Bell size={18}/>
+            {linkNotifications > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[10px] leading-4 font-bold text-center">
+                {linkNotifications > 9 ? '9+' : linkNotifications}
+              </span>
+            )}
+          </button>
+          <button
             onClick={toggleTheme}
             title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-800 hover:text-white transition"
           >
             {theme === 'dark' ? <Sun size={18}/> : <Moon size={18}/>}
-          </button>
-          <button className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-800 hover:text-white transition">
-            <Bell size={18}/>
           </button>
         </header>
 

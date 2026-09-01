@@ -24,6 +24,8 @@ export interface Section {
   // Extra fields for shared sections
   _role?: 'owner' | 'subject_teacher';
   _subjects?: string[]; // subjects this teacher can access in shared section
+  _gradingPeriods?: number[];
+  _components?: string[];
 }
 
 interface SectionContextType {
@@ -32,6 +34,8 @@ interface SectionContextType {
   setActiveSection: (s: Section) => void;
   loadSections:     () => Promise<void>;
   loading:          boolean;
+  linkNotifications: number;
+  clearLinkNotifications: () => void;
 }
 
 // ── CONTEXT ───────────────────────────────────────────────────────────────────
@@ -42,12 +46,15 @@ const SectionContext = createContext<SectionContextType>({
   setActiveSection: () => {},
   loadSections:     async () => {},
   loading:          true,
+  linkNotifications: 0,
+  clearLinkNotifications: () => {},
 });
 
 export function SectionProvider({ children }: { children: ReactNode }) {
   const [sections,      setSections]          = useState<Section[]>([]);
   const [activeSection, setActiveSectionState] = useState<Section | null>(null);
   const [loading,       setLoading]            = useState(true);
+  const [linkNotifications, setLinkNotifications] = useState(0);
 
   const loadSections = async () => {
     setLoading(true);
@@ -59,6 +66,13 @@ export function SectionProvider({ children }: { children: ReactNode }) {
     // differently-cased address, so every lookup must use the same normalized value.
     const normalizedEmail = user.email?.trim().toLowerCase();
     if (!normalizedEmail) { setLoading(false); return; }
+
+    const { count: pendingCount } = await supabase
+      .from('section_collaborators')
+      .select('id', { count: 'exact', head: true })
+      .eq('email', normalizedEmail)
+      .eq('status', 'pending');
+    setLinkNotifications(pendingCount ?? 0);
 
     await supabase
       .from('section_collaborators')
@@ -78,14 +92,14 @@ export function SectionProvider({ children }: { children: ReactNode }) {
     // ── Step 3: Load shared sections via section_collaborators ────────────────
     const { data: collabRows, error: collabErr1 } = await supabase
       .from('section_collaborators')
-      .select('section_id, subjects, status')
+      .select('section_id, subjects, grading_periods, components, status')
       .eq('user_id', user.id)
       .eq('status', 'active');
 
     // Also try matching by email in case user_id wasn't set yet
     const { data: collabByEmail, error: collabErr2 } = await supabase
       .from('section_collaborators')
-      .select('section_id, subjects, status')
+      .select('section_id, subjects, grading_periods, components, status')
       .eq('email', normalizedEmail)
       .eq('status', 'active');
 
@@ -111,7 +125,13 @@ export function SectionProvider({ children }: { children: ReactNode }) {
         .filter(s => s.teacher_id !== user.id) // don't duplicate own sections
         .map(s => {
           const collab = collabSectionIds.find(c => c.section_id === s.id);
-          return { ...s, _role: 'subject_teacher' as const, _subjects: collab?.subjects ?? [] };
+          return {
+            ...s,
+            _role: 'subject_teacher' as const,
+            _subjects: collab?.subjects ?? [],
+            _gradingPeriods: (collab?.grading_periods ?? [1, 2, 3]).map(Number),
+            _components: collab?.components ?? ['ww', 'pt', 'st', 'te'],
+          };
         });
     }
 
@@ -149,8 +169,10 @@ export function SectionProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const clearLinkNotifications = () => setLinkNotifications(0);
+
   return (
-    <SectionContext.Provider value={{ sections, activeSection, setActiveSection, loadSections, loading }}>
+    <SectionContext.Provider value={{ sections, activeSection, setActiveSection, loadSections, loading, linkNotifications, clearLinkNotifications }}>
       {children}
     </SectionContext.Provider>
   );

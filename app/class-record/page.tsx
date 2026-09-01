@@ -1680,6 +1680,10 @@ export default function ClassRecord() {
   // _subjects is set by SectionContext when loading shared sections
   const assignedSubjects: string[] = activeSection?._subjects ?? [];
   const isSubjectTeacher = isCollaborator && activeSection?._role === 'subject_teacher' && assignedSubjects.length > 0;
+  const assignedPeriods: number[] = activeSection?._gradingPeriods?.length ? activeSection._gradingPeriods : [1, 2, 3];
+  const assignedComponents: string[] = activeSection?._components?.length ? activeSection._components : ['ww', 'pt', 'st', 'te'];
+  const canEditPeriod = (period: number) => !isSubjectTeacher || assignedPeriods.includes(period);
+  const canEditComponent = (component: string) => !isSubjectTeacher || assignedComponents.includes(component);
 
   // Filter the subject lists — subject teachers only see their assigned subjects
   const visibleSubjectsJHS = isSubjectTeacher
@@ -1693,8 +1697,9 @@ export default function ClassRecord() {
   useEffect(() => {
     if (isSubjectTeacher && assignedSubjects.length > 0) {
       setSubject(assignedSubjects[0]);
+      if (!assignedPeriods.includes(term)) setTerm(assignedPeriods[0]);
     }
-  }, [isSubjectTeacher, assignedSubjects.join(',')]);
+  }, [isSubjectTeacher, assignedSubjects.join(','), assignedPeriods.join(','), term]);
 
   const weights = SUBJECT_WEIGHTS[subject] ?? {ww:0.25, pt:0.50, ta:0.25};
   const hasTA = (weights.ta??0)>0;
@@ -1795,6 +1800,7 @@ export default function ClassRecord() {
   }, []);
 
   const updateScore = useCallback(async(sid:string, cat:'ww'|'pt'|'st'|'te', idx:number|null, val:number)=>{
+    if (!canEditPeriod(term) || !canEditComponent(cat)) return;
     setScores(prev=>{
       const cur=prev[sid]||{ww:{},pt:{},st:{},te:0};
       const next={...prev,[sid]:{...cur,...(cat==='te'?{te:val}:{[cat]:{...(cur[cat as 'ww'|'pt'|'st']),[idx!]:val}})}};
@@ -1806,7 +1812,7 @@ export default function ClassRecord() {
       },{onConflict:'student_id,term,subject'}).then(({error})=>{ if(error) console.error('Failed saving score for',sid,error); setSaving(null); });
       return next;
     });
-  },[term,subject,highest]);
+  },[term,subject,highest,isSubjectTeacher,assignedPeriods.join(','),assignedComponents.join(',')]);
 
   const compute = (sid:string)=>{
     const s=scores[sid]||{ww:{},pt:{},st:{},te:0};
@@ -1932,7 +1938,7 @@ export default function ClassRecord() {
             </td>
             {ww.map((v,i)=>(
               <td key={i} className="px-1 py-1 border-l border-gray-800">
-                <input type="number" min={0} max={highest.ww[i]} value={v||''} disabled={!!isInactive}
+                <input type="number" min={0} max={highest.ww[i]} value={v||''} disabled={!!isInactive || !canEditPeriod(term) || !canEditComponent('ww')}
                   data-cell={`${student.id}:ww:${i}`}
                   onChange={e=>updateScore(student.id,'ww',i,+e.target.value)}
                   onKeyDown={e=>handleEnter(e,student.id,'ww',i)}
@@ -1942,7 +1948,7 @@ export default function ClassRecord() {
             <td className="px-2 py-2 text-center text-blue-300 text-xs border-l border-gray-800 font-mono">{isInactive?'—':avgWW.toFixed(1)}</td>
             {pt.map((v,i)=>(
               <td key={i} className="px-1 py-1 border-l border-gray-800">
-                <input type="number" min={0} max={highest.pt[i]} value={v||''} disabled={!!isInactive}
+                <input type="number" min={0} max={highest.pt[i]} value={v||''} disabled={!!isInactive || !canEditPeriod(term) || !canEditComponent('pt')}
                   data-cell={`${student.id}:pt:${i}`}
                   onChange={e=>updateScore(student.id,'pt',i,+e.target.value)}
                   onKeyDown={e=>handleEnter(e,student.id,'pt',i)}
@@ -1953,7 +1959,7 @@ export default function ClassRecord() {
             {hasTA&&<>
               {st.map((v,i)=>(
                 <td key={i} className="px-1 py-1 border-l border-gray-800">
-                  <input type="number" min={0} max={highest.st[i]} value={v||''} disabled={!!isInactive}
+                  <input type="number" min={0} max={highest.st[i]} value={v||''} disabled={!!isInactive || !canEditPeriod(term) || !canEditComponent('st')}
                     data-cell={`${student.id}:st:${i}`}
                     onChange={e=>updateScore(student.id,'st',i,+e.target.value)}
                     onKeyDown={e=>handleEnter(e,student.id,'st',i)}
@@ -1961,7 +1967,7 @@ export default function ClassRecord() {
                 </td>
               ))}
               <td className="px-1 py-1 border-l border-gray-800">
-                <input type="number" min={0} max={highest.te} value={te||''} disabled={!!isInactive}
+                <input type="number" min={0} max={highest.te} value={te||''} disabled={!!isInactive || !canEditPeriod(term) || !canEditComponent('te')}
                   data-cell={`${student.id}:te:te`}
                   onChange={e=>updateScore(student.id,'te',null,+e.target.value)}
                   onKeyDown={e=>handleEnter(e,student.id,'te',null)}
@@ -2056,8 +2062,10 @@ export default function ClassRecord() {
           </select>
           <div className="flex rounded-xl overflow-hidden border border-gray-700">
             {[1,2,3].map(t=>(
-              <button key={t} onClick={()=>{flushPendingHighestSave();setTerm(t);}}
-                className={`px-7 py-2.5 text-sm font-medium transition ${term===t?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'}`}>
+              <button key={t} onClick={()=>{if (!canEditPeriod(t)) return; flushPendingHighestSave();setTerm(t);}}
+                disabled={!canEditPeriod(t)}
+                title={!canEditPeriod(t) ? 'This grading period is not assigned to you' : undefined}
+                className={`px-7 py-2.5 text-sm font-medium transition ${term===t?'bg-blue-600 text-white':'bg-gray-900 text-gray-400 hover:bg-gray-800'} ${!canEditPeriod(t)?'opacity-40 cursor-not-allowed':''}`}>
                 Term {t}
               </button>
             ))}
@@ -2104,7 +2112,7 @@ export default function ClassRecord() {
                   </td>
                   {highest.ww.map((v,i)=>(
                     <td key={i} className="bg-gray-900 px-1 py-1 border-l border-gray-800">
-                      <input type="number" value={v||''} onChange={e=>setHighest(p=>({...p,ww:p.ww.map((x,j)=>j===i?+e.target.value:x)}))}
+                      <input type="number" value={v||''} disabled={!canEditComponent('ww') || !canEditPeriod(term)} onChange={e=>setHighest(p=>({...p,ww:p.ww.map((x,j)=>j===i?+e.target.value:x)}))}
                         onBlur={flushPendingHighestSave}
                         className="w-14 text-center bg-gray-800 border border-gray-700 rounded py-1 text-white text-xs"/>
                     </td>
@@ -2112,7 +2120,7 @@ export default function ClassRecord() {
                   <td className="bg-gray-900 border-l border-gray-800 text-center text-gray-600 text-xs py-1">WW PS</td>
                   {highest.pt.map((v,i)=>(
                     <td key={i} className="bg-gray-900 px-1 py-1 border-l border-gray-800">
-                      <input type="number" value={v||''} onChange={e=>setHighest(p=>({...p,pt:p.pt.map((x,j)=>j===i?+e.target.value:x)}))}
+                      <input type="number" value={v||''} disabled={!canEditComponent('pt') || !canEditPeriod(term)} onChange={e=>setHighest(p=>({...p,pt:p.pt.map((x,j)=>j===i?+e.target.value:x)}))}
                         onBlur={flushPendingHighestSave}
                         className="w-14 text-center bg-gray-800 border border-gray-700 rounded py-1 text-white text-xs"/>
                     </td>
@@ -2121,13 +2129,13 @@ export default function ClassRecord() {
                   {hasTA&&<>
                     {highest.st.map((v,i)=>(
                       <td key={i} className="bg-gray-900 px-1 py-1 border-l border-gray-800">
-                        <input type="number" value={v||''} onChange={e=>setHighest(p=>({...p,st:p.st.map((x,j)=>j===i?+e.target.value:x)}))}
+                        <input type="number" value={v||''} disabled={!canEditComponent('st') || !canEditPeriod(term)} onChange={e=>setHighest(p=>({...p,st:p.st.map((x,j)=>j===i?+e.target.value:x)}))}
                           onBlur={flushPendingHighestSave}
                           className="w-14 text-center bg-gray-800 border border-gray-700 rounded py-1 text-white text-xs"/>
                       </td>
                     ))}
                     <td className="bg-gray-900 px-1 py-1 border-l border-gray-800">
-                      <input type="number" value={highest.te||''} onChange={e=>setHighest(p=>({...p,te:+e.target.value}))}
+                      <input type="number" value={highest.te||''} disabled={!canEditComponent('te') || !canEditPeriod(term)} onChange={e=>setHighest(p=>({...p,te:+e.target.value}))}
                         onBlur={flushPendingHighestSave}
                         className="w-14 text-center bg-gray-800 border border-gray-700 rounded py-1 text-white text-xs"/>
                     </td>
