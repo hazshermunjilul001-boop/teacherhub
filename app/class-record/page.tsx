@@ -1737,10 +1737,11 @@ export default function ClassRecord() {
     (async()=>{
       setLoading(true);
       const {data,error}=await supabase.from('students').select('*').eq('section_id',sectionId).order('full_name');
-      if(!error&&data?.length) setStudents(data);
+      const hiddenStudentIds = activeSection?._hiddenStudentIds ?? [];
+      if(!error) setStudents((data ?? []).filter((student: Student) => !hiddenStudentIds.includes(student.id)));
       setLoading(false);
     })();
-  },[sectionId]);
+  },[sectionId, activeSection?._hiddenStudentIds?.join(',')]);
 
   useEffect(()=>{
     if (students.length === 0) return; // wait until the roster is loaded so we know who to scope to

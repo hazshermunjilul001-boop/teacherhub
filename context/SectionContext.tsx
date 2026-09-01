@@ -26,6 +26,7 @@ export interface Section {
   _subjects?: string[]; // subjects this teacher can access in shared section
   _gradingPeriods?: number[];
   _components?: string[];
+  _hiddenStudentIds?: string[]; // students hidden only from this subject teacher's class record
 }
 
 interface SectionContextType {
@@ -127,10 +128,17 @@ export function SectionProvider({ children }: { children: ReactNode }) {
         .filter(s => s.teacher_id !== user.id) // don't duplicate own sections
         .map(s => {
           const collab = collabSectionIds.find(c => c.section_id === s.id);
+          const rawSubjects = collab?.subjects ?? [];
+          const hiddenPrefix = '__hidden_student__:';
+          const hiddenStudentIds = rawSubjects
+            .filter((value: string) => value.startsWith(hiddenPrefix))
+            .map((value: string) => value.slice(hiddenPrefix.length))
+            .filter(Boolean);
           return {
             ...s,
             _role: 'subject_teacher' as const,
-            _subjects: collab?.subjects ?? [],
+            _subjects: rawSubjects.filter((value: string) => !value.startsWith(hiddenPrefix)),
+            _hiddenStudentIds: hiddenStudentIds,
             _gradingPeriods: (collab?.grading_periods ?? [1, 2, 3]).map(Number),
             _components: collab?.components ?? ['ww', 'pt', 'st', 'te'],
           };

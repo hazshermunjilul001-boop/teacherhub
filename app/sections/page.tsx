@@ -35,6 +35,8 @@ const BLANK: Partial<Section> = {
 // TYPES
 // ─────────────────────────────────────────────────────────────────────────────
 
+const HIDDEN_STUDENT_PREFIX = '__hidden_student__:';
+
 interface Student {
   id: string;
   section_id: string;
@@ -71,7 +73,27 @@ function StudentRosterModal({
       .select('*')
       .eq('section_id', section.id)
       .order('full_name');
-    setStudents(data ?? []);
+
+    if (section._role === 'subject_teacher') {
+      const { data: { user } } = await supabase.auth.getUser();
+      let hiddenStudentIds: string[] = [];
+      if (user) {
+        const normalizedEmail = user.email?.trim().toLowerCase();
+        const { data: links } = await supabase
+          .from('section_collaborators')
+          .select('subjects')
+          .eq('section_id', section.id)
+          .or(`user_id.eq.${user.id}${normalizedEmail ? `,email.eq.${normalizedEmail}` : ''}`)
+          .eq('status', 'active')
+          .limit(1);
+        hiddenStudentIds = (links?.[0]?.subjects ?? [])
+          .filter((value: string) => value.startsWith(HIDDEN_STUDENT_PREFIX))
+          .map((value: string) => value.slice(HIDDEN_STUDENT_PREFIX.length));
+      }
+      setStudents((data ?? []).filter(student => !hiddenStudentIds.includes(student.id)));
+    } else {
+      setStudents(data ?? []);
+    }
     setLoading(false);
   };
 
@@ -119,6 +141,42 @@ function StudentRosterModal({
 
   // ── Delete student ─────────────────────────────────────────────────────────
   const handleDelete = async (student: Student) => {
+    if (section._role === 'subject_teacher') {
+      if (!confirm(`Remove "${student.full_name}" from your class record?\n\nThe student will remain in the adviser's roster, and all grades you already entered will remain available to the adviser.`)) return;
+      setDeletingId(student.id);
+      const { data: { user } } = await supabase.auth.getUser();
+      const normalizedEmail = user?.email?.trim().toLowerCase();
+      if (!user) {
+        alert('Unable to identify the signed-in teacher.');
+        setDeletingId(null);
+        return;
+      }
+      const { data: links, error: linkError } = await supabase
+        .from('section_collaborators')
+        .select('id, subjects')
+        .eq('section_id', section.id)
+        .or(`user_id.eq.${user.id}${normalizedEmail ? `,email.eq.${normalizedEmail}` : ''}`)
+        .eq('status', 'active')
+        .limit(1);
+      const link = links?.[0];
+      if (linkError || !link) {
+        alert('Unable to save this teacher-specific removal. No shared teacher link was found.');
+      } else {
+        const subjects = Array.isArray(link.subjects) ? link.subjects : [];
+        const marker = `${HIDDEN_STUDENT_PREFIX}${student.id}`;
+        if (!subjects.includes(marker)) {
+          const { error } = await supabase
+            .from('section_collaborators')
+            .update({ subjects: [...subjects, marker] })
+            .eq('id', link.id);
+          if (error) alert('Error saving removal: ' + error.message);
+        }
+      }
+      await load();
+      setDeletingId(null);
+      return;
+    }
+
     if (!confirm(`Delete "${student.full_name}"?\n\nThis will also remove all their grades and attendance records. This cannot be undone.`)) return;
     setDeletingId(student.id);
     await supabase.from('grades').delete().eq('student_id', student.id);
