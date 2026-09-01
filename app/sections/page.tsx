@@ -463,13 +463,24 @@ function ImportModal({
       full_name:  s.full_name,
       sex:        s.sex,
       birthdate:  s.birthdate,
+      status:     'active',
+      status_date: null,
+      status_note: null,
     }));
 
+    const studentInsertErrors: string[] = [];
     for (let i = 0; i < studentRows.length; i += 50) {
       const chunk = studentRows.slice(i, i + 50);
       const { error } = await supabase.from('students').insert(chunk);
-      if (error) console.error('Student insert error:', error);
+      if (error) studentInsertErrors.push(error.message);
       setProgress(`Imported ${Math.min(i + 50, studentRows.length)} of ${studentRows.length} students…`);
+    }
+
+    if (studentInsertErrors.length > 0) {
+      await supabase.from('sections').delete().eq('id', newSection.id);
+      alert(`The section was not completed because the student roster could not be saved.\n\n${studentInsertErrors[0]}`);
+      setStage('preview');
+      return;
     }
 
     setProgress('Done!');
@@ -686,13 +697,24 @@ function ImportMasterlistModal({
       full_name:  s.full_name,
       sex:        s.sex,
       birthdate:  s.birthdate ?? null,
+      status:     'active',
+      status_date: null,
+      status_note: null,
     }));
 
+    const studentInsertErrors: string[] = [];
     for (let i = 0; i < studentRows.length; i += 50) {
       const chunk = studentRows.slice(i, i + 50);
       const { error } = await supabase.from('students').insert(chunk);
-      if (error) console.error('Student insert error:', error);
+      if (error) studentInsertErrors.push(error.message);
       setProgress(`Imported ${Math.min(i + 50, studentRows.length)} of ${studentRows.length} students…`);
+    }
+
+    if (studentInsertErrors.length > 0) {
+      await supabase.from('sections').delete().eq('id', newSection.id);
+      alert(`The section was not completed because the student roster could not be saved.\n\n${studentInsertErrors[0]}`);
+      setStage('preview');
+      return;
     }
 
     setProgress('Done!');

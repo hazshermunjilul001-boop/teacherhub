@@ -138,7 +138,9 @@ export function SectionProvider({ children }: { children: ReactNode }) {
     // ── Step 4: Merge and set ─────────────────────────────────────────────────
     const all = [...owned, ...sharedSections];
 
-    if (!ownError && all.length > 0) {
+    // Shared sections must not be discarded just because the owner-only query
+    // returned an error (for example, a school-admin account with no owned rows).
+    if (all.length > 0) {
       setSections(all);
       const savedId = localStorage.getItem('activeSection_id');
       const saved   = all.find((s: Section) => s.id === savedId);
@@ -148,7 +150,7 @@ export function SectionProvider({ children }: { children: ReactNode }) {
         setActiveSectionState(all[0]);
         localStorage.setItem('activeSection_id', all[0].id);
       }
-    } else if (!ownError) {
+    } else {
       setSections([]);
     }
 
