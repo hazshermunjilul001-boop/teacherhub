@@ -14,7 +14,6 @@ export interface Section {
   school_year: string;
   school_name: string;
   school_id: string;
-  school_logo_url?: string;
   district?: string;
   division: string;
   region: string;
@@ -55,11 +54,16 @@ export function SectionProvider({ children }: { children: ReactNode }) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    // ── Step 1: Auto-accept any pending invites for this user's email ──────────
+    // ── Step 1: Auto-accept pending invites for this user's normalized email ─────
+    // Advisers save invite emails in lowercase. Auth providers may return a
+    // differently-cased address, so every lookup must use the same normalized value.
+    const normalizedEmail = user.email?.trim().toLowerCase();
+    if (!normalizedEmail) { setLoading(false); return; }
+
     await supabase
       .from('section_collaborators')
       .update({ status: 'active', user_id: user.id })
-      .eq('email', user.email)
+      .eq('email', normalizedEmail)
       .eq('status', 'pending');
 
     // ── Step 2: Load own sections (teacher_id = this user) ────────────────────
@@ -82,7 +86,7 @@ export function SectionProvider({ children }: { children: ReactNode }) {
     const { data: collabByEmail, error: collabErr2 } = await supabase
       .from('section_collaborators')
       .select('section_id, subjects, status')
-      .eq('email', user.email)
+      .eq('email', normalizedEmail)
       .eq('status', 'active');
 
     if (collabErr1) console.error('Collab by user_id error:', collabErr1);

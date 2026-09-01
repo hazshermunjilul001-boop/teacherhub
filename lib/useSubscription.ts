@@ -44,9 +44,11 @@ export function useSubscription() {
         });
       }
 
-      // Check if this user is an active collaborator on any section
-      // Even on Free plan, collaborators get Class Record access for their subjects
+            // Check if this user is an active collaborator on any section.
+      // Normalize email because adviser invites are stored lowercase.
+      const normalizedEmail = user.email?.trim().toLowerCase();
       const { data: collabData } = await supabase
+
         .from('section_collaborators')
         .select('id')
         .eq('user_id', user.id)
@@ -57,7 +59,8 @@ export function useSubscription() {
       const { data: collabByEmail } = await supabase
         .from('section_collaborators')
         .select('id')
-        .eq('email', user.email)
+                .eq('email', normalizedEmail)
+
         .eq('status', 'active')
         .limit(1);
 
