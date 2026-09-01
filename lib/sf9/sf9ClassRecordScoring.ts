@@ -32,8 +32,16 @@ export const WEIGHTS: Record<string,{ww:number;pt:number;ta:number}> = {
   'EPP/TLE':{ww:0.20,pt:0.60,ta:0.20},
   'MAPEH - Music & Arts':{ww:0.20,pt:0.60,ta:0.20},
   'MAPEH - PE & Health':{ww:0.20,pt:0.60,ta:0.20},
+  // Restored legacy SHS subjects. These keys match the values stored in
+  // grades.subject, so existing Class Record rows remain readable.
+  'SHS Core Subjects':{ww:0.20,pt:0.50,ta:0.30},
+  'SHS Applied Track':{ww:0.20,pt:0.60,ta:0.20},
+  'SHS Specialized Subjects':{ww:0.20,pt:0.60,ta:0.20},
+  'SHS Work Immersion':{ww:0.20,pt:0.80,ta:0.00},
+  'SHS Research / Capstone':{ww:0.40,pt:0.60,ta:0.00},
+  '21st Century Literature form the Philippines and the World':{ww:0.25,pt:0.50,ta:0.25},
   // No explicit entry needed for GMRC / Values Education, Makabansa, or any
-  // SHS subject — computeFromClassRecord() falls back to {0.25,0.50,0.25}
+  // other subject — computeFromClassRecord() falls back to {0.25,0.50,0.25}
   // for anything not listed here.
 };
 

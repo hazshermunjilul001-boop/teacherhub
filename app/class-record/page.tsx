@@ -102,7 +102,16 @@ const SUBJECTS_JHS = [
   'SPA (Arts)',              // follows MAPEH
   'STE Research',            // follows Science
 ];
+const SUBJECTS_SHS_RESTORED = [
+  'SHS Core Subjects',
+  'SHS Applied Track',
+  'SHS Specialized Subjects',
+  'SHS Work Immersion',
+  'SHS Research / Capstone',
+  '21st Century Literature form the Philippines and the World',
+];
 const SUBJECTS_SHS_G11 = [
+  ...SUBJECTS_SHS_RESTORED,
   'Mabisang Komunikasyon',
   'Effective Communication',
   'Life and Career Skills',
@@ -114,6 +123,7 @@ const SUBJECTS_SHS_G11 = [
   'Business - Introduction to Organization and Management',
 ];
 const SUBJECTS_SHS_G12 = [
+  ...SUBJECTS_SHS_RESTORED,
   'Philippine Politics and Governance',
   'Personal Development',
   'Introduction to Philosophy of the Human Person',
@@ -143,6 +153,14 @@ const SUBJECT_WEIGHTS: Record<string, { ww: number; pt: number; ta: number }> = 
   ...Object.fromEntries([
     ...SUBJECTS_SHS.map(s => [s, { ww: 0.20, pt: 0.50, ta: 0.30 }]),
   ]),
+  // Restored legacy SHS subjects. These entries intentionally come after the
+  // generic SHS defaults so their original component weights take precedence.
+  'SHS Core Subjects':                               { ww: 0.20, pt: 0.50, ta: 0.30 },
+  'SHS Applied Track':                                { ww: 0.20, pt: 0.60, ta: 0.20 },
+  'SHS Specialized Subjects':                         { ww: 0.20, pt: 0.60, ta: 0.20 },
+  'SHS Work Immersion':                               { ww: 0.20, pt: 0.80, ta: 0.00 },
+  'SHS Research / Capstone':                          { ww: 0.40, pt: 0.60, ta: 0.00 },
+  '21st Century Literature form the Philippines and the World': { ww: 0.25, pt: 0.50, ta: 0.25 },
 };
 const TRANSMUTATION = [
   { min:99.50,max:100,trans:100},{min:97.50,max:99.49,trans:99},{min:96.00,max:97.49,trans:98},
