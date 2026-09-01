@@ -37,6 +37,37 @@ function safeStr(val: any): string {
   return String(val).trim();
 }
 
+/** Convert LIS/Excel date cells to the ISO format required by PostgreSQL date columns. */
+function normalizeDate(val: any): string {
+  if (val === null || val === undefined || val === '') return '';
+
+  // XLSX returns Excel dates as numbers when cellDates:false is used.
+  if (typeof val === 'number' && Number.isFinite(val)) {
+    const parsed = XLSX.SSF.parse_date_code(val);
+    if (parsed?.y && parsed?.m && parsed?.d) {
+      return `${String(parsed.y).padStart(4, '0')}-${String(parsed.m).padStart(2, '0')}-${String(parsed.d).padStart(2, '0')}`;
+    }
+  }
+
+  if (val instanceof Date && !Number.isNaN(val.getTime())) {
+    return `${val.getUTCFullYear()}-${String(val.getUTCMonth() + 1).padStart(2, '0')}-${String(val.getUTCDate()).padStart(2, '0')}`;
+  }
+
+  const value = safeStr(val);
+  if (!value) return '';
+  if (/^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+
+  // Handle common text dates emitted by exported LIS workbooks.
+  const match = value.match(/^(\d{1,2})[\\/-](\d{1,2})[\\/-](\d{4})$/);
+  if (match) {
+    const [, first, second, year] = match;
+    // LIS exports are commonly month/day/year. Keep the original convention.
+    return `${year}-${String(Number(first)).padStart(2, '0')}-${String(Number(second)).padStart(2, '0')}`;
+  }
+
+  return value;
+}
+
 function isLRN(val: any): boolean {
   const s = safeStr(val).replace(/\s/g, '');
   return /^\d{12}$/.test(s);
@@ -184,7 +215,7 @@ export function parseSF1(fileBuffer: ArrayBuffer): SF1ParseResult {
 
     const sexRaw = safeStr(row[6]).toUpperCase();
     const sex: 'M' | 'F' = sexRaw === 'F' ? 'F' : 'M';
-    const birthdate = safeStr(row[7]);
+    const birthdate = normalizeDate(row[7]);
 
     students.push({
       lrn:       lrnRaw.trim(),

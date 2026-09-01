@@ -102,10 +102,26 @@ const SUBJECTS_JHS = [
   'SPA (Arts)',              // follows MAPEH
   'STE Research',            // follows Science
 ];
-const SUBJECTS_SHS = [
-  'SHS Core Subjects', 'SHS Applied Track', 'SHS Specialized Subjects',
-  'SHS Work Immersion', 'SHS Research / Capstone', '21st Century Literature form the Philippines and the World',
+const SUBJECTS_SHS_G11 = [
+  'Mabisang Komunikasyon',
+  'Effective Communication',
+  'Life and Career Skills',
+  'General Science',
+  'General Mathematics',
+  'Pagaaral sa Kasaysayan ng Lipunang Pilipino',
+  'STEM - Biology 1',
+  'ARSSH - Contemporary Literature 1',
+  'Business - Introduction to Organization and Management',
 ];
+const SUBJECTS_SHS_G12 = [
+  'Philippine Politics and Governance',
+  'Personal Development',
+  'Introduction to Philosophy of the Human Person',
+  'Filipino sa Piling Larang (Akademik)',
+  'Contemporary Philippine Arts from the Regions',
+  'Physical Education and Health (Grade 12)',
+];
+const SUBJECTS_SHS = [...new Set([...SUBJECTS_SHS_G11, ...SUBJECTS_SHS_G12])];
 const SUBJECT_WEIGHTS: Record<string, { ww: number; pt: number; ta: number }> = {
   'Filipino':                                       { ww: 0.20, pt: 0.50, ta: 0.30 },
   'English':                                        { ww: 0.20, pt: 0.50, ta: 0.30 },
@@ -123,12 +139,10 @@ const SUBJECT_WEIGHTS: Record<string, { ww: number; pt: number; ta: number }> = 
   'STE Foreign Language':                           { ww: 0.20, pt: 0.50, ta: 0.30 },  // = English
   'SPA (Arts)':                                     { ww: 0.20, pt: 0.60, ta: 0.20 },  // = MAPEH
   'STE Research':                                    { ww: 0.20, pt: 0.50, ta: 0.30 },  // = Science
-  'SHS Core Subjects':                               { ww: 0.20, pt: 0.50, ta: 0.30 },
-  'SHS Applied Track':                              { ww: 0.20, pt: 0.60, ta: 0.20 },
-  'SHS Specialized Subjects':                        { ww: 0.20, pt: 0.60, ta: 0.20 },
-  'SHS Work Immersion':                             { ww: 0.20, pt: 0.80, ta: 0.00 },
-  'SHS Research / Capstone':                        { ww: 0.40, pt: 0.60, ta: 0.00 },
-  '21st Century Literature form the Philippines and the World':     { ww: 0.25, pt: 0.50, ta: 0.25 },
+  // SHS: Written Works 20%, Performance Tasks 50%, Summative Tests/Term Exam 30%.
+  ...Object.fromEntries([
+    ...SUBJECTS_SHS.map(s => [s, { ww: 0.20, pt: 0.50, ta: 0.30 }]),
+  ]),
 };
 const TRANSMUTATION = [
   { min:99.50,max:100,trans:100},{min:97.50,max:99.49,trans:99},{min:96.00,max:97.49,trans:98},
@@ -971,12 +985,12 @@ function MAPEHSummaryView({
 // ── E-CLASS RECORD VIEW (current term + test analysis) ────────────────────────
 function EClassRecordView({
   students, subject, sectionName, gradeLevel, schoolName, schoolId,
-  schoolYear, division, region, adviser, schoolHead, allTermData, currentTerm, onClose,
+  schoolYear, division, region, teacherName, schoolHead, allTermData, currentTerm, onClose,
 }: {
   students: Student[]; subject: string;
   sectionName: string; gradeLevel: string; schoolName: string;
   schoolId: string; schoolYear: string; division: string;
-  region: string; adviser: string; schoolHead: string;
+  region: string; teacherName: string; schoolHead: string;
   allTermData: Record<number, TermData>;
   currentTerm: number;
   onClose: () => void;
@@ -1184,7 +1198,7 @@ function EClassRecordView({
     termCell.alignment = { horizontal:'left', vertical:'middle', wrapText:true };
     setLabelValue(ws, termRow1, jc2, jc2End, 'Grade Level', gradeLevel);
     setLabelValue(ws, termRow2, jc2, jc2End, 'Section', sectionName);
-    setLabelValueRows(termRow1, termRow2, jc3, jc3End, 'Teacher', adviser?.toUpperCase() || '');
+    setLabelValueRows(termRow1, termRow2, jc3, jc3End, 'Teacher', teacherName?.toUpperCase() || '');
     setLabelValueRows(termRow1, termRow2, jc4, jc4End, 'Subject', subject);
     r = termRow2 + 1;
     setLabelValue(ws, r, ic1, ic3End, 'Weights',
@@ -1353,7 +1367,7 @@ function EClassRecordView({
     const sc1 = 1, sc1End = sg1;
     const sc2 = sc1End + 1, sc2End = sc1End + sg2;
     const sc3 = sc2End + 1, sc3End = totalCols;
-    setMergedText(ws, r, sc1, sc1End, adviser?.toUpperCase() || '', { bold:true, size:8 });
+    setMergedText(ws, r, sc1, sc1End, teacherName?.toUpperCase() || '', { bold:true, size:8 });
     setMergedText(ws, r, sc2, sc2End, schoolHead?.toUpperCase() || '________________________________', { bold:true, size:8 });
     setMergedText(ws, r, sc3, sc3End, '________________________________', { size:8 });
     r++;
@@ -1406,7 +1420,7 @@ function EClassRecordView({
             <tr className="official-info-row">
               <th colSpan={2} rowSpan={4} className="official-term-heading">{TERM_LABELS[currentTerm] ?? `TERM ${currentTerm}`}</th>
               <th colSpan={infoGradeCols} className="official-field-heading"><strong>GRADE LEVEL</strong><span>{gradeLevel || ''}</span></th>
-              <th colSpan={infoTeacherCols} rowSpan={2} className="official-field-heading"><strong>TEACHER</strong><span>{adviser?.toUpperCase() || ''}</span></th>
+              <th colSpan={infoTeacherCols} rowSpan={2} className="official-field-heading"><strong>TEACHER</strong><span>{teacherName?.toUpperCase() || ''}</span></th>
               <th colSpan={infoSubjectCols} rowSpan={2} className="official-field-heading"><strong>SUBJECT</strong><span>{subject || ''}</span></th>
             </tr>
             <tr className="official-info-row">
@@ -1576,7 +1590,7 @@ function EClassRecordView({
         {/* Signatures */}
         <div style={{display:'flex', justifyContent:'space-between', marginTop:'16px', fontSize:'8px'}}>
           <div style={{textAlign:'center', minWidth:'200px'}}>
-            <div style={{fontWeight:'bold', borderTop:'1px solid black', paddingTop:'2px', marginTop:'20px'}}>{adviser?.toUpperCase()}</div>
+            <div style={{fontWeight:'bold', borderTop:'1px solid black', paddingTop:'2px', marginTop:'20px'}}>{teacherName?.toUpperCase()}</div>
             <div>Subject Teacher</div>
           </div>
           <div style={{textAlign:'center', minWidth:'200px'}}>
@@ -1672,9 +1686,22 @@ export default function ClassRecord() {
   const [loadingMAPEHSummary,setLoadingMAPEHSummary] = useState(false);
   const [statusModal,setStatusModal] = useState<Student|null>(null);
 
-  const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear, division, region, adviser, schoolHead } = useActiveSection();
+  const { sectionId, sectionName, gradeLevel, gradeNumber, schoolName, schoolId, schoolYear, division, region, adviser, schoolHead } = useActiveSection();
   const { isCollaborator } = useSubscription();
   const { activeSection } = useSection();
+  const [currentUserName, setCurrentUserName] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!mounted || !user) return;
+      const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+      const name = [metadata.full_name, metadata.name, metadata.display_name]
+        .find(value => typeof value === 'string' && value.trim()) as string | undefined;
+      setCurrentUserName(name?.trim() || user.email?.trim() || '');
+    });
+    return () => { mounted = false; };
+  }, []);
 
   // If this user is a subject teacher collaborator, only show their assigned subjects
   // _subjects is set by SectionContext when loading shared sections
@@ -1682,6 +1709,7 @@ export default function ClassRecord() {
   const isSubjectTeacher = isCollaborator && activeSection?._role === 'subject_teacher' && assignedSubjects.length > 0;
   const assignedPeriods: number[] = activeSection?._gradingPeriods?.length ? activeSection._gradingPeriods : [1, 2, 3];
   const assignedComponents: string[] = activeSection?._components?.length ? activeSection._components : ['ww', 'pt', 'st', 'te'];
+  const recordTeacherName = isSubjectTeacher ? (currentUserName || adviser) : adviser;
   const canEditPeriod = (period: number) => !isSubjectTeacher || assignedPeriods.includes(period);
   const canEditComponent = (component: string) => !isSubjectTeacher || assignedComponents.includes(component);
 
@@ -1689,9 +1717,10 @@ export default function ClassRecord() {
   const visibleSubjectsJHS = isSubjectTeacher
     ? SUBJECTS_JHS.filter(s => assignedSubjects.includes(s))
     : SUBJECTS_JHS;
+  const shsSubjectsForGrade = gradeNumber === 11 ? SUBJECTS_SHS_G11 : gradeNumber === 12 ? SUBJECTS_SHS_G12 : SUBJECTS_SHS;
   const visibleSubjectsSHS = isSubjectTeacher
-    ? SUBJECTS_SHS.filter(s => assignedSubjects.includes(s))
-    : SUBJECTS_SHS;
+    ? shsSubjectsForGrade.filter(s => assignedSubjects.includes(s))
+    : shsSubjectsForGrade;
 
   // Auto-select first assigned subject when a subject teacher opens the page
   useEffect(() => {
@@ -2196,7 +2225,7 @@ export default function ClassRecord() {
           schoolYear={schoolYear}
           division={division}
           region={region}
-          adviser={adviser}
+          teacherName={recordTeacherName}
           schoolHead={schoolHead}
           allTermData={allTermData}
           currentTerm={term}
