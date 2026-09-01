@@ -109,7 +109,9 @@ export function SectionProvider({ children }: { children: ReactNode }) {
     const collabSectionIds = [
       ...(collabRows ?? []),
       ...(collabByEmail ?? []),
-    ].filter((c, i, arr) => arr.findIndex(x => x.section_id === c.section_id) === i); // dedupe
+    ]
+      .filter(c => c.section_id && c.section_id !== 'default-section')
+      .filter((c, i, arr) => arr.findIndex(x => x.section_id === c.section_id) === i); // dedupe
 
     let sharedSections: Section[] = [];
     if (collabSectionIds.length > 0) {
