@@ -37,6 +37,7 @@ export interface LearnerSF9 {
   genAverage:   number;
   attendance:   MonthlyAttendance[];            // Jun through Apr, in order
   conduct:      Record<string,string>;
+  comments?:    Record<string,string>;
   promotionRemark: PromotionRemark | null;
 }
 
