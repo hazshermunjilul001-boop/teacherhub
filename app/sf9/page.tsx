@@ -565,7 +565,7 @@ export default function SF9Page() {
           .no-print { display: none !important; }
           body { background: white !important; margin: 0; }
           @page { size: A4 landscape; margin: 6mm; }
-          .sf9-card { width: 278mm; height: 190mm; max-height: 190mm; overflow: hidden; page-break-after: always; }
+          .sf9-card { width: 278mm; min-height: 190mm; height: auto !important; max-height: none !important; overflow: visible !important; page-break-after: always; }
           .sf9-card:last-child { page-break-after: auto; }
         }
       `}</style>
