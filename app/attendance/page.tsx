@@ -256,6 +256,17 @@ export default function AttendancePage() {
   // Guards edits to past months: when set, a confirmation modal is shown before
   // the held action (a single toggle or a "mark all present") actually runs.
   const [pendingPastAction,setPendingPastAction] = useState<null | (() => void)>(null);
+  // The acknowledged month is valid only while that month remains selected.
+  // Leaving the month clears it, so returning later prompts once again.
+  const [pastMonthAcknowledged,setPastMonthAcknowledged] = useState<string | null>(null);
+
+  const selectMonth = (nextMonth: string) => {
+    if (nextMonth !== month) {
+      setPastMonthAcknowledged(null);
+      setPendingPastAction(null);
+    }
+    setMonth(nextMonth);
+  };
 
   const schoolDays = useMemo(() => getSchoolDays(month, holidays), [month, holidays]);
   // Full calendar for the month — SF2 always shows every day, school days feed the computations.
@@ -389,7 +400,10 @@ export default function AttendancePage() {
   };
   // Guarded entry point used by the UI — prompts first if `month` is in the past.
   const requestToggle = (sid: string, date: string) => {
-    if (isPastMonth(month)) { setPendingPastAction(() => () => toggle(sid, date)); return; }
+    if (isPastMonth(month) && pastMonthAcknowledged !== month) {
+      setPendingPastAction(() => () => toggle(sid, date));
+      return;
+    }
     toggle(sid, date);
   };
 
@@ -402,7 +416,10 @@ export default function AttendancePage() {
   };
   // Guarded entry point used by the UI — prompts first if `month` is in the past.
   const requestMarkAllPresent = (date: string) => {
-    if (isPastMonth(month)) { setPendingPastAction(() => () => markAllPresent(date)); return; }
+    if (isPastMonth(month) && pastMonthAcknowledged !== month) {
+      setPendingPastAction(() => () => markAllPresent(date));
+      return;
+    }
     markAllPresent(date);
   };
 
@@ -1304,13 +1321,13 @@ export default function AttendancePage() {
           <div className="flex items-center gap-3">
             {/* Month navigation */}
             <div className="flex items-center gap-1 bg-gray-800 rounded-xl px-2 py-1">
-              <button onClick={() => { const i=MONTHS.indexOf(month); if(i>0) setMonth(MONTHS[i-1]); }}
+              <button onClick={() => { const i=MONTHS.indexOf(month); if(i>0) selectMonth(MONTHS[i-1]); }}
                 className="p-1 hover:bg-gray-700 rounded-lg transition"><ChevronLeft size={16}/></button>
-              <select value={month} onChange={e=>setMonth(e.target.value)}
+              <select value={month} onChange={e=>selectMonth(e.target.value)}
                 className="bg-transparent text-white text-sm font-semibold px-2 focus:outline-none">
                 {MONTHS.map(m => <option key={m} value={m} className="bg-gray-800">{m} {MONTH_YEAR[m]}</option>)}
               </select>
-              <button onClick={() => { const i=MONTHS.indexOf(month); if(i<MONTHS.length-1) setMonth(MONTHS[i+1]); }}
+              <button onClick={() => { const i=MONTHS.indexOf(month); if(i<MONTHS.length-1) selectMonth(MONTHS[i+1]); }}
                 className="p-1 hover:bg-gray-700 rounded-lg transition"><ChevronRight size={16}/></button>
             </div>
 
@@ -1485,7 +1502,12 @@ export default function AttendancePage() {
       {pendingPastAction && (
         <PastMonthConfirmModal
           month={month}
-          onConfirm={() => { const action = pendingPastAction; setPendingPastAction(null); action(); }}
+          onConfirm={() => {
+            const action = pendingPastAction;
+            setPendingPastAction(null);
+            setPastMonthAcknowledged(month);
+            action?.();
+          }}
           onCancel={() => setPendingPastAction(null)}
         />
       )}
