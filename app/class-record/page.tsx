@@ -130,6 +130,8 @@ const SUBJECTS_SHS_G12 = [
   'Filipino sa Piling Larang (Akademik)',
   'Contemporary Philippine Arts from the Regions',
   'Physical Education and Health (Grade 12)',
+  'Food and Beverage Services',
+  'Housekeeping',
 ];
 const SUBJECTS_SHS = [...new Set([...SUBJECTS_SHS_G11, ...SUBJECTS_SHS_G12])];
 const SUBJECT_WEIGHTS: Record<string, { ww: number; pt: number; ta: number }> = {
@@ -161,6 +163,16 @@ const SUBJECT_WEIGHTS: Record<string, { ww: number; pt: number; ta: number }> = 
   'SHS Work Immersion':                               { ww: 0.20, pt: 0.80, ta: 0.00 },
   'SHS Research / Capstone':                          { ww: 0.40, pt: 0.60, ta: 0.00 },
   '21st Century Literature form the Philippines and the World': { ww: 0.25, pt: 0.50, ta: 0.25 },
+  // G12 core subjects — DepEd component weights.
+  'Philippine Politics and Governance':                     { ww: 0.25, pt: 0.50, ta: 0.25 },
+  'Personal Development':                                   { ww: 0.25, pt: 0.50, ta: 0.25 },
+  'Introduction to Philosophy of the Human Person':         { ww: 0.25, pt: 0.50, ta: 0.25 },
+  'Filipino sa Piling Larang (Akademik)':                   { ww: 0.25, pt: 0.50, ta: 0.25 },
+  'Contemporary Philippine Arts from the Regions':          { ww: 0.25, pt: 0.50, ta: 0.25 },
+  'Physical Education and Health (Grade 12)':               { ww: 0.25, pt: 0.50, ta: 0.25 },
+  // G12 TVL electives.
+  'Food and Beverage Services':                             { ww: 0.20, pt: 0.60, ta: 0.20 },
+  'Housekeeping':                                           { ww: 0.20, pt: 0.60, ta: 0.20 },
 };
 const TRANSMUTATION = [
   { min:99.50,max:100,trans:100},{min:97.50,max:99.49,trans:99},{min:96.00,max:97.49,trans:98},

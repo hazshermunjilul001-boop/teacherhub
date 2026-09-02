@@ -40,6 +40,16 @@ export const WEIGHTS: Record<string,{ww:number;pt:number;ta:number}> = {
   'SHS Work Immersion':{ww:0.20,pt:0.80,ta:0.00},
   'SHS Research / Capstone':{ww:0.40,pt:0.60,ta:0.00},
   '21st Century Literature form the Philippines and the World':{ww:0.25,pt:0.50,ta:0.25},
+  // G12 core subjects.
+  'Philippine Politics and Governance':{ww:0.25,pt:0.50,ta:0.25},
+  'Personal Development':{ww:0.25,pt:0.50,ta:0.25},
+  'Introduction to Philosophy of the Human Person':{ww:0.25,pt:0.50,ta:0.25},
+  'Filipino sa Piling Larang (Akademik)':{ww:0.25,pt:0.50,ta:0.25},
+  'Contemporary Philippine Arts from the Regions':{ww:0.25,pt:0.50,ta:0.25},
+  'Physical Education and Health (Grade 12)':{ww:0.25,pt:0.50,ta:0.25},
+  // G12 TVL electives.
+  'Food and Beverage Services':{ww:0.20,pt:0.60,ta:0.20},
+  'Housekeeping':{ww:0.20,pt:0.60,ta:0.20},
   // No explicit entry needed for GMRC / Values Education, Makabansa, or any
   // other subject — computeFromClassRecord() falls back to {0.25,0.50,0.25}
   // for anything not listed here.
