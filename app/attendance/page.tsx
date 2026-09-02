@@ -1363,7 +1363,7 @@ export default function AttendancePage() {
           </div>
         ) : (
           <div className="p-4">
-            <TrackerView />
+            {TrackerView()}
           </div>
         )}
       </div>
