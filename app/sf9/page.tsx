@@ -10,7 +10,13 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useActiveSection } from '../../lib/useActiveSection';
 
-import { buildSubjectRows, type SF9SubjectRow, type SHSTrack } from '../../lib/sf9/sf9GradeBands';
+import {
+  buildSubjectRows,
+  SHS_SUBJECT_LINK_OPTIONS,
+  SUBJECT_KEY_ALIASES,
+  type SF9SubjectRow,
+  type SHSTrack,
+} from '../../lib/sf9/sf9GradeBands';
 import { useSF9Data, type Student, type Collaborator } from '../../lib/sf9/useSF9Data';
 import { downloadSF9Docx, downloadAllSF9Docx } from '../../lib/sf9/generateSF9Docx';
 import { downloadSF9Pdf } from '../../lib/sf9/generateSF9Pdf';
@@ -339,7 +345,10 @@ function CollabPanel({
     );
   };
 
-  const subjectLabel = (key:string) => subjects.find(s=>s.key===key)?.label ?? key;
+  const subjectLabel = (key:string) =>
+    subjects.find(s=>s.key===key)?.label ??
+    Object.entries(SUBJECT_KEY_ALIASES).find(([, aliases]) => aliases.includes(key))?.[0] ??
+    key;
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
@@ -523,8 +532,14 @@ export default function SF9Page() {
   const leafSubjects = flattenLeafSubjects([...frontPage, ...continuationPage]);
   const isSubjectTeacher = activeSection?._role === 'subject_teacher';
   const assignedSubjects: string[] = activeSection?._subjects ?? [];
+  const isAssignedSubject = (subjectKey: string) =>
+    assignedSubjects.includes(subjectKey) ||
+    (SUBJECT_KEY_ALIASES[subjectKey] ?? []).some(alias => assignedSubjects.includes(alias));
   const visibleLeafSubjects = isSubjectTeacher
-    ? leafSubjects.filter(subject => assignedSubjects.includes(subject.key))
+    ? leafSubjects.filter(subject => isAssignedSubject(subject.key))
+    : leafSubjects;
+  const collaborationSubjects = numericGradeLevel >= 11
+    ? SHS_SUBJECT_LINK_OPTIONS
     : leafSubjects;
   const allowedPeriods: number[] = activeSection?._gradingPeriods?.length ? activeSection._gradingPeriods : [1, 2, 3];
   // Manual SF9 grades are adviser-only; subject teachers encode through Class Record,
@@ -760,7 +775,7 @@ export default function SF9Page() {
       {showCollab && (
         <CollabPanel
           sectionId={sectionId}
-          subjects={leafSubjects}
+          subjects={collaborationSubjects}
           onClose={() => setShowCollab(false)}
         />
       )}

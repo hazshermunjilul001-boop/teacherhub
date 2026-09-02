@@ -10,6 +10,11 @@
 export type HeaderScope = 'district' | 'cluster';
 export type SHSTrack = 'academic' | 'techpro';
 
+export const SUBJECT_KEY_ALIASES: Record<string, string[]> = {
+  // Existing Class Record rows may still use this earlier spelling.
+  'Pag-Aaral ng Kasanayan at Lipunang Pilipino': ['Pagaaral sa Kasaysayan ng Lipunang Pilipino'],
+};
+
 export interface SF9SubjectRow {
   /** Storage key used in `grades.subject` / `manual_grades.subject`.
    *  For computed rows (MAPEH, Effective Communication) this is a SYNTHETIC
@@ -131,6 +136,52 @@ export const GRADE_BANDS: SF9GradeBandConfig[] = [
   },
 ];
 
+const SHS_LEGACY_SUBJECTS: SF9SubjectRow[] = [
+  { key: 'SHS Core Subjects', label: 'SHS Core Subjects' },
+  { key: 'SHS Applied Track', label: 'SHS Applied Track' },
+  { key: 'SHS Specialized Subjects', label: 'SHS Specialized Subjects' },
+  { key: 'SHS Work Immersion', label: 'SHS Work Immersion' },
+  { key: 'SHS Research / Capstone', label: 'SHS Research / Capstone' },
+  { key: '21st Century Literature form the Philippines and the World', label: '21st Century Literature form the Philippines and the World' },
+];
+
+/**
+ * Complete SHS subject list used only by the adviser’s Subject Teachers panel.
+ * These are real Class Record subject keys; keeping this list explicit prevents
+ * the linking UI from depending on which elective rows are configured for SF9.
+ */
+export const SHS_SUBJECT_LINK_OPTIONS: SF9SubjectRow[] = [
+  ...SHS_LEGACY_SUBJECTS,
+  { key: 'Mabisang Komunikasyon', label: 'Mabisang Komunikasyon' },
+  { key: 'Effective Communication', label: 'Effective Communication' },
+  { key: 'Life and Career Skills', label: 'Life and Career Skills' },
+  { key: 'General Science', label: 'General Science' },
+  { key: 'General Mathematics', label: 'General Mathematics' },
+  { key: 'Pag-Aaral ng Kasanayan at Lipunang Pilipino', label: 'Pag-Aaral ng Kasanayan at Lipunang Pilipino' },
+  { key: 'Philippine Politics and Governance', label: 'Philippine Politics and Governance' },
+  { key: 'Personal Development', label: 'Personal Development' },
+  { key: 'Introduction to Philosophy of the Human Person', label: 'Introduction to Philosophy of the Human Person' },
+  { key: 'Filipino sa Piling Larang (Akademik)', label: 'Filipino sa Piling Larang (Akademik)' },
+  { key: 'Contemporary Philippine Arts from the Regions', label: 'Contemporary Philippine Arts from the Regions' },
+  { key: 'Physical Education and Health (Grade 12)', label: 'Physical Education and Health (Grade 12)' },
+  { key: 'Food and Beverage Services', label: 'Food and Beverage Services' },
+  { key: 'Housekeeping', label: 'Housekeeping' },
+];
+
+const G12_CORE_SUBJECTS: SF9SubjectRow[] = [
+  { key: 'Philippine Politics and Governance', label: 'Philippine Politics and Governance' },
+  { key: 'Personal Development', label: 'Personal Development' },
+  { key: 'Introduction to Philosophy of the Human Person', label: 'Introduction to Philosophy of the Human Person' },
+  { key: 'Filipino sa Piling Larang (Akademik)', label: 'Filipino sa Piling Larang (Akademik)' },
+  { key: 'Contemporary Philippine Arts from the Regions', label: 'Contemporary Philippine Arts from the Regions' },
+  { key: 'Physical Education and Health (Grade 12)', label: 'Physical Education and Health (Grade 12)' },
+];
+
+const G12_TVL_SUBJECTS: SF9SubjectRow[] = [
+  { key: 'Food and Beverage Services', label: 'Food and Beverage Services' },
+  { key: 'Housekeeping', label: 'Housekeeping' },
+];
+
 export const SHS_TRACK_CONFIG: Record<SHSTrack, {
   electivePrefix: string;
   maxElectives: number;
@@ -164,6 +215,11 @@ export function buildSubjectRows(
 
   const track = shsTrack ?? 'academic';
   const trackCfg = SHS_TRACK_CONFIG[track];
+  const g12CoreRows = gradeLevel === 12 ? G12_CORE_SUBJECTS : [];
+  // These are fixed G12 TechPro subjects, not replacements for any configured
+  // electives. Existing configured elective rows retain their original keys.
+  const g12TvlRows = gradeLevel === 12 && track === 'techpro' ? G12_TVL_SUBJECTS : [];
+  const coreRows = [...band.coreSubjects, ...g12CoreRows, ...g12TvlRows];
 
   const electiveRows: SF9SubjectRow[] = electiveSubjectNames
     .slice(0, trackCfg.maxElectives)
@@ -181,12 +237,14 @@ export function buildSubjectRows(
 
   const gaKeys = [
     ...band.gaCoreKeys,
+    ...g12CoreRows.map(r => r.key),
+    ...g12TvlRows.map(r => r.key),
     ...electiveRows.map(r => r.key),
     ...(trackCfg.hasWorkImmersion ? ['work_immersion'] : []),
   ];
 
   return {
-    frontPage: [...band.coreSubjects, ...frontElectives],
+    frontPage: [...coreRows, ...frontElectives],
     continuationPage: [...overflowElectives, ...workImmersionRow],
     gaKeys,
   };

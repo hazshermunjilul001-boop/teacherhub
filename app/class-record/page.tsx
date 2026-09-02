@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { useActiveSection } from '../../lib/useActiveSection';
 import { useSubscription } from '../../lib/useSubscription';
 import { useSection } from '../../context/SectionContext';
+import { SUBJECT_KEY_ALIASES } from '../../lib/sf9/sf9GradeBands';
 
 // ── EXCEL EXPORT HELPERS ───────────────────────────────────────────────────
 // Shared by EClassRecordView and SummaryOfGradesView so the downloaded .xlsx
@@ -88,6 +89,14 @@ function setMergedText(
 }
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
+const normalizeSubjectKey = (subject: string) =>
+  Object.entries(SUBJECT_KEY_ALIASES).find(([, aliases]) => aliases.includes(subject))?.[0] ?? subject;
+
+const subjectStorageKeys = (subject: string) => [
+  subject,
+  ...(SUBJECT_KEY_ALIASES[subject] ?? []),
+];
+
 const SUBJECTS_JHS = [
   'Filipino', 'English', 'Mathematics', 'Science',
   'Araling Panlipunan (AP)', 'GMRC/VE',
@@ -117,7 +126,7 @@ const SUBJECTS_SHS_G11 = [
   'Life and Career Skills',
   'General Science',
   'General Mathematics',
-  'Pagaaral sa Kasaysayan ng Lipunang Pilipino',
+  'Pag-Aaral ng Kasanayan at Lipunang Pilipino',
   'STEM - Biology 1',
   'ARSSH - Contemporary Literature 1',
   'Business - Introduction to Organization and Management',
@@ -1735,7 +1744,7 @@ export default function ClassRecord() {
 
   // If this user is a subject teacher collaborator, only show their assigned subjects
   // _subjects is set by SectionContext when loading shared sections
-  const assignedSubjects: string[] = activeSection?._subjects ?? [];
+  const assignedSubjects: string[] = (activeSection?._subjects ?? []).map(normalizeSubjectKey);
   const isSubjectTeacher = isCollaborator && activeSection?._role === 'subject_teacher' && assignedSubjects.length > 0;
   const assignedPeriods: number[] = activeSection?._gradingPeriods?.length ? activeSection._gradingPeriods : [1, 2, 3];
   const assignedComponents: string[] = activeSection?._components?.length ? activeSection._components : ['ww', 'pt', 'st', 'te'];
@@ -1782,12 +1791,16 @@ export default function ClassRecord() {
       // this would return every teacher's rows for the same subject/term across the whole school —
       // which is what was causing HPS to look random/overwritten, since whichever teacher anywhere
       // saved most recently would "win" and bleed into everyone else's view.
-      const {data}=await supabase.from('grades').select('*').eq('subject',subject).eq('term',term).in('student_id', studentIds).order('updated_at',{ascending:false});
+      const {data}=await supabase.from('grades').select('*').in('subject',subjectStorageKeys(subject)).eq('term',term).in('student_id', studentIds).order('updated_at',{ascending:false});
       if(cancelled) return; // ignore stale responses if subject/term changed again before this resolved
       const m:Record<string,Scores>={};
       let h:Highest = {ww:[100,100,100,100,100],pt:[100,100,100],st:[50,50],te:100};
       if(data){
-        data.forEach((r:any)=>{ m[r.student_id]={ww:r.written_scores||{},pt:r.pt_scores||{},st:r.st_scores||{},te:r.te_score||0}; });
+        data.forEach((r:any)=>{
+          // Rows are ordered most-recently-updated first. The first row for a
+          // student therefore wins if both old and corrected keys exist.
+          if (!m[r.student_id]) m[r.student_id]={ww:r.written_scores||{},pt:r.pt_scores||{},st:r.st_scores||{},te:r.te_score||0};
+        });
         // Rows are ordered most-recently-updated first, so data[0] reflects this teacher's own
         // latest save — not an arbitrary row, and not another teacher's section anymore.
         if(data[0]?.highest_ww) h={ww:data[0].highest_ww,pt:data[0].highest_pt,st:data[0].highest_st||[50,50],te:data[0].highest_te||100};
@@ -1902,12 +1915,14 @@ export default function ClassRecord() {
       // an arbitrary row that isn't even this class — which is exactly what was silently
       // recomputing wrong grades in Summary of Grades / MAPEH Summary / E-Class Record.
       const {data} = await supabase.from('grades').select('*')
-        .eq('subject',subj).eq('term',t).in('student_id', studentIds)
+        .in('subject',subjectStorageKeys(subj)).eq('term',t).in('student_id', studentIds)
         .order('updated_at', {ascending:false});
       const m: Record<string,Scores> = {};
       let h: Highest = {ww:[100,100,100,100,100],pt:[100,100,100],st:[50,50],te:100};
       if (data && data.length>0) {
-        data.forEach((r:any)=>{ m[r.student_id]={ww:r.written_scores||{},pt:r.pt_scores||{},st:r.st_scores||{},te:r.te_score||0}; });
+        data.forEach((r:any)=>{
+          if (!m[r.student_id]) m[r.student_id]={ww:r.written_scores||{},pt:r.pt_scores||{},st:r.st_scores||{},te:r.te_score||0};
+        });
         if (data[0]?.highest_ww) h={ww:data[0].highest_ww,pt:data[0].highest_pt,st:data[0].highest_st||[50,50],te:data[0].highest_te||100};
       }
       termMap[t] = {scores:m, highest:h};
