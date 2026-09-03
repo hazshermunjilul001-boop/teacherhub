@@ -7,31 +7,67 @@
 // subject automatically).
 // ============================================================================
 
+// Adjusted Transmutation Table (starting SY 2027–2028).
 export const TRANSMUTATION = [
-  {min:99.50,max:100,trans:100},{min:97.50,max:99.49,trans:99},{min:96.00,max:97.49,trans:98},
-  {min:95.00,max:95.99,trans:97},{min:94.00,max:94.99,trans:96},{min:93.00,max:93.99,trans:95},
-  {min:92.00,max:92.99,trans:94},{min:91.00,max:91.99,trans:93},{min:90.00,max:90.99,trans:92},
-  {min:89.00,max:89.99,trans:91},{min:88.00,max:88.99,trans:90},{min:87.00,max:87.99,trans:89},
-  {min:86.00,max:86.99,trans:88},{min:85.00,max:85.99,trans:87},{min:84.00,max:84.99,trans:86},
-  {min:83.00,max:83.99,trans:85},{min:82.00,max:82.99,trans:84},{min:81.00,max:81.99,trans:83},
-  {min:80.00,max:80.99,trans:82},{min:79.00,max:79.99,trans:81},{min:78.00,max:78.99,trans:80},
-  {min:77.00,max:77.99,trans:79},{min:76.00,max:76.99,trans:78},{min:75.00,max:75.99,trans:77},
-  {min:73.00,max:74.99,trans:76},{min:70.00,max:72.99,trans:75},{min:68.00,max:69.99,trans:74},
-  {min:66.00,max:67.99,trans:73},{min:64.00,max:65.99,trans:72},{min:62.00,max:63.99,trans:71},
-  {min:60.00,max:61.99,trans:70},{min:58.00,max:59.99,trans:69},{min:56.00,max:57.99,trans:68},
-  {min:54.00,max:55.99,trans:67},{min:52.00,max:53.99,trans:66},{min:50.00,max:51.99,trans:65},
-  {min:48.00,max:49.99,trans:64},{min:46.00,max:47.99,trans:63},{min:43.00,max:45.99,trans:62},
-  {min:40.00,max:42.99,trans:61},{min:0,max:39.99,trans:60},
+  {min:99.50,max:100.00,trans:100},
+  {min:98.32,max:99.49,trans:99},
+  {min:97.14,max:98.31,trans:98},
+  {min:95.96,max:97.13,trans:97},
+  {min:94.78,max:95.95,trans:96},
+  {min:93.60,max:94.77,trans:95},
+  {min:92.42,max:93.59,trans:94},
+  {min:91.24,max:92.41,trans:93},
+  {min:90.06,max:91.23,trans:92},
+  {min:88.88,max:90.05,trans:91},
+  {min:87.70,max:88.87,trans:90},
+  {min:86.52,max:87.69,trans:89},
+  {min:85.34,max:86.51,trans:88},
+  {min:84.16,max:85.33,trans:87},
+  {min:82.98,max:84.15,trans:86},
+  {min:81.80,max:82.97,trans:85},
+  {min:80.62,max:81.79,trans:84},
+  {min:79.44,max:80.61,trans:83},
+  {min:78.26,max:79.43,trans:82},
+  {min:77.08,max:78.25,trans:81},
+  {min:75.90,max:77.07,trans:80},
+  {min:74.72,max:75.89,trans:79},
+  {min:73.54,max:74.71,trans:78},
+  {min:72.36,max:73.53,trans:77},
+  {min:71.18,max:72.35,trans:76},
+  {min:70.00,max:71.17,trans:75},
+  {min:65.34,max:69.99,trans:74},
+  {min:60.67,max:65.33,trans:73},
+  {min:56.01,max:60.66,trans:72},
+  {min:51.34,max:56.00,trans:71},
+  {min:46.67,max:51.33,trans:70},
+  {min:42.01,max:46.66,trans:69},
+  {min:37.34,max:42.00,trans:68},
+  {min:32.68,max:37.33,trans:67},
+  {min:28.01,max:32.67,trans:66},
+  {min:23.35,max:28.00,trans:65},
+  {min:18.68,max:23.34,trans:64},
+  {min:14.01,max:18.67,trans:63},
+  {min:9.35,max:14.00,trans:62},
+  {min:4.68,max:9.34,trans:61},
+  {min:0.00,max:4.67,trans:60},
 ];
 
 export const WEIGHTS: Record<string,{ww:number;pt:number;ta:number}> = {
-  'Filipino':{ww:0.25,pt:0.50,ta:0.25},'English':{ww:0.25,pt:0.50,ta:0.25},
-  'Mathematics':{ww:0.25,pt:0.50,ta:0.25},'Science':{ww:0.25,pt:0.50,ta:0.25},
-  'Araling Panlipunan (AP)':{ww:0.25,pt:0.50,ta:0.25},
-  'Edukasyon sa Pagpapakatao (EsP)':{ww:0.25,pt:0.50,ta:0.25},
+  'Filipino':{ww:0.20,pt:0.50,ta:0.30},'English':{ww:0.20,pt:0.50,ta:0.30},
+  'Mathematics':{ww:0.20,pt:0.50,ta:0.30},'Science':{ww:0.20,pt:0.50,ta:0.30},
+  'Araling Panlipunan (AP)':{ww:0.20,pt:0.50,ta:0.30},
+  'Edukasyon sa Pagpapakatao (EsP)':{ww:0.20,pt:0.50,ta:0.30},
   'EPP/TLE':{ww:0.20,pt:0.60,ta:0.20},
   'MAPEH - Music & Arts':{ww:0.20,pt:0.60,ta:0.20},
   'MAPEH - PE & Health':{ww:0.20,pt:0.60,ta:0.20},
+  'GMRC/VE':{ww:0.20,pt:0.50,ta:0.30},
+  // SHS G11 subjects.
+  'Mabisang Komunikasyon':{ww:0.20,pt:0.50,ta:0.30},
+  'Effective Communication':{ww:0.20,pt:0.50,ta:0.30},
+  'Life and Career Skills':{ww:0.20,pt:0.50,ta:0.30},
+  'General Science':{ww:0.20,pt:0.50,ta:0.30},
+  'General Mathematics':{ww:0.20,pt:0.50,ta:0.30},
+  'Pag-Aaral ng Kasanayan at Lipunang Pilipino':{ww:0.20,pt:0.50,ta:0.30},
   // Restored legacy SHS subjects. These keys match the values stored in
   // grades.subject, so existing Class Record rows remain readable.
   'SHS Core Subjects':{ww:0.20,pt:0.50,ta:0.30},
@@ -55,7 +91,10 @@ export const WEIGHTS: Record<string,{ww:number;pt:number;ta:number}> = {
   // for anything not listed here.
 };
 
-export const transmute = (v: number) => TRANSMUTATION.find(t => v >= t.min && v <= t.max)?.trans ?? 60;
+export const transmute = (v: number) => {
+  const rounded = Math.round((v + Number.EPSILON) * 100) / 100;
+  return TRANSMUTATION.find(t => rounded >= t.min && rounded <= t.max)?.trans ?? 60;
+};
 
 export const descriptor = (g: number) => {
   if (g >= 90) return 'Advancing / Namumukod-tangi';
@@ -65,9 +104,25 @@ export const descriptor = (g: number) => {
 };
 
 export const calcAvg = (s: number[], h: number[]) => {
-  let t = 0, c = 0;
-  s.forEach((v, i) => { if (h[i] > 0 && v > 0) { t += (v / h[i]) * 100; c++; } });
-  return c > 0 ? t / c : 0;
+  let sumScore = 0, sumHigh = 0;
+  s.forEach((v, i) => {
+    if (h[i] > 0) { sumScore += v; sumHigh += h[i]; }
+  });
+  return sumHigh > 0 ? (sumScore / sumHigh) * 100 : 0;
+};
+
+export const calcEX = (
+  st1: number, st2: number, te: number,
+  highSt1: number, highSt2: number, highTe: number,
+): number => {
+  const parts = [
+    { w: 0.30, score: st1, high: highSt1 },
+    { w: 0.30, score: st2, high: highSt2 },
+    { w: 0.40, score: te,  high: highTe },
+  ].filter(p => p.high > 0);
+  if (parts.length === 0) return 0;
+  const totalW = parts.reduce((sum, p) => sum + p.w, 0);
+  return parts.reduce((sum, p) => sum + (p.score / p.high) * 100 * (p.w / totalW), 0);
 };
 
 export function computeFromClassRecord(row: any, subject: string): number {
@@ -85,15 +140,10 @@ export function computeFromClassRecord(row: any, subject: string): number {
 
   const avgWW = calcAvg(ww, row.highest_ww??[100,100,100,100,100]);
   const avgPT = calcAvg(pt, row.highest_pt??[100,100,100]);
-  const avgTA = calcAvg([...st,te],[...(row.highest_st??[50,50]),row.highest_te??100]);
+  const avgTA = calcEX(st[0], st[1], te, (row.highest_st ?? [50,50])[0], (row.highest_st ?? [50,50])[1], row.highest_te ?? 100);
 
-  const activeComponents: {avg:number; weight:number}[] = [];
-  if (hasWW) activeComponents.push({avg:avgWW, weight:w.ww});
-  if (hasPT) activeComponents.push({avg:avgPT, weight:w.pt});
-  if (hasST) activeComponents.push({avg:avgTA, weight:w.ta});
-  const totalWeight = activeComponents.reduce((s,comp)=>s+comp.weight, 0);
-  const initial = totalWeight > 0
-    ? activeComponents.reduce((s,comp)=>s+(comp.avg*(comp.weight/totalWeight)), 0)
-    : 0;
+  // Match Class Record exactly: component weights are applied as configured;
+  // missing components contribute zero and are not redistributed.
+  const initial = avgWW*w.ww + avgPT*w.pt + avgTA*w.ta;
   return initial > 0 ? transmute(initial) : 0;
 }
