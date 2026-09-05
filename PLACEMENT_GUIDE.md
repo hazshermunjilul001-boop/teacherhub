@@ -1,31 +1,24 @@
-# Exact Vercel build-path fix
+# GMRC / Values Education exact-layout replacement
 
-Vercel reports that it is compiling:
+Replace this project file:
 
-`./app/class-record-page.tsx`
+`app/class-record/page.tsx`
 
-Therefore copy the bundled file to exactly:
+with the bundled file at the same path. If Vercel is compiling your root-level legacy file instead, also copy the same contents to the exact path shown by your build log, such as:
 
 `app/class-record-page.tsx`
 
-Do not copy it to `app/class-record/page.tsx` for this particular build if your repository is intentionally using the root-level filename shown in the Vercel error. The corrected file uses project-root imports such as:
+The replacement is gated exclusively by these subject keys:
 
-`@/lib/supabase`
+- `GMRC (Elem)`
+- `Values Education (JHS)`
 
-`@/lib/useActiveSection`
+For those two subjects only, the live class-record screen uses the wide DepEd-style hierarchy shown in the supplied screenshot: official class-record title/header, term block, grade/section and teacher fields, subject field, WW Cognitive and Affective Domain groups, PT Cognitive and Affective Domain groups, Behavioral Domain, Examinations, Initial Grade, Term Grade, Descriptor, Learners’ Names, Male/Female sections, and bordered score cells.
 
-`@/lib/useSubscription`
+The normal legacy `GMRC/VE` record and every other subject remain on the existing class-record renderer. The previous compact amber domain panel is disabled so it cannot appear together with the official layout.
 
-`@/context/SectionContext`
+The E-Class Record / print-preview button opens a dedicated wide preview for these two subjects. Its **Print / Save PDF** button invokes the browser print dialog with landscape page settings and hides the preview controls, so the printed/downloaded PDF uses the same wide table. Entered domain values remain editable in the live table and are read-only in the print preview.
 
-`@/lib/sf9/sf9GradeBands`
+The six workbook-aligned score groups are saved through the existing `grades.domain_scores` field and use the previously configured weights: WW Cognitive 10%, WW Affective 10%, PT Cognitive 10%, PT Affective 10%, Behavioral Domain 30%, and Examinations 30%.
 
-The file must be inside the same Next.js project that contains the matching `lib/` and `context/` directories. Also retain this in `tsconfig.json`:
-
-```json
-"paths": { "@/*": ["./*"] }
-```
-
-If your repository contains both `app/class-record/page.tsx` and `app/class-record-page.tsx`, replace the one Vercel identifies in the build error. Do not create a duplicate route unless your project already intentionally uses both files.
-
-The extracted project was checked with `npx tsc --noEmit` successfully using this exact root-level path.
+Run `npx tsc --noEmit` after copying; the replacement passed this check in the extracted project.

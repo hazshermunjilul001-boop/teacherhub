@@ -1779,6 +1779,41 @@ function EClassRecordView({
   );
 }
 
+
+function DomainClassRecordTable({ students, scores, term, subject, teacherName, editable, onUpdate }: { students: Student[]; scores: Record<string, Scores>; term: number; subject: string; teacherName: string; editable: boolean; onUpdate: (sid:string,key:string,idx:number,value:number)=>void }) {
+  const active = students.filter(s => !s.status || s.status === 'active');
+  const getGrade = (student: Student) => {
+    const row = scores[student.id]?.domains || {};
+    const blocks = DOMAIN_BLOCKS.map(block => { const vals=Object.values(row[block.key]||{}).filter(v=>v>0); return { avg: vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : 0, weight:block.weight }; });
+    const initial = blocks.reduce((sum,b)=>sum+b.avg*b.weight,0);
+    return { initial, term: initial ? Math.round(initial) : 0 };
+  };
+  const th: React.CSSProperties = { border:'1px solid #777', padding:'3px 4px', textAlign:'center', fontSize:'9px' };
+  const td: React.CSSProperties = { border:'1px solid #999', padding:'2px 4px', textAlign:'center', fontSize:'9px' };
+  return <div className="domain-record-shell" style={{overflowX:'auto',background:'#fff',color:'#000',padding:'8px'}}><div style={{minWidth:'1500px',fontFamily:'Arial,sans-serif'}}>
+    <div style={{textAlign:'center',fontWeight:700,fontSize:'24px',padding:'2px'}}>CLASS RECORD</div>
+    <table style={{width:'100%',borderCollapse:'collapse',tableLayout:'fixed'}}><thead>
+      <tr><th colSpan={2} style={th}>REGION</th><th colSpan={5} style={th}></th><th colSpan={2} style={th}>DIVISION</th><th colSpan={5} style={th}></th><th colSpan={2} style={th}>SCHOOL ID</th><th colSpan={5} style={th}></th></tr>
+      <tr><th colSpan={2} style={th}>SCHOOL NAME</th><th colSpan={5} style={th}></th><th colSpan={2} style={th}>SCHOOL YEAR</th><th colSpan={5} style={th}></th><th colSpan={2} style={th}>TEACHER</th><th colSpan={5} style={th}>{teacherName?.toUpperCase()}</th></tr>
+      <tr><th rowSpan={3} colSpan={2} style={{...th,background:'#0b2e6b',color:'#fff',fontSize:'16px'}}>TERM {term}</th><th colSpan={5} style={th}>GRADE LEVEL / SECTION</th><th colSpan={5} style={th}>TEACHER</th><th colSpan={8} style={th}>SUBJECT: {subject}</th></tr>
+      <tr>{DOMAIN_BLOCKS.map(block=><th key={block.key} colSpan={block.count+1} style={{...th,fontWeight:700}}>{block.label}</th>)}<th rowSpan={2} style={th}>INITIAL<br/>GRADE</th><th rowSpan={2} style={th}>TERM<br/>GRADE</th><th rowSpan={2} style={th}>DESCRIPTOR</th></tr>
+      <tr>{DOMAIN_BLOCKS.flatMap(block=>[...Array.from({length:block.count},(_,i)=><th key={block.key+i} style={th}>{i+1}</th>),<th key={block.key+'avg'} style={th}>AVG</th>])}</tr>
+      <tr><th colSpan={2} style={{...th,textAlign:'left'}}>HIGHEST POSSIBLE SCORE</th>{DOMAIN_BLOCKS.flatMap(block=>[...Array.from({length:block.count},(_,i)=><th key={block.key+'h'+i} style={th}>100</th>),<th key={block.key+'ha'} style={th}>100</th>])}<th style={th}>100</th><th style={th}>100</th><th style={th}></th></tr>
+      <tr><th colSpan={999} style={{...th,background:'#0b2e6b',color:'#fff',textAlign:'left'}}>LEARNERS' NAMES</th></tr>
+    </thead><tbody>
+      <tr><td colSpan={999} style={{...th,textAlign:'left',fontWeight:700}}>MALE</td></tr>
+      {active.filter(s=>s.sex==='M').map((student,i)=><DomainClassRecordRow key={student.id} student={student} index={i+1} scores={scores} grade={getGrade(student)} editable={editable} onUpdate={onUpdate} td={td}/>)}
+      <tr><td colSpan={999} style={{...th,textAlign:'left',fontWeight:700}}>FEMALE</td></tr>
+      {active.filter(s=>s.sex==='F').map((student,i)=><DomainClassRecordRow key={student.id} student={student} index={i+1} scores={scores} grade={getGrade(student)} editable={editable} onUpdate={onUpdate} td={td}/>)}
+      {active.filter(s=>s.sex!=='M'&&s.sex!=='F').map((student,i)=><DomainClassRecordRow key={student.id} student={student} index={i+1} scores={scores} grade={getGrade(student)} editable={editable} onUpdate={onUpdate} td={td}/>)}
+    </tbody></table></div></div>;
+}
+function DomainClassRecordRow({student,index,scores,grade,editable,onUpdate,td}:{student:Student;index:number;scores:Record<string,Scores>;grade:{initial:number;term:number};editable:boolean;onUpdate:(sid:string,key:string,idx:number,value:number)=>void;td:React.CSSProperties}) {
+  const row=scores[student.id]?.domains||{}; const descriptor=grade.term>=90?'ADVANCING':grade.term>=80?'BENCHMARKING':grade.term>=75?'CONNECTING':grade.term>=65?'DEVELOPING':'EMERGING';
+  return <tr><td style={td}>{index}</td><td style={{...td,textAlign:'left',whiteSpace:'nowrap'}}>{student.full_name}</td>{DOMAIN_BLOCKS.flatMap(block=>{const vals=Array.from({length:block.count},(_,i)=>row[block.key]?.[i]||0);const entered=vals.filter(v=>v>0);const avg=entered.length?entered.reduce((a,b)=>a+b,0)/entered.length:0;return [...vals.map((v,i)=><td key={block.key+i} style={td}><input type="number" min={0} max={100} value={v||''} disabled={!editable} onChange={e=>onUpdate(student.id,block.key,i,+e.target.value)} style={{width:'42px',textAlign:'center',border:'1px solid #aaa'}}/></td>),<td key={block.key+'avg'} style={td}>{avg?avg.toFixed(1):''}</td>]})}<td style={td}>{grade.initial?grade.initial.toFixed(2):''}</td><td style={{...td,fontWeight:700}}>{grade.term||''}</td><td style={td}>{grade.term?descriptor:''}</td></tr>;
+}
+function DomainEClassRecordView({students,termData,term,subject,teacherName,onClose}:{students:Student[];termData:TermData;term:number;subject:string;teacherName:string;onClose:()=>void}) { return <div className="fixed inset-0 z-50 bg-black/80 overflow-auto p-4"><div className="bg-white max-w-[1800px] mx-auto rounded-lg"><div className="no-print flex justify-between items-center p-3 border-b"><b>E-Class Record — {subject} — Term {term}</b><div className="flex gap-2"><button onClick={()=>window.print()} className="px-3 py-2 bg-blue-700 text-white rounded">Print / Save PDF</button><button onClick={onClose} className="px-3 py-2 bg-gray-200 rounded">Close</button></div></div><DomainClassRecordTable students={students} scores={termData.scores} term={term} subject={subject} teacherName={teacherName} editable={false} onUpdate={()=>{}}/></div><style>{`@media print{.no-print{display:none!important}.fixed{position:static!important;background:#fff!important;padding:0!important}.domain-record-shell{overflow:visible!important;padding:0!important}.domain-record-shell>div{min-width:1500px!important}@page{size:landscape;margin:5mm}}`}</style></div>; }
+
 // ── MAIN PAGE ─────────────────────────────────────────────────────────────────
 
 export default function ClassRecord() {
@@ -2260,7 +2295,7 @@ export default function ClassRecord() {
           Click a learner's name to view info or change their status (Dropped, Transferred, etc.)
         </div>
 
-        {usesDomainFormat && !loading && (
+        {false && !loading && (
           <div className="mx-6 mb-4 rounded-xl border border-amber-800 bg-amber-950/30 p-4">
             <div className="text-sm font-semibold text-amber-300 mb-1">{subject} — prescribed domain inputs for Term {term}</div>
             <div className="text-xs text-gray-400 mb-3">This follows the supplied workbook: five assessment domains plus Examinations. Enter ratings from 0 to 100. The six domain averages are weighted 10%, 10%, 10%, 10%, 30%, and 30%, respectively.</div>
@@ -2269,6 +2304,9 @@ export default function ClassRecord() {
             </div>
           </div>
         )}
+        {/* Exact supplied-workbook layout — only GMRC (Elem) and Values Education (JHS). */}
+        {usesDomainFormat && !loading && <div className="px-6 pb-10"><DomainClassRecordTable students={students} scores={scores} term={term} subject={subject} teacherName={recordTeacherName} editable={!isSubjectTeacher || canEditPeriod(term)} onUpdate={updateDomain}/></div>}
+
         {/* Table */}
         {loading ? (
           <div className="flex items-center justify-center py-20 gap-3 text-gray-400"><RefreshCw size={20} className="animate-spin"/>Loading learners...</div>
@@ -2372,7 +2410,7 @@ export default function ClassRecord() {
         />
       )}
 
-      {showEClass && (
+      {showEClass && (usesDomainFormat ? <DomainEClassRecordView students={students} termData={allTermData[term] ?? {scores:{},highest}} term={term} subject={subject} teacherName={recordTeacherName} onClose={()=>setShowEClass(false)}/> :
         <EClassRecordView
           students={students}
           subject={subject}
