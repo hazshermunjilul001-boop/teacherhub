@@ -22,6 +22,7 @@ interface SectionSettingsForm {
   school_logo_url: string;
   shs_track: SHSTrack | '';
   elective_subjects: string[];
+  gmrc_ve_source: string;
 }
 
 const EMPTY_FORM: SectionSettingsForm = {
@@ -34,6 +35,7 @@ const EMPTY_FORM: SectionSettingsForm = {
   school_logo_url: '',
   shs_track: '',
   elective_subjects: [],
+  gmrc_ve_source: '',
 };
 
 export default function SectionSF9Settings({
@@ -53,7 +55,7 @@ export default function SectionSF9Settings({
     (async () => {
       const { data } = await supabase
         .from('sections')
-        .select('school_address, region, division, header_scope_type, header_scope_name, school_id, school_logo_url, shs_track, elective_subjects')
+        .select('school_address, region, division, header_scope_type, header_scope_name, school_id, school_logo_url, shs_track, elective_subjects, gmrc_ve_source')
         .eq('id', sectionId)
         .single();
 
@@ -67,6 +69,7 @@ export default function SectionSF9Settings({
         school_logo_url:    data?.school_logo_url ?? '',
         shs_track:          data?.shs_track ?? '',
         elective_subjects:  data?.elective_subjects ?? [],
+        gmrc_ve_source:     data?.gmrc_ve_source ?? '',
       });
       setLoading(false);
     })();
@@ -191,6 +194,19 @@ export default function SectionSF9Settings({
               Fill this in once per section — every student&apos;s SF9 header pulls from here,
               so you won&apos;t re-enter it per learner.
             </p>
+
+            {!isSHS && (
+              <div className="border border-amber-300 rounded-lg p-3 bg-amber-50">
+                <label className="block text-xs font-medium text-gray-700 mb-1">GMRC / Values Education SF9 source</label>
+                <select value={form.gmrc_ve_source} onChange={e => setField('gmrc_ve_source', e.target.value)} className="w-full border rounded px-3 py-2 text-sm text-gray-900 bg-white">
+                  <option value="">Automatic / existing record</option>
+                  <option value="GMRC (Elem)">Separate GMRC (Elem) class record</option>
+                  <option value="Values Education (JHS)">Separate Values Education (JHS) class record</option>
+                  <option value="GMRC/VE">Existing GMRC/VE class record</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">The adviser’s choice applies to every learner in this section.</p>
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">School Address</label>

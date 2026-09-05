@@ -24,6 +24,8 @@ export interface Section {
   // Extra fields for shared sections
   _role?: 'owner' | 'subject_teacher';
   _subjects?: string[]; // subjects this teacher can access in shared section
+  _displayName?: string;
+  gmrc_ve_source?: string;
   _gradingPeriods?: number[];
   _components?: string[];
   _hiddenStudentIds?: string[]; // students hidden only from this subject teacher's class record
@@ -93,14 +95,14 @@ export function SectionProvider({ children }: { children: ReactNode }) {
     // ── Step 3: Load shared sections via section_collaborators ────────────────
     const { data: collabRows, error: collabErr1 } = await supabase
       .from('section_collaborators')
-      .select('section_id, subjects, grading_periods, components, status')
+      .select('section_id, subjects, grading_periods, components, status, display_name')
       .eq('user_id', user.id)
       .eq('status', 'active');
 
     // Also try matching by email in case user_id wasn't set yet
     const { data: collabByEmail, error: collabErr2 } = await supabase
       .from('section_collaborators')
-      .select('section_id, subjects, grading_periods, components, status')
+      .select('section_id, subjects, grading_periods, components, status, display_name')
       .eq('email', normalizedEmail)
       .eq('status', 'active');
 
@@ -138,6 +140,7 @@ export function SectionProvider({ children }: { children: ReactNode }) {
             ...s,
             _role: 'subject_teacher' as const,
             _subjects: rawSubjects.filter((value: string) => !value.startsWith(hiddenPrefix)),
+            _displayName: collab?.display_name ?? '',
             _hiddenStudentIds: hiddenStudentIds,
             _gradingPeriods: (collab?.grading_periods ?? [1, 2, 3]).map(Number),
             _components: collab?.components ?? ['ww', 'pt', 'st', 'te'],

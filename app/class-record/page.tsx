@@ -100,6 +100,8 @@ const subjectStorageKeys = (subject: string) => [
 const SUBJECTS_JHS = [
   'Filipino', 'English', 'Mathematics', 'Science',
   'Araling Panlipunan (AP)', 'GMRC/VE',
+  'GMRC (Elem)',
+  'Values Education (JHS)',
   'EPP/TLE',
   'MAPEH - Music & Arts', 'MAPEH - PE & Health',
   // Special Curricular Program subjects — each shares the assessment-component
@@ -150,6 +152,8 @@ const SUBJECT_WEIGHTS: Record<string, { ww: number; pt: number; ta: number }> = 
   'Science':                                        { ww: 0.20, pt: 0.50, ta: 0.30 },
   'Araling Panlipunan (AP)':                        { ww: 0.20, pt: 0.50, ta: 0.30 },
   'GMRC/VE':                                        { ww: 0.20, pt: 0.50, ta: 0.30 },
+  'GMRC (Elem)':                                    { ww: 0.20, pt: 0.50, ta: 0.30 },
+  'Values Education (JHS)':                         { ww: 0.20, pt: 0.50, ta: 0.30 },
   'EPP/TLE':                                        { ww: 0.20, pt: 0.60, ta: 0.20 },
   'MAPEH - Music & Arts':                           { ww: 0.20, pt: 0.60, ta: 0.20 },
   'MAPEH - PE & Health':                            { ww: 0.20, pt: 0.60, ta: 0.20 },
@@ -500,7 +504,17 @@ function SummaryOfGradesView({
 
   const td = { border:'1px solid #999', padding:'2px 6px', fontSize:'9px', textAlign:'center' as const };
   const th = { ...td, background:'#e8e8e8', fontWeight:'bold' as const };
-
+  const PERFORMANCE_BANDS = [
+    { label:'ADVANCING', min:90, max:100 },
+    { label:'BENCHMARKING', min:80, max:89 },
+    { label:'CONNECTING', min:75, max:79 },
+    { label:'DEVELOPING', min:65, max:74 },
+    { label:'EMERGING', min:0, max:64 },
+  ];
+  const termBandCounts = [1,2,3].map(termNum => {
+    const grades = activeStudents.map(student => computeTerm(student.id, termNum)).filter(g => g > 0);
+    return { gsa: grades.length ? grades.reduce((sum, g) => sum + g, 0) / grades.length : 0, counts: PERFORMANCE_BANDS.map(b => grades.filter(g => g >= b.min && g <= b.max).length) };
+  });
 
   // ── Enter-key navigation: moves focus to next student in the same column ──
   const handleEnter = (
@@ -711,6 +725,17 @@ function SummaryOfGradesView({
             {renderGroup(females, 'FEMALE')}
           </tbody>
         </table>
+
+        <div style={{marginTop:'8px'}}>
+          <div style={{fontWeight:'bold', fontSize:'9px', background:'#1e3a5f', color:'white', padding:'3px 6px'}}>TERM PERFORMANCE SUMMARY</div>
+          <table style={{width:'100%', borderCollapse:'collapse', fontSize:'9px'}}>
+            <thead><tr><th style={{...th, textAlign:'left'}}>MEASURE</th>{[1,2,3].map(t => <th key={t} style={th}>TERM {t}</th>)}</tr></thead>
+            <tbody>
+              <tr><td style={{...td, textAlign:'left', fontWeight:'bold'}}>GSA / Class Average</td>{termBandCounts.map((v,i)=><td key={i} style={td}>{v.gsa ? v.gsa.toFixed(2) : ''}</td>)}</tr>
+              {PERFORMANCE_BANDS.map((band, bandIdx) => <tr key={band.label}><td style={{...td, textAlign:'left'}}>{band.min}&ndash;{band.max} &nbsp; {band.label}</td>{termBandCounts.map((v,i)=><td key={i} style={td}>{v.counts[bandIdx]}</td>)}</tr>)}
+            </tbody>
+          </table>
+        </div>
 
         {/* Signatures */}
         <div style={{display:'flex', justifyContent:'space-between', marginTop:'20px', fontSize:'9px'}}>
@@ -1780,14 +1805,13 @@ export default function ClassRecord() {
   const isSubjectTeacher = isCollaborator && activeSection?._role === 'subject_teacher' && assignedSubjects.length > 0;
   const assignedPeriods: number[] = activeSection?._gradingPeriods?.length ? activeSection._gradingPeriods : [1, 2, 3];
   const assignedComponents: string[] = activeSection?._components?.length ? activeSection._components : ['ww', 'pt', 'st', 'te'];
-  const recordTeacherName = isSubjectTeacher ? (currentUserName || adviser) : adviser;
+  const recordTeacherName = isSubjectTeacher ? (activeSection?._displayName?.trim() || currentUserName || adviser) : adviser;
   const canEditPeriod = (period: number) => !isSubjectTeacher || assignedPeriods.includes(period);
   const canEditComponent = (component: string) => !isSubjectTeacher || assignedComponents.includes(component);
 
   // Filter the subject lists — subject teachers only see their assigned subjects
-  const visibleSubjectsJHS = isSubjectTeacher
-    ? SUBJECTS_JHS.filter(s => assignedSubjects.includes(s))
-    : SUBJECTS_JHS;
+  const gradeSpecificJHS = gradeNumber <= 6 ? SUBJECTS_JHS.filter(s => s !== 'Values Education (JHS)') : SUBJECTS_JHS.filter(s => s !== 'GMRC (Elem)');
+  const visibleSubjectsJHS = isSubjectTeacher ? gradeSpecificJHS.filter(s => assignedSubjects.includes(s)) : gradeSpecificJHS;
   const shsSubjectsForGrade = gradeNumber === 11 ? SUBJECTS_SHS_G11 : gradeNumber === 12 ? SUBJECTS_SHS_G12 : SUBJECTS_SHS;
   const visibleSubjectsSHS = isSubjectTeacher
     ? shsSubjectsForGrade.filter(s => assignedSubjects.includes(s))
@@ -2322,7 +2346,7 @@ export default function ClassRecord() {
           schoolYear={schoolYear}
           division={division}
           region={region}
-          adviser={adviser}
+          adviser={recordTeacherName}
           schoolHead={schoolHead}
           allTermData={allTermData}
           onClose={() => setShowSummary(false)}

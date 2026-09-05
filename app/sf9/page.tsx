@@ -286,6 +286,7 @@ function CollabPanel({
 }: { sectionId:string; subjects:{key:string;label:string}[]; onClose:()=>void }) {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [inviteEmail,   setInviteEmail]   = useState('');
+  const [inviteDisplayName, setInviteDisplayName] = useState('');
   const [inviteSubjects,setInviteSubjects]= useState<string[]>([]);
   const [invitePeriods, setInvitePeriods] = useState<number[]>([1, 2, 3]);
   const [inviteComponents, setInviteComponents] = useState<string[]>(['ww', 'pt', 'st', 'te']);
@@ -312,6 +313,7 @@ function CollabPanel({
     const { data, error } = await supabase.from('section_collaborators').upsert({
       section_id:  sectionId,
       email,
+      display_name: inviteDisplayName.trim() || null,
       subjects:    inviteSubjects,
       grading_periods: invitePeriods,
       components: inviteComponents,
@@ -324,6 +326,7 @@ function CollabPanel({
     if (!error && data) {
       setCollaborators(prev => [...prev.filter(c=>c.email!==data.email), data]);
       setInviteEmail('');
+      setInviteDisplayName('');
       setInviteSubjects([]);
       setInvitePeriods([1, 2, 3]);
       setInviteComponents(['ww', 'pt', 'st', 'te']);
@@ -386,6 +389,13 @@ function CollabPanel({
                   placeholder="teacher@deped.gov.ph"
                   className="w-full pl-9 pr-4 py-2.5 bg-gray-800 border border-gray-600 rounded-xl text-white text-sm focus:outline-none focus:border-purple-500"/>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Teacher's Actual Name</label>
+              <input value={inviteDisplayName} onChange={e => setInviteDisplayName(e.target.value)} placeholder="e.g. JUAN DELA CRUZ"
+                className="w-full px-4 py-2.5 bg-gray-800 border border-gray-600 rounded-xl text-white text-sm focus:outline-none focus:border-purple-500"/>
+              <p className="text-xs text-gray-500 mt-1">This is the name shown on linked class records, summaries, and exports.</p>
             </div>
 
             <div>
@@ -538,9 +548,7 @@ export default function SF9Page() {
   const visibleLeafSubjects = isSubjectTeacher
     ? leafSubjects.filter(subject => isAssignedSubject(subject.key))
     : leafSubjects;
-  const collaborationSubjects = numericGradeLevel >= 11
-    ? SHS_SUBJECT_LINK_OPTIONS
-    : leafSubjects;
+  const collaborationSubjects = numericGradeLevel >= 11 ? SHS_SUBJECT_LINK_OPTIONS : [...leafSubjects, ...(numericGradeLevel <= 6 ? [{key:'GMRC (Elem)', label:'GMRC (Elem)'}] : [{key:'Values Education (JHS)', label:'Values Education (JHS)'}])].filter((s, i, a) => a.findIndex(x => x.key === s.key) === i);
   const allowedPeriods: number[] = activeSection?._gradingPeriods?.length ? activeSection._gradingPeriods : [1, 2, 3];
   // Manual SF9 grades are adviser-only; subject teachers encode through Class Record,
   // where the assigned component and grading-period restrictions are enforced.

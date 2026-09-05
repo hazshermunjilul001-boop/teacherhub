@@ -129,6 +129,8 @@ export function useSF9Data(
     if (!studentList.length) { setSF9Data([]); setLoading(false); return; }
 
     const studentIds = studentList.map(s => s.id);
+    const { data: sectionMeta } = await supabase.from('sections').select('gmrc_ve_source').eq('id', sectionId).maybeSingle();
+    const gmrcSource = sectionMeta?.gmrc_ve_source as string | null;
 
     const gradeStorageKeys = Array.from(new Set(leafKeys.flatMap(subjectStorageKeys)));
     const { data: gradesRaw } = await supabase
@@ -161,8 +163,9 @@ export function useSF9Data(
 
       leafKeys.forEach(subj => {
         const termCells = [1,2,3].map(t => {
+          const sourceKeys = (subj === 'Edukasyon sa Pagpapakatao (EsP)' || subj === 'GMRC / Values Education') && gmrcSource ? [gmrcSource] : subjectStorageKeys(subj);
           const matchingClassRecordRows = gradesRaw?.filter(g =>
-            g.student_id === student.id && subjectStorageKeys(subj).includes(g.subject) && g.term === t
+            g.student_id === student.id && sourceKeys.includes(g.subject) && g.term === t
           ) ?? [];
           const crRow = matchingClassRecordRows.find(g => g.subject === subj) ?? matchingClassRecordRows[0];
           if (crRow) {
