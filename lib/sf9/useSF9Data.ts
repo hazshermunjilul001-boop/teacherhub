@@ -138,8 +138,14 @@ export function useSF9Data(
     const { data: sectionMeta } = await supabase.from('sections').select('gmrc_ve_source').eq('id', sectionId).maybeSingle();
     const storedGmrcSource = sectionMeta?.gmrc_ve_source as string | null;
     const selectedGmrcSource = gmrcSource || storedGmrcSource || '';
+    const queryGmrcSource = !selectedGmrcSource || selectedGmrcSource === 'GMRC/VE'
+      ? (Number(gradeLevel) <= 6 ? 'GMRC (Elem)' : 'Values Education (JHS)')
+      : selectedGmrcSource;
 
-    const gradeStorageKeys = Array.from(new Set(leafKeys.flatMap(subjectStorageKeys)));
+    const gradeStorageKeys = Array.from(new Set([
+      ...leafKeys.flatMap(subjectStorageKeys),
+      ...subjectStorageKeys(queryGmrcSource),
+    ]));
     const { data: gradesRaw } = await supabase
       .from('grades').select('*')
       .in('term', [1,2,3])
