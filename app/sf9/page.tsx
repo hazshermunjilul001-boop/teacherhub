@@ -533,6 +533,19 @@ export default function SF9Page() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [bulkProgress,  setBulkProgress]  = useState<{done:number; total:number} | null>(null);
   const [dataVersion,   setDataVersion]   = useState(0);
+  const [gmrcSource, setGmrcSource] = useState('');
+
+  useEffect(() => {
+    if (!sectionId) return;
+    supabase.from('sections').select('gmrc_ve_source').eq('id', sectionId).maybeSingle()
+      .then(({ data }) => setGmrcSource(data?.gmrc_ve_source ?? ''));
+  }, [sectionId]);
+
+  const saveGmrcSource = async (value: string) => {
+    setGmrcSource(value);
+    await supabase.from('sections').update({ gmrc_ve_source: value || null }).eq('id', sectionId);
+    setDataVersion(v => v + 1);
+  };
 
   const {
     students, sf9Data, loading, gradeSource,
@@ -548,7 +561,7 @@ export default function SF9Page() {
   const visibleLeafSubjects = isSubjectTeacher
     ? leafSubjects.filter(subject => isAssignedSubject(subject.key))
     : leafSubjects;
-  const collaborationSubjects = numericGradeLevel >= 11 ? SHS_SUBJECT_LINK_OPTIONS : [...leafSubjects, ...(numericGradeLevel <= 6 ? [{key:'GMRC (Elem)', label:'GMRC (Elem)'}] : [{key:'Values Education (JHS)', label:'Values Education (JHS)'}])].filter((s, i, a) => a.findIndex(x => x.key === s.key) === i);
+  const collaborationSubjects = numericGradeLevel >= 11 ? SHS_SUBJECT_LINK_OPTIONS : [...leafSubjects, {key:'GMRC (Elem)', label:'GMRC (Elem)'}, {key:'Values Education (JHS)', label:'Values Education (JHS)'}].filter((s, i, a) => a.findIndex(x => x.key === s.key) === i);
   const allowedPeriods: number[] = activeSection?._gradingPeriods?.length ? activeSection._gradingPeriods : [1, 2, 3];
   // Manual SF9 grades are adviser-only; subject teachers encode through Class Record,
   // where the assigned component and grading-period restrictions are enforced.
@@ -746,6 +759,18 @@ export default function SF9Page() {
                   </div>
                 )}
               </div>
+
+              {numericGradeLevel <= 10 && (
+                <div className="mb-5 rounded-xl border border-amber-700 bg-amber-950/30 p-4">
+                  <div className="font-semibold text-amber-300">Choose the GMRC / Values Education class record used by SF9</div>
+                  <div className="text-xs text-gray-400 mt-1 mb-2">This applies to every learner in the active section. The old GMRC/VE record remains available for teachers.</div>
+                  <select value={gmrcSource} onChange={e => saveGmrcSource(e.target.value)} className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+                    <option value="">Legacy / existing GMRC/VE record</option>
+                    <option value="GMRC (Elem)">Separate GMRC (Elem) record</option>
+                    <option value="Values Education (JHS)">Separate Values Education (JHS) record</option>
+                  </select>
+                </div>
+              )}
 
               {/* Preview */}
               {current && (

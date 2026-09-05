@@ -280,9 +280,16 @@ interface Student {
   status?: StudentStatus; status_date?: string; status_note?: string;
 }
 interface Highest { ww:number[]; pt:number[]; st:number[]; te:number; }
-interface Scores  { ww:Record<number,number>; pt:Record<number,number>; st:Record<number,number>; te:number; domains:Record<string,number>; }
+interface Scores  { ww:Record<number,number>; pt:Record<number,number>; st:Record<number,number>; te:number; domains:Record<string,Record<number,number>>; }
 const DOMAIN_FORMAT_SUBJECTS = ['GMRC (Elem)', 'Values Education (JHS)'];
-const DOMAIN_FIELDS = ['Cognitive Domain', 'Affective Domain'] as const;
+const DOMAIN_BLOCKS = [
+  { key:'ww_cognitive', label:'WRITTEN / ORAL WORKS — COGNITIVE DOMAIN', short:'WW Cognitive', count:5, weight:0.10 },
+  { key:'ww_affective', label:'WRITTEN / ORAL WORKS — AFFECTIVE DOMAIN', short:'WW Affective', count:5, weight:0.10 },
+  { key:'pt_cognitive', label:'PRODUCT / PERFORMANCE TASKS — COGNITIVE DOMAIN', short:'PT Cognitive', count:3, weight:0.10 },
+  { key:'pt_affective', label:'PRODUCT / PERFORMANCE TASKS — AFFECTIVE DOMAIN', short:'PT Affective', count:3, weight:0.10 },
+  { key:'behavioral', label:'BEHAVIORAL DOMAIN', short:'Behavioral', count:3, weight:0.30 },
+  { key:'examinations', label:'EXAMINATIONS', short:'Examinations', count:3, weight:0.30 },
+] as const;
 interface TermData { scores:Record<string,Scores>; highest:Highest; }
 
 // ── STUDENT STATUS MODAL ──────────────────────────────────────────────────────
@@ -1818,12 +1825,15 @@ export default function ClassRecord() {
   const isSubjectTeacher = isCollaborator && activeSection?._role === 'subject_teacher' && assignedSubjects.length > 0;
   const assignedPeriods: number[] = activeSection?._gradingPeriods?.length ? activeSection._gradingPeriods : [1, 2, 3];
   const assignedComponents: string[] = activeSection?._components?.length ? activeSection._components : ['ww', 'pt', 'st', 'te'];
-  const recordTeacherName = isSubjectTeacher ? (activeSection?._displayName?.trim() || currentUserName || adviser) : adviser;
+  const linkedDisplayName = activeSection?._displayName?.trim() || '';
+  const usableLinkedDisplayName = linkedDisplayName && !linkedDisplayName.includes('@') ? linkedDisplayName : '';
+  const recordTeacherName = isSubjectTeacher ? (usableLinkedDisplayName || currentUserName || adviser) : adviser;
   const canEditPeriod = (period: number) => !isSubjectTeacher || assignedPeriods.includes(period);
   const canEditComponent = (component: string) => !isSubjectTeacher || assignedComponents.includes(component);
 
   // Filter the subject lists — subject teachers only see their assigned subjects
-  const gradeSpecificJHS = gradeNumber <= 6 ? SUBJECTS_JHS.filter(s => s !== 'Values Education (JHS)') : SUBJECTS_JHS.filter(s => s !== 'GMRC (Elem)');
+  // Keep both policy-specific records visible so an adviser can create the correct format even when managing records across grade levels.
+  const gradeSpecificJHS = SUBJECTS_JHS;
   const visibleSubjectsJHS = isSubjectTeacher ? gradeSpecificJHS.filter(s => assignedSubjects.includes(s)) : gradeSpecificJHS;
   const shsSubjectsForGrade = gradeNumber === 11 ? SUBJECTS_SHS_G11 : gradeNumber === 12 ? SUBJECTS_SHS_G12 : SUBJECTS_SHS;
   const visibleSubjectsSHS = isSubjectTeacher
@@ -1956,24 +1966,31 @@ export default function ClassRecord() {
     });
   },[term,subject,highest,isSubjectTeacher,assignedPeriods.join(','),assignedComponents.join(',')]);
 
-  const updateDomain = useCallback(async (sid:string, domain:string, value:number) => {
+  const updateDomain = useCallback(async (sid:string, domainKey:string, itemIndex:number, value:number) => {
     if (!usesDomainFormat || !canEditPeriod(term)) return;
     setScores(prev => {
       const cur = prev[sid] || {ww:{},pt:{},st:{},te:0,domains:{}};
-      const domains = {...(cur.domains || {}), [domain]: Math.max(0, Math.min(100, value || 0))};
+      const domain = {...(cur.domains?.[domainKey] || {}), [itemIndex]: Math.max(0, Math.min(100, value || 0))};
+      const domains = {...(cur.domains || {}), [domainKey]: domain};
       const next = {...prev, [sid]: {...cur, domains}};
       const s = next[sid]; setSaving(sid);
-      supabase.from('grades').upsert({student_id:sid, term, subject, written_scores:s.ww, pt_scores:s.pt, st_scores:s.st, te_score:s.te, domain_scores:domains, highest_ww:highest.ww, highest_pt:highest.pt, highest_st:highest.st, highest_te:highest.te}, {onConflict:'student_id,term,subject'}).then(({error}) => { if(error) console.error('Failed saving domain score', sid, error); setSaving(null); });
+      supabase.from('grades').upsert({student_id:sid,term,subject,written_scores:s.ww,pt_scores:s.pt,st_scores:s.st,te_score:s.te,domain_scores:domains,highest_ww:highest.ww,highest_pt:highest.pt,highest_st:highest.st,highest_te:highest.te},{onConflict:'student_id,term,subject'}).then(({error})=>{if(error) console.error('Failed saving domain score',sid,error);setSaving(null);});
       return next;
     });
   }, [usesDomainFormat, term, subject, highest, canEditPeriod]);
 
   const compute = (sid:string)=>{
     const s=scores[sid]||{ww:{},pt:{},st:{},te:0,domains:{}};
-    if (usesDomainFormat && Object.values(s.domains || {}).some(v => v > 0)) {
-      const values = DOMAIN_FIELDS.map(d => s.domains?.[d] || 0).filter(v => v > 0);
-      const domainAverage = values.length ? values.reduce((a,b)=>a+b,0) / values.length : 0;
-      return {ww:[],pt:[],st:[],te:0,avgWW:0,avgPT:0,avgTA:0,initial:domainAverage,transmuted:Math.round(domainAverage)};
+    if (usesDomainFormat) {
+      const weighted = DOMAIN_BLOCKS.map(block => {
+        const vals = Object.values(s.domains?.[block.key] || {}).filter(v => v > 0);
+        const average = vals.length ? vals.reduce((a,b)=>a+b,0) / vals.length : 0;
+        return { average, weight:block.weight };
+      });
+      if (weighted.some(x => x.average > 0)) {
+        const initial = weighted.reduce((sum, x) => sum + x.average * x.weight, 0);
+        return {ww:[],pt:[],st:[],te:0,avgWW:0,avgPT:0,avgTA:0,initial,transmuted:Math.round(initial)};
+      }
     }
     const ww=Array.from({length:5},(_,i)=>s.ww?.[i]??0);
     const pt=Array.from({length:3},(_,i)=>s.pt?.[i]??0);
@@ -2245,11 +2262,10 @@ export default function ClassRecord() {
 
         {usesDomainFormat && !loading && (
           <div className="mx-6 mb-4 rounded-xl border border-amber-800 bg-amber-950/30 p-4">
-            <div className="text-sm font-semibold text-amber-300 mb-1">{subject} — Domain Scores for Term {term}</div>
-            <div className="text-xs text-gray-400 mb-3">Enter each domain rating from the prescribed e-Class Record. The term grade mirrors the average of the entered domains; existing legacy GMRC/VE records remain unchanged.</div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
-              <div className="text-gray-500 font-semibold">LEARNER</div>{DOMAIN_FIELDS.map(d => <div key={d} className="text-gray-500 font-semibold">{d.toUpperCase()}</div>)}
-              {activeStudents.map(student => <div key={student.id} className="contents"><div className="text-gray-200 py-2">{student.full_name}</div>{DOMAIN_FIELDS.map(domain => <input key={domain} type="number" min={0} max={100} value={scores[student.id]?.domains?.[domain] || ''} disabled={!canEditPeriod(term)} onChange={e=>updateDomain(student.id, domain, +e.target.value)} className="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-white" />)}</div>)}
+            <div className="text-sm font-semibold text-amber-300 mb-1">{subject} — prescribed domain inputs for Term {term}</div>
+            <div className="text-xs text-gray-400 mb-3">This follows the supplied workbook: five assessment domains plus Examinations. Enter ratings from 0 to 100. The six domain averages are weighted 10%, 10%, 10%, 10%, 30%, and 30%, respectively.</div>
+            <div className="space-y-4">
+              {DOMAIN_BLOCKS.map(block => <div key={block.key} className="overflow-x-auto"><div className="text-xs font-semibold text-amber-200 mb-1">{block.label} ({Math.round(block.weight*100)}%)</div><table className="min-w-full text-xs"><thead><tr><th className="text-left pr-4 text-gray-500">LEARNER</th>{Array.from({length:block.count},(_,i)=><th key={i} className="px-1 text-gray-500">{i+1}</th>)}<th className="px-2 text-gray-500">AVERAGE</th></tr></thead><tbody>{activeStudents.map(student => { const vals=Array.from({length:block.count},(_,i)=>scores[student.id]?.domains?.[block.key]?.[i] || 0); const entered=vals.filter(v=>v>0); const avg=entered.length?entered.reduce((a,b)=>a+b,0)/entered.length:0; return <tr key={student.id}><td className="text-gray-200 py-1 pr-4 whitespace-nowrap">{student.full_name}</td>{vals.map((v,i)=><td key={i} className="px-1"><input type="number" min={0} max={100} value={v||''} disabled={!canEditPeriod(term)} onChange={e=>updateDomain(student.id,block.key,i,+e.target.value)} className="w-16 bg-gray-900 border border-gray-700 rounded px-1 py-1 text-white text-center" /></td>)}<td className="px-2 text-amber-300">{avg?avg.toFixed(1):''}</td></tr>})}</tbody></table></div>)}
             </div>
           </div>
         )}
