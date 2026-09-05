@@ -1,24 +1,11 @@
-# GMRC / Values Education exact-layout replacement
+# GMRC / Values Education dedicated-page fix
 
-Replace this project file:
+Copy each bundled file to the same path in the repository. The dedicated page is `app/gmrc-values-record/page.tsx`; the sidebar entry is in `app/page.tsx`.
 
-`app/class-record/page.tsx`
+The ordinary `app/class-record/page.tsx` replacement removes the broken dedicated-subject renderer from the legacy subject list but keeps the old `GMRC/VE` compatibility record. The dedicated page is the only place where `GMRC (Elem)` and `Values Education (JHS)` are entered.
 
-with the bundled file at the same path. If Vercel is compiling your root-level legacy file instead, also copy the same contents to the exact path shown by your build log, such as:
+The dedicated table follows the supplied workbook’s exact column hierarchy. Standard groups use item columns followed by Total, PS, and WS. Examinations use ST1, ST2, TE, WS ST1, WS ST2, WS TE, PS, and WS. Standard PS is total divided by highest possible score times 100; standard WS is PS times the group weight; examination PS is ST1×30% + ST2×30% + TE×40%; examination WS is examination PS×30%; Initial Grade is the sum of all six WS values; Term Grade uses the adjusted transmutation table; and the final grade is the average of three completed term grades.
 
-`app/class-record-page.tsx`
+The SF9 files now resolve the legacy `GMRC/VE` choice to the same dedicated record: GMRC (Elem) for Grades 2–6 and Values Education (JHS) for Grades 7–10. Explicit dedicated choices also read the same canonical records. The SF9 scorer uses the same six-block workbook formula whenever `domain_scores` is present.
 
-The replacement is gated exclusively by these subject keys:
-
-- `GMRC (Elem)`
-- `Values Education (JHS)`
-
-For those two subjects only, the live class-record screen uses the wide DepEd-style hierarchy shown in the supplied screenshot: official class-record title/header, term block, grade/section and teacher fields, subject field, WW Cognitive and Affective Domain groups, PT Cognitive and Affective Domain groups, Behavioral Domain, Examinations, Initial Grade, Term Grade, Descriptor, Learners’ Names, Male/Female sections, and bordered score cells.
-
-The normal legacy `GMRC/VE` record and every other subject remain on the existing class-record renderer. The previous compact amber domain panel is disabled so it cannot appear together with the official layout.
-
-The E-Class Record / print-preview button opens a dedicated wide preview for these two subjects. Its **Print / Save PDF** button invokes the browser print dialog with landscape page settings and hides the preview controls, so the printed/downloaded PDF uses the same wide table. Entered domain values remain editable in the live table and are read-only in the print preview.
-
-The six workbook-aligned score groups are saved through the existing `grades.domain_scores` field and use the previously configured weights: WW Cognitive 10%, WW Affective 10%, PT Cognitive 10%, PT Affective 10%, Behavioral Domain 30%, and Examinations 30%.
-
-Run `npx tsc --noEmit` after copying; the replacement passed this check in the extracted project.
+Run the existing Supabase migration that adds `grades.domain_scores` before using the page. Existing grade mirroring for other subjects is unchanged. Run `npx tsc --noEmit` after copying; it passed in the prepared project.

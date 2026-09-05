@@ -6,6 +6,7 @@
 // subject key not explicitly listed (which covers every new G2/G3/SHS
 // subject automatically).
 // ============================================================================
+import { domainSummary } from '../gmrcValues/domainScoring';
 
 // Adjusted Transmutation Table (starting SY 2027–2028).
 export const TRANSMUTATION = [
@@ -127,9 +128,9 @@ export const calcEX = (
 
 export function computeFromClassRecord(row: any, subject: string): number {
   if (!row) return 0;
-  if ((subject === 'GMRC (Elem)' || subject === 'Values Education (JHS)') && row.domain_scores) {
-    const values = ['Cognitive Domain','Affective Domain'].map(k => Number(row.domain_scores[k] ?? 0)).filter(v => v > 0);
-    if (values.length) return Math.round(values.reduce((a,b)=>a+b,0) / values.length);
+  if (row.domain_scores && typeof row.domain_scores === 'object') {
+    const domain = domainSummary(row.domain_scores);
+    if (domain.hasScores) return transmute(domain.initial);
   }
   const w  = WEIGHTS[subject] ?? {ww:0.25,pt:0.50,ta:0.25};
   const ww = Array.from({length:5},(_,i)=>row.written_scores?.[i]??0);

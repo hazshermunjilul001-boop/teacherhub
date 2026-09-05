@@ -13,6 +13,12 @@ export type SHSTrack = 'academic' | 'techpro';
 export const SUBJECT_KEY_ALIASES: Record<string, string[]> = {
   // Existing Class Record rows may still use this earlier spelling.
   'Pag-Aaral ng Kasanayan at Lipunang Pilipino': ['Pagaaral sa Kasaysayan ng Lipunang Pilipino'],
+  // The SF9 display row is one shared GMRC/Values row. All entry points must
+  // resolve to the same canonical dedicated records when selected.
+  'GMRC / Values Education': ['GMRC/VE', 'GMRC (Elem)', 'Values Education (JHS)'],
+  'GMRC/VE': ['GMRC / Values Education', 'GMRC (Elem)', 'Values Education (JHS)'],
+  'GMRC (Elem)': ['GMRC/VE', 'GMRC / Values Education'],
+  'Values Education (JHS)': ['GMRC/VE', 'GMRC / Values Education'],
 };
 
 export interface SF9SubjectRow {

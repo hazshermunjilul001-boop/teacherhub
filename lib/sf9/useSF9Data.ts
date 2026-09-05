@@ -163,7 +163,12 @@ export function useSF9Data(
 
       leafKeys.forEach(subj => {
         const termCells = [1,2,3].map(t => {
-          const sourceKeys = (subj === 'Edukasyon sa Pagpapakatao (EsP)' || subj === 'GMRC / Values Education') && gmrcSource ? [gmrcSource] : subjectStorageKeys(subj);
+          const resolvedGmrcSource = gmrcSource === 'GMRC/VE'
+            ? (Number(gradeLevel) <= 6 ? 'GMRC (Elem)' : 'Values Education (JHS)')
+            : gmrcSource;
+          const sourceKeys = (subj === 'Edukasyon sa Pagpapakatao (EsP)' || subj === 'GMRC / Values Education') && resolvedGmrcSource
+            ? subjectStorageKeys(resolvedGmrcSource)
+            : subjectStorageKeys(subj);
           const matchingClassRecordRows = gradesRaw?.filter(g =>
             g.student_id === student.id && sourceKeys.includes(g.subject) && g.term === t
           ) ?? [];
