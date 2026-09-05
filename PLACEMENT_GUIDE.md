@@ -1,11 +1,11 @@
-# GMRC / Values Education dedicated-page fix
+# Dedicated GMRC / Values Education layout fix
 
-Copy each bundled file to the same path in the repository. The dedicated page is `app/gmrc-values-record/page.tsx`; the sidebar entry is in `app/page.tsx`.
+Replace the five bundled source files at their matching repository paths.
 
-The ordinary `app/class-record/page.tsx` replacement removes the broken dedicated-subject renderer from the legacy subject list but keeps the old `GMRC/VE` compatibility record. The dedicated page is the only place where `GMRC (Elem)` and `Values Education (JHS)` are entered.
+The page now renders exactly one unified table for both live entry and print preview. The table uses a fixed 47-column grid so the WW, PT, and EXs group headers align with the item columns beneath them and do not overlap. HPS cells are editable and saved to `grades.domain_highest_scores`; defaults are 100 for standard items and 30/30/40 for ST1/ST2/TE.
 
-The dedicated table follows the supplied workbook’s exact column hierarchy. Standard groups use item columns followed by Total, PS, and WS. Examinations use ST1, ST2, TE, WS ST1, WS ST2, WS TE, PS, and WS. Standard PS is total divided by highest possible score times 100; standard WS is PS times the group weight; examination PS is ST1×30% + ST2×30% + TE×40%; examination WS is examination PS×30%; Initial Grade is the sum of all six WS values; Term Grade uses the adjusted transmutation table; and the final grade is the average of three completed term grades.
+The same term performance summary appears below the table in the live page and in the print preview. Print Preview has one table only and its Print / Save PDF action uses landscape page settings.
 
-The SF9 files now resolve the legacy `GMRC/VE` choice to the same dedicated record: GMRC (Elem) for Grades 2–6 and Values Education (JHS) for Grades 7–10. Explicit dedicated choices also read the same canonical records. The SF9 scorer uses the same six-block workbook formula whenever `domain_scores` is present.
+The canonical workbook calculation is used by both the dedicated page and SF9: standard PS = total/HPS×100; standard WS = PS×weight; examination PS = ST1×30% + ST2×30% + TE×40%; examination WS = examination PS×30%; Initial Grade = sum of all six WS; Term Grade = adjusted transmutation result.
 
-Run the existing Supabase migration that adds `grades.domain_scores` before using the page. Existing grade mirroring for other subjects is unchanged. Run `npx tsc --noEmit` after copying; it passed in the prepared project.
+SF9 alias resolution is shared: selecting legacy `GMRC/VE` resolves to `GMRC (Elem)` for Grades 2–6 and `Values Education (JHS)` for Grades 7–10. Explicit dedicated selections read the same canonical rows. Ensure `grades.domain_scores` and `grades.domain_highest_scores` exist in Supabase.
