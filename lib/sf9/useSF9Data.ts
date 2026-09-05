@@ -163,7 +163,7 @@ export function useSF9Data(
 
       leafKeys.forEach(subj => {
         const termCells = [1,2,3].map(t => {
-          const resolvedGmrcSource = gmrcSource === 'GMRC/VE'
+          const resolvedGmrcSource = !gmrcSource || gmrcSource === 'GMRC/VE'
             ? (Number(gradeLevel) <= 6 ? 'GMRC (Elem)' : 'Values Education (JHS)')
             : gmrcSource;
           const sourceKeys = (subj === 'Edukasyon sa Pagpapakatao (EsP)' || subj === 'GMRC / Values Education') && resolvedGmrcSource
@@ -172,7 +172,10 @@ export function useSF9Data(
           const matchingClassRecordRows = gradesRaw?.filter(g =>
             g.student_id === student.id && sourceKeys.includes(g.subject) && g.term === t
           ) ?? [];
-          const crRow = matchingClassRecordRows.find(g => g.subject === subj) ?? matchingClassRecordRows[0];
+          const crRow = matchingClassRecordRows.find(g => g.subject === resolvedGmrcSource)
+            ?? matchingClassRecordRows.find(g => g.subject === subj)
+            ?? matchingClassRecordRows.find(g => g.domain_scores && Object.keys(g.domain_scores).length > 0)
+            ?? matchingClassRecordRows[0];
           if (crRow) {
             const v = computeFromClassRecord(crRow, subj);
             if (v > 0) { sourceMap[subj] = 'Class Record'; return { value: v, source: 'class_record' } as GradeCell; }
