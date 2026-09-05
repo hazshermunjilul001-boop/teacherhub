@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowLeft, Plus, Printer, Users, RefreshCw, FileText, X, UserX, ArrowRightLeft, UserCheck, UserPlus, Download } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
-import { useActiveSection } from '../../lib/useActiveSection';
-import { useSubscription } from '../../lib/useSubscription';
-import { useSection } from '../../context/SectionContext';
-import { SUBJECT_KEY_ALIASES } from '../../lib/sf9/sf9GradeBands';
+import { supabase } from '@/lib/supabase';
+import { useActiveSection } from '@/lib/useActiveSection';
+import { useSubscription } from '@/lib/useSubscription';
+import { useSection } from '@/context/SectionContext';
+import { SUBJECT_KEY_ALIASES } from '@/lib/sf9/sf9GradeBands';
 
 // ── EXCEL EXPORT HELPERS ───────────────────────────────────────────────────
 // Shared by EClassRecordView and SummaryOfGradesView so the downloaded .xlsx
