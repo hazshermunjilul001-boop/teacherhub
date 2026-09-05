@@ -1,11 +1,11 @@
-# Dedicated GMRC / Values Education layout fix
+# Final dedicated GMRC / Values Education interaction and print fix
 
-Replace the five bundled source files at their matching repository paths.
+Copy the bundled files to the matching repository paths.
 
-The page now renders exactly one unified table for both live entry and print preview. The table uses a fixed 47-column grid so the WW, PT, and EXs group headers align with the item columns beneath them and do not overlap. HPS cells are editable and saved to `grades.domain_highest_scores`; defaults are 100 for standard items and 30/30/40 for ST1/ST2/TE.
+The dedicated page now renders exactly one print document. The live editable table is hidden during printing, while the print-only overlay is rendered as the sole printable document. The preview uses one unified 47-column table with fixed widths and landscape print CSS, preventing duplicate copies, clipping, and overlap.
 
-The same term performance summary appears below the table in the live page and in the print preview. Print Preview has one table only and its Print / Save PDF action uses landscape page settings.
+HPS fields are editable and persisted in `grades.domain_highest_scores`. Scores are persisted with `upsert` using the student/term/subject key and are loaded again when the page is reopened. If no HPS values exist, the workbook defaults are used.
 
-The canonical workbook calculation is used by both the dedicated page and SF9: standard PS = total/HPS×100; standard WS = PS×weight; examination PS = ST1×30% + ST2×30% + TE×40%; examination WS = examination PS×30%; Initial Grade = sum of all six WS; Term Grade = adjusted transmutation result.
+Pressing Enter in a score input moves focus to the same domain column for the next learner. The page includes a visible Summary of Grades button; the summary is also printed below the table. Teacher and School Head signatories are shown in the live record and print preview. Back now routes to `/`.
 
-SF9 alias resolution is shared: selecting legacy `GMRC/VE` resolves to `GMRC (Elem)` for Grades 2–6 and `Values Education (JHS)` for Grades 7–10. Explicit dedicated selections read the same canonical rows. Ensure `grades.domain_scores` and `grades.domain_highest_scores` exist in Supabase.
+The shared scorer uses the workbook rules and the SF9 legacy alias selection still reads the same dedicated records. Ensure the Supabase columns `grades.domain_scores` and `grades.domain_highest_scores` exist before deploying.
