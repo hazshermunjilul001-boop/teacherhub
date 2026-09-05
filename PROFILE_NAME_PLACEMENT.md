@@ -1,0 +1,7 @@
+# Linked subject teacher actual-name workflow
+
+Copy `app/profile/page.tsx` to `app/profile/page.tsx` in the project. Copy the included `app/page.tsx` over the existing `app/page.tsx`; it adds **Teacher Profile** to the navigation. Copy `app/class-record-page.tsx` over the existing `app/class-record/page.tsx`; the filename is renamed in this bundle only to avoid a nested duplicate path, so restore the destination path exactly as shown. Copy `context/SectionContext.tsx` over the existing context file if it is not already present from the earlier patch.
+
+The linked teacher signs in with the same account, opens **Teacher Profile** from the sidebar, enters the actual full name, and selects **Save Actual Name**. The name is saved in Supabase Auth metadata as `full_name` and `display_name`; the login email is not changed. On the Class Record page, the signatory first uses a valid saved collaborator display name, then the teacher’s saved profile name, and only then falls back to the email/adviser value. An email-shaped collaborator value is deliberately ignored so it cannot appear as the official signatory.
+
+No SQL migration is required for the self-service profile itself because the name is stored in the authenticated user metadata. If the earlier patch’s `section_collaborators.display_name` column is installed, it remains supported; the linked teacher’s profile name is the fallback when that field is empty.

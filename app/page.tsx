@@ -19,6 +19,7 @@ import { useTheme } from '../components/ThemeProvider';
 
 const NAV_ITEMS = [
   { name: 'Dashboard',                icon: BookOpen,      path: '/',             status: 'active' },
+  { name: 'Teacher Profile',           icon: Users,         path: '/profile',      status: 'active' },
   { name: 'Class Record',             icon: Users,         path: '/class-record', status: 'active' },
   { name: 'Attendance (SF2)',         icon: Calendar,      path: '/attendance',   status: 'active' },
   { name: 'MPS & Item Analysis',      icon: BarChart2,     path: '/mps',          status: 'active' },
