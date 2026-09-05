@@ -550,7 +550,7 @@ export default function SF9Page() {
   const {
     students, sf9Data, loading, gradeSource,
     frontPage, continuationPage, gaKeys, band,
-  } = useSF9Data(sectionId, numericGradeLevel, shsTrack, electiveSubjectNames, schoolYear, dataVersion);
+  } = useSF9Data(sectionId, numericGradeLevel, shsTrack, electiveSubjectNames, schoolYear, dataVersion, gmrcSource);
 
   const leafSubjects = flattenLeafSubjects([...frontPage, ...continuationPage]);
   const isSubjectTeacher = activeSection?._role === 'subject_teacher';

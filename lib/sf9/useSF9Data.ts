@@ -100,6 +100,7 @@ export function useSF9Data(
   electiveSubjectNames: string[],
   schoolYear: string,
   dataVersion: number,
+  gmrcSource: string = '',
 ) {
   const [students,    setStudents]    = useState<Student[]>([]);
   const [sf9Data,      setSF9Data]     = useState<LearnerSF9[]>([]);
@@ -113,6 +114,11 @@ export function useSF9Data(
 
   const allRows  = [...frontPage, ...continuationPage];
   const leafKeys = getLeafKeys(allRows);
+  const displayFrontPage = frontPage.map(row =>
+    row.key === 'Edukasyon sa Pagpapakatao (EsP)' && gmrcSource === 'Values Education (JHS)'
+      ? { ...row, label: 'Values Education' }
+      : row
+  );
 
   const loadData = useCallback(async () => {
     if (!sectionId || sectionId === 'default-section' || !gradeLevel || !band) { setLoading(false); return; }
@@ -130,7 +136,8 @@ export function useSF9Data(
 
     const studentIds = studentList.map(s => s.id);
     const { data: sectionMeta } = await supabase.from('sections').select('gmrc_ve_source').eq('id', sectionId).maybeSingle();
-    const gmrcSource = sectionMeta?.gmrc_ve_source as string | null;
+    const storedGmrcSource = sectionMeta?.gmrc_ve_source as string | null;
+    const selectedGmrcSource = gmrcSource || storedGmrcSource || '';
 
     const gradeStorageKeys = Array.from(new Set(leafKeys.flatMap(subjectStorageKeys)));
     const { data: gradesRaw } = await supabase
@@ -163,9 +170,9 @@ export function useSF9Data(
 
       leafKeys.forEach(subj => {
         const termCells = [1,2,3].map(t => {
-          const resolvedGmrcSource = !gmrcSource || gmrcSource === 'GMRC/VE'
+          const resolvedGmrcSource = !selectedGmrcSource || selectedGmrcSource === 'GMRC/VE'
             ? (Number(gradeLevel) <= 6 ? 'GMRC (Elem)' : 'Values Education (JHS)')
-            : gmrcSource;
+            : selectedGmrcSource;
           const sourceKeys = (subj === 'Edukasyon sa Pagpapakatao (EsP)' || subj === 'GMRC / Values Education') && resolvedGmrcSource
             ? subjectStorageKeys(resolvedGmrcSource)
             : subjectStorageKeys(subj);
@@ -242,9 +249,9 @@ export function useSF9Data(
     setGradeSource(sourceMap);
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sectionId, gradeLevel, shsTrack, JSON.stringify(electiveSubjectNames), schoolYear, dataVersion]);
+  }, [sectionId, gradeLevel, shsTrack, JSON.stringify(electiveSubjectNames), schoolYear, dataVersion, gmrcSource]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  return { students, sf9Data, loading, gradeSource, frontPage, continuationPage, gaKeys, band };
+  return { students, sf9Data, loading, gradeSource, frontPage: displayFrontPage, continuationPage, gaKeys, band };
 }
