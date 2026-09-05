@@ -280,7 +280,9 @@ interface Student {
   status?: StudentStatus; status_date?: string; status_note?: string;
 }
 interface Highest { ww:number[]; pt:number[]; st:number[]; te:number; }
-interface Scores  { ww:Record<number,number>; pt:Record<number,number>; st:Record<number,number>; te:number; }
+interface Scores  { ww:Record<number,number>; pt:Record<number,number>; st:Record<number,number>; te:number; domains:Record<string,number>; }
+const DOMAIN_FORMAT_SUBJECTS = ['GMRC (Elem)', 'Values Education (JHS)'];
+const DOMAIN_FIELDS = ['Cognitive Domain', 'Affective Domain'] as const;
 interface TermData { scores:Record<string,Scores>; highest:Highest; }
 
 // ── STUDENT STATUS MODAL ──────────────────────────────────────────────────────
@@ -1683,6 +1685,16 @@ function EClassRecordView({
           </>
         )}
 
+        <div style={{marginTop:'8px'}}>
+          <div style={{fontWeight:'bold', fontSize:'9px', background:'#1e3a5f', color:'white', padding:'3px 6px'}}>TERM {currentTerm} PERFORMANCE SUMMARY</div>
+          <table style={{width:'100%', borderCollapse:'collapse', fontSize:'9px'}}>
+            <tbody>
+              <tr><td style={{...td, textAlign:'left', fontWeight:'bold'}}>GSA / Class Average</td><td style={td}>{(() => { const v=students.map(s=>computeTerm(s.id).transmuted).filter(g=>g>0); return v.length ? (v.reduce((a,b)=>a+b,0)/v.length).toFixed(2) : ''; })()}</td></tr>
+              {[['90–100','ADVANCING',90,100],['80–89','BENCHMARKING',80,89],['75–79','CONNECTING',75,79],['65–74','DEVELOPING',65,74],['0–64','EMERGING',0,64]].map(([range,label,min,max]) => <tr key={String(label)}><td style={{...td, textAlign:'left'}}>{range} &nbsp; {label}</td><td style={td}>{students.filter(s=>{const g=computeTerm(s.id).transmuted; return g>=Number(min)&&g<=Number(max)}).length}</td></tr>)}
+            </tbody>
+          </table>
+        </div>
+
         {/* Signatures */}
         <div style={{display:'flex', justifyContent:'space-between', marginTop:'16px', fontSize:'8px'}}>
           <div style={{textAlign:'center', minWidth:'200px'}}>
@@ -1767,6 +1779,7 @@ export default function ClassRecord() {
   const [term,setTerm]         = useState(1);
   const [students,setStudents] = useState<Student[]>([]);
   const [scores,setScores]     = useState<Record<string,Scores>>({});
+  const usesDomainFormat = DOMAIN_FORMAT_SUBJECTS.includes(subject);
   const [highest,setHighest]   = useState<Highest>({ww:[100,100,100,100,100],pt:[100,100,100],st:[50,50],te:100});
   const [loading,setLoading]   = useState(true);
   const [saving,setSaving]     = useState<string|null>(null);
@@ -1855,7 +1868,7 @@ export default function ClassRecord() {
         data.forEach((r:any)=>{
           // Rows are ordered most-recently-updated first. The first row for a
           // student therefore wins if both old and corrected keys exist.
-          if (!m[r.student_id]) m[r.student_id]={ww:r.written_scores||{},pt:r.pt_scores||{},st:r.st_scores||{},te:r.te_score||0};
+          if (!m[r.student_id]) m[r.student_id]={ww:r.written_scores||{},pt:r.pt_scores||{},st:r.st_scores||{},te:r.te_score||0,domains:r.domain_scores||{}};
         });
         // Rows are ordered most-recently-updated first, so data[0] reflects this teacher's own
         // latest save — not an arbitrary row, and not another teacher's section anymore.
@@ -1881,10 +1894,10 @@ export default function ClassRecord() {
     if (students.length === 0) { pendingHighestSave.current = null; return; }
     setSavingHighest(true);
     const rows = students.map(st => {
-      const s = scores[st.id] || { ww:{}, pt:{}, st:{}, te:0 };
+      const s = scores[st.id] || { ww:{}, pt:{}, st:{}, te:0, domains:{} };
       return {
         student_id: st.id, term: trm, subject: subj,
-        written_scores: s.ww, pt_scores: s.pt, st_scores: s.st, te_score: s.te,
+        written_scores: s.ww, pt_scores: s.pt, st_scores: s.st, te_score: s.te, domain_scores: s.domains,
         highest_ww: h.ww, highest_pt: h.pt, highest_st: h.st, highest_te: h.te,
       };
     });
@@ -1936,15 +1949,32 @@ export default function ClassRecord() {
       const s=next[sid]; setSaving(sid);
       supabase.from('grades').upsert({
         student_id:sid,term,subject,
-        written_scores:s.ww,pt_scores:s.pt,st_scores:s.st,te_score:s.te,
+        written_scores:s.ww,pt_scores:s.pt,st_scores:s.st,te_score:s.te,domain_scores:s.domains,
         highest_ww:highest.ww,highest_pt:highest.pt,highest_st:highest.st,highest_te:highest.te,
       },{onConflict:'student_id,term,subject'}).then(({error})=>{ if(error) console.error('Failed saving score for',sid,error); setSaving(null); });
       return next;
     });
   },[term,subject,highest,isSubjectTeacher,assignedPeriods.join(','),assignedComponents.join(',')]);
 
+  const updateDomain = useCallback(async (sid:string, domain:string, value:number) => {
+    if (!usesDomainFormat || !canEditPeriod(term)) return;
+    setScores(prev => {
+      const cur = prev[sid] || {ww:{},pt:{},st:{},te:0,domains:{}};
+      const domains = {...(cur.domains || {}), [domain]: Math.max(0, Math.min(100, value || 0))};
+      const next = {...prev, [sid]: {...cur, domains}};
+      const s = next[sid]; setSaving(sid);
+      supabase.from('grades').upsert({student_id:sid, term, subject, written_scores:s.ww, pt_scores:s.pt, st_scores:s.st, te_score:s.te, domain_scores:domains, highest_ww:highest.ww, highest_pt:highest.pt, highest_st:highest.st, highest_te:highest.te}, {onConflict:'student_id,term,subject'}).then(({error}) => { if(error) console.error('Failed saving domain score', sid, error); setSaving(null); });
+      return next;
+    });
+  }, [usesDomainFormat, term, subject, highest, canEditPeriod]);
+
   const compute = (sid:string)=>{
-    const s=scores[sid]||{ww:{},pt:{},st:{},te:0};
+    const s=scores[sid]||{ww:{},pt:{},st:{},te:0,domains:{}};
+    if (usesDomainFormat && Object.values(s.domains || {}).some(v => v > 0)) {
+      const values = DOMAIN_FIELDS.map(d => s.domains?.[d] || 0).filter(v => v > 0);
+      const domainAverage = values.length ? values.reduce((a,b)=>a+b,0) / values.length : 0;
+      return {ww:[],pt:[],st:[],te:0,avgWW:0,avgPT:0,avgTA:0,initial:domainAverage,transmuted:Math.round(domainAverage)};
+    }
     const ww=Array.from({length:5},(_,i)=>s.ww?.[i]??0);
     const pt=Array.from({length:3},(_,i)=>s.pt?.[i]??0);
     const st=Array.from({length:2},(_,i)=>s.st?.[i]??0);
@@ -1977,7 +2007,7 @@ export default function ClassRecord() {
       let h: Highest = {ww:[100,100,100,100,100],pt:[100,100,100],st:[50,50],te:100};
       if (data && data.length>0) {
         data.forEach((r:any)=>{
-          if (!m[r.student_id]) m[r.student_id]={ww:r.written_scores||{},pt:r.pt_scores||{},st:r.st_scores||{},te:r.te_score||0};
+          if (!m[r.student_id]) m[r.student_id]={ww:r.written_scores||{},pt:r.pt_scores||{},st:r.st_scores||{},te:r.te_score||0,domains:r.domain_scores||{}};
         });
         if (data[0]?.highest_ww) h={ww:data[0].highest_ww,pt:data[0].highest_pt,st:data[0].highest_st||[50,50],te:data[0].highest_te||100};
       }
@@ -2213,6 +2243,16 @@ export default function ClassRecord() {
           Click a learner's name to view info or change their status (Dropped, Transferred, etc.)
         </div>
 
+        {usesDomainFormat && !loading && (
+          <div className="mx-6 mb-4 rounded-xl border border-amber-800 bg-amber-950/30 p-4">
+            <div className="text-sm font-semibold text-amber-300 mb-1">{subject} — Domain Scores for Term {term}</div>
+            <div className="text-xs text-gray-400 mb-3">Enter each domain rating from the prescribed e-Class Record. The term grade mirrors the average of the entered domains; existing legacy GMRC/VE records remain unchanged.</div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+              <div className="text-gray-500 font-semibold">LEARNER</div>{DOMAIN_FIELDS.map(d => <div key={d} className="text-gray-500 font-semibold">{d.toUpperCase()}</div>)}
+              {activeStudents.map(student => <div key={student.id} className="contents"><div className="text-gray-200 py-2">{student.full_name}</div>{DOMAIN_FIELDS.map(domain => <input key={domain} type="number" min={0} max={100} value={scores[student.id]?.domains?.[domain] || ''} disabled={!canEditPeriod(term)} onChange={e=>updateDomain(student.id, domain, +e.target.value)} className="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-white" />)}</div>)}
+            </div>
+          </div>
+        )}
         {/* Table */}
         {loading ? (
           <div className="flex items-center justify-center py-20 gap-3 text-gray-400"><RefreshCw size={20} className="animate-spin"/>Loading learners...</div>

@@ -127,6 +127,10 @@ export const calcEX = (
 
 export function computeFromClassRecord(row: any, subject: string): number {
   if (!row) return 0;
+  if ((subject === 'GMRC (Elem)' || subject === 'Values Education (JHS)') && row.domain_scores) {
+    const values = ['Cognitive Domain','Affective Domain'].map(k => Number(row.domain_scores[k] ?? 0)).filter(v => v > 0);
+    if (values.length) return Math.round(values.reduce((a,b)=>a+b,0) / values.length);
+  }
   const w  = WEIGHTS[subject] ?? {ww:0.25,pt:0.50,ta:0.25};
   const ww = Array.from({length:5},(_,i)=>row.written_scores?.[i]??0);
   const pt = Array.from({length:3},(_,i)=>row.pt_scores?.[i]??0);
