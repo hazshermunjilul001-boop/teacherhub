@@ -1,14 +1,14 @@
-# Module-resolution fix
+# Exact Vercel build-path fix
 
-Replace the existing project file at:
+Vercel reports that it is compiling:
 
-`app/class-record/page.tsx`
+`./app/class-record-page.tsx`
 
-with the bundled file at:
+Therefore copy the bundled file to exactly:
 
-`app/class-record/page.tsx`
+`app/class-record-page.tsx`
 
-The imports now use the project-root alias:
+Do not copy it to `app/class-record/page.tsx` for this particular build if your repository is intentionally using the root-level filename shown in the Vercel error. The corrected file uses project-root imports such as:
 
 `@/lib/supabase`
 
@@ -20,12 +20,12 @@ The imports now use the project-root alias:
 
 `@/lib/sf9/sf9GradeBands`
 
-Do not copy this file into a new standalone folder. It must be placed inside the existing Next.js project that already contains the matching `lib/` and `context/` directories. The project’s `tsconfig.json` must retain the standard alias mapping:
+The file must be inside the same Next.js project that contains the matching `lib/` and `context/` directories. Also retain this in `tsconfig.json`:
 
 ```json
 "paths": { "@/*": ["./*"] }
 ```
 
-If your project uses a `src/` directory, place the file at `src/app/class-record/page.tsx` and ensure `@/*` maps to `./src/*`; otherwise use the root `app/class-record/page.tsx` path.
+If your repository contains both `app/class-record/page.tsx` and `app/class-record-page.tsx`, replace the one Vercel identifies in the build error. Do not create a duplicate route unless your project already intentionally uses both files.
 
-The replacement was checked with `npx tsc --noEmit` successfully.
+The extracted project was checked with `npx tsc --noEmit` successfully using this exact root-level path.
