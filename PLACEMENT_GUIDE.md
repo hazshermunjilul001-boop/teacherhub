@@ -1,11 +1,13 @@
-# Final dedicated GMRC / Values Education interaction and print fix
+# Final GMRC / Values Education dedicated-page repair
 
-Copy the bundled files to the matching repository paths.
+Copy the bundled files to their matching repository paths. The dedicated page is `app/gmrc-values-record/page.tsx`.
 
-The dedicated page now renders exactly one print document. The live editable table is hidden during printing, while the print-only overlay is rendered as the sole printable document. The preview uses one unified 47-column table with fixed widths and landscape print CSS, preventing duplicate copies, clipping, and overlap.
+This version uses one printable document only. The page controls and editable live table are hidden during printing, leaving the single print table and its summary/signatures. The table uses one 47-column grid with fixed widths; the Descriptor column is widened and allowed to wrap so it remains readable.
 
-HPS fields are editable and persisted in `grades.domain_highest_scores`. Scores are persisted with `upsert` using the student/term/subject key and are loaded again when the page is reopened. If no HPS values exist, the workbook defaults are used.
+The Summary of Grades button is visible and toggles a three-term report with GSA and counts for Advancing (90–100), Benchmarking (80–89), Connecting (75–79), Developing (65–74), and Emerging (0–64). The same term summary is included below the record in print preview.
 
-Pressing Enter in a score input moves focus to the same domain column for the next learner. The page includes a visible Summary of Grades button; the summary is also printed below the table. Teacher and School Head signatories are shown in the live record and print preview. Back now routes to `/`.
+Pressing Enter in a score input moves focus to the same domain column for the next student. Back routes to `/`. Teacher and School Head signatories are included in the live and printed record.
 
-The shared scorer uses the workbook rules and the SF9 legacy alias selection still reads the same dedicated records. Ensure the Supabase columns `grades.domain_scores` and `grades.domain_highest_scores` exist before deploying.
+Scores are saved with Supabase `upsert` using `(student_id, term, subject)` and are loaded for all three terms when the subject or term changes. HPS changes are also upserted for every student, including sections where no score row existed yet. Run `supabase_final_gmrc_values.sql` in Supabase if the HPS column is not present.
+
+The shared computation follows the updated workbook. SF9 legacy `GMRC/VE` resolves to the same dedicated record for the active grade level, so legacy and sidebar entry points mirror the same grades.
