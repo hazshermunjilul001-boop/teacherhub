@@ -7,7 +7,7 @@ import { useActiveSection } from '@/lib/useActiveSection';
 import { useSubscription } from '@/lib/useSubscription';
 import { useSection } from '@/context/SectionContext';
 import { SUBJECT_KEY_ALIASES } from '@/lib/sf9/sf9GradeBands';
-import { BACKUP_REMINDER, ClassRecordBackup, countBackupRows, downloadClassRecordExcel, downloadClassRecordPdf, readClassRecordExcel, safeBackupFilename } from '@/lib/classRecordBackup';
+import { BACKUP_REMINDER, ClassRecordBackup, countBackupRows, downloadClassRecordExcel, downloadRenderedClassRecordPdf, readClassRecordExcel, safeBackupFilename } from '@/lib/classRecordBackup';
 
 // ── EXCEL EXPORT HELPERS ───────────────────────────────────────────────────
 // Shared by EClassRecordView and SummaryOfGradesView so the downloaded .xlsx
@@ -2030,15 +2030,22 @@ export default function ClassRecord() {
   };
   const downloadBackupFiles = async () => {
     try {
-      setBackupStatus('Preparing PDF and Excel backup…');
+      setBackupStatus('Preparing Excel Restore Backup first, followed by the print-preview PDF…');
       const backup = buildBackup();
       const rows = countBackupRows(backup);
       if (!rows) throw new Error('There are no encoded scores to back up yet.');
-      await downloadClassRecordPdf(backup, safeBackupFilename(subject, active.sectionName, 'pdf'));
       await downloadClassRecordExcel(backup, safeBackupFilename(subject, active.sectionName, 'xlsx'));
-      setBackupStatus(`Backup downloaded successfully: ${rows} learner-term record(s), PDF verification copy and Excel restore backup.`);
+      setShowEClass(true);
+      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      const previews = document.querySelectorAll<HTMLElement>('.eclass-print, .domain-record-shell');
+      const preview = previews[previews.length - 1];
+      if (!preview) throw new Error('The class-record print preview could not be prepared. Please open Print Preview and try again.');
+      await downloadRenderedClassRecordPdf(preview, safeBackupFilename(subject, active.sectionName, 'pdf'));
+      setShowEClass(false);
+      setBackupStatus(`Backup downloaded successfully: ${rows} learner-term record(s). Excel Restore Backup was downloaded first, followed by the print-preview PDF.`);
     } catch (error: any) {
       console.error('Class-record backup download failed', error);
+      setShowEClass(false);
       setBackupStatus(error?.message || 'The backup could not be downloaded.');
     }
   };

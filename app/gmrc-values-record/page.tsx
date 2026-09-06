@@ -8,7 +8,7 @@ import { useActiveSection } from '@/lib/useActiveSection';
 import { useSection } from '@/context/SectionContext';
 import { descriptor, transmute } from '@/lib/sf9/sf9ClassRecordScoring';
 import { DOMAIN_FORMAT_SUBJECTS, DomainScores, GMRC_VALUES_BLOCKS, domainSummary, gmrcValuesTermGrade } from '@/lib/gmrcValues/domainScoring';
-import { BACKUP_REMINDER, ClassRecordBackup, countBackupRows, downloadClassRecordExcel, downloadClassRecordPdf, readClassRecordExcel, safeBackupFilename } from '@/lib/classRecordBackup';
+import { BACKUP_REMINDER, ClassRecordBackup, countBackupRows, downloadClassRecordExcel, downloadRenderedClassRecordPdf, readClassRecordExcel, safeBackupFilename } from '@/lib/classRecordBackup';
 
 const SUBJECTS = DOMAIN_FORMAT_SUBJECTS;
 type DomainSubject = typeof SUBJECTS[number];
@@ -70,13 +70,18 @@ export default function GMRCValuesRecordPage() {
   });
   const downloadBackupFiles = async () => {
     try {
-      setBackupStatus('Preparing PDF and Excel backup…');
+      setBackupStatus('Preparing Excel Restore Backup first, followed by the print-preview PDF…');
       const backup = buildBackup(); const rows = countBackupRows(backup);
       if (!rows) throw new Error('There are no encoded scores to back up yet.');
-      await downloadClassRecordPdf(backup, safeBackupFilename(subject, active.sectionName, 'pdf'));
       await downloadClassRecordExcel(backup, safeBackupFilename(subject, active.sectionName, 'xlsx'));
-      setBackupStatus(`Backup downloaded successfully: ${rows} learner-term record(s), PDF verification copy and Excel restore backup.`);
-    } catch (error: any) { console.error('GMRC/Values backup download failed', error); setBackupStatus(error?.message || 'The backup could not be downloaded.'); }
+      setPreview(true);
+      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      const previewElement = document.querySelector<HTMLElement>('.domain-record-paper');
+      if (!previewElement) throw new Error('The class-record print preview could not be prepared. Please open Print Preview and try again.');
+      await downloadRenderedClassRecordPdf(previewElement, safeBackupFilename(subject, active.sectionName, 'pdf'));
+      setPreview(false);
+      setBackupStatus(`Backup downloaded successfully: ${rows} learner-term record(s). Excel Restore Backup was downloaded first, followed by the print-preview PDF.`);
+    } catch (error: any) { console.error('GMRC/Values backup download failed', error); setPreview(false); setBackupStatus(error?.message || 'The backup could not be downloaded.'); }
   };
   const restoreBackup = async (file: File) => {
     try {

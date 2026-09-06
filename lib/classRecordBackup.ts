@@ -177,4 +177,26 @@ export async function downloadClassRecordPdf(payload: ClassRecordBackup, filenam
   pdf.save(filename);
 }
 
-export const BACKUP_REMINDER = 'After entering all scores for the day, please download both a readable PDF copy and an Excel restore backup of this class record. Keep both files in a safe location. If the online record is not saved successfully, the Excel restore backup may be uploaded to recover your work.';
+export async function downloadRenderedClassRecordPdf(element: HTMLElement, filename: string) {
+  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')]);
+  const canvas = await html2canvas(element, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: '#ffffff',
+    windowWidth: Math.max(document.documentElement.clientWidth, element.scrollWidth),
+  });
+  const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
+  const margin = 4;
+  const pageWidth = 297 - (margin * 2);
+  const pageHeight = 210 - (margin * 2);
+  const imageHeight = (canvas.height * pageWidth) / canvas.width;
+  let offset = 0;
+  while (offset < imageHeight) {
+    if (offset > 0) pdf.addPage();
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', margin, margin - offset, pageWidth, imageHeight);
+    offset += pageHeight;
+  }
+  pdf.save(filename);
+}
+
+export const BACKUP_REMINDER = 'After entering all scores for the day, please download the Excel Restore Backup and the readable PDF copy of this class record. Keep both files in a safe location. If the online record is not saved successfully, upload the Excel Restore Backup to recover your encoded scores and continue working.';
