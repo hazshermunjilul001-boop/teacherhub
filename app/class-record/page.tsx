@@ -7,7 +7,7 @@ import { useActiveSection } from '@/lib/useActiveSection';
 import { useSubscription } from '@/lib/useSubscription';
 import { useSection } from '@/context/SectionContext';
 import { SUBJECT_KEY_ALIASES } from '@/lib/sf9/sf9GradeBands';
-import { BACKUP_REMINDER, ClassRecordBackup, downloadClassRecordBackup, readClassRecordBackup, safeBackupFilename } from '@/lib/classRecordBackup';
+import { BACKUP_REMINDER, ClassRecordBackup, countBackupRows, downloadClassRecordExcel, downloadClassRecordPdf, readClassRecordExcel, safeBackupFilename } from '@/lib/classRecordBackup';
 
 // ── EXCEL EXPORT HELPERS ───────────────────────────────────────────────────
 // Shared by EClassRecordView and SummaryOfGradesView so the downloaded .xlsx
@@ -1842,6 +1842,7 @@ export default function ClassRecord() {
   const [currentUserName, setCurrentUserName] = useState('');
   const active = { sectionId, sectionName, schoolYear };
   const backupInputRef = useRef<HTMLInputElement>(null);
+  const [backupStatus, setBackupStatus] = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -2022,38 +2023,49 @@ export default function ClassRecord() {
       if (source) terms[String(t)] = { scores: source.scores || {}, highest: source.highest };
     });
     return {
-      format: 'TeacherHub Class Record Backup', version: 1, recordType: 'regular',
-      createdAt: new Date().toISOString(), sectionId: active.sectionId || '',
-      sectionName: active.sectionName, schoolYear: active.schoolYear, subject, terms,
+      format: 'TeacherHub Class Record Backup', version: 2, recordType: 'regular',
+      createdAt: new Date().toISOString(), sectionId: active.sectionId || '', sectionName: active.sectionName, schoolYear: active.schoolYear, subject, terms,
+      students: Object.fromEntries(students.map(student => [student.id, { id: student.id, full_name: student.full_name, lrn: student.lrn, sex: student.sex, status: student.status }])),
     };
   };
-  const downloadBackup = () => {
-    if (!active.sectionId) return;
-    downloadClassRecordBackup(buildBackup(), safeBackupFilename(subject, active.sectionName));
+  const downloadBackupFiles = async () => {
+    try {
+      setBackupStatus('Preparing PDF and Excel backup…');
+      const backup = buildBackup();
+      const rows = countBackupRows(backup);
+      if (!rows) throw new Error('There are no encoded scores to back up yet.');
+      await downloadClassRecordPdf(backup, safeBackupFilename(subject, active.sectionName, 'pdf'));
+      await downloadClassRecordExcel(backup, safeBackupFilename(subject, active.sectionName, 'xlsx'));
+      setBackupStatus(`Backup downloaded successfully: ${rows} learner-term record(s), PDF verification copy and Excel restore backup.`);
+    } catch (error: any) {
+      console.error('Class-record backup download failed', error);
+      setBackupStatus(error?.message || 'The backup could not be downloaded.');
+    }
   };
   const restoreBackup = async (file: File) => {
     try {
-      const backup = await readClassRecordBackup(file);
+      setBackupStatus('Reading Excel restore backup…');
+      const backup = await readClassRecordExcel(file);
       if (backup.recordType !== 'regular') throw new Error('Please upload a regular-subject class-record backup on this page.');
       if (backup.sectionId !== active.sectionId) throw new Error('This backup belongs to a different class section.');
       if (backup.subject !== subject) throw new Error(`This backup is for ${backup.subject}, while the current subject is ${subject}.`);
       const rows: Record<string, unknown>[] = [];
-      Object.entries(backup.terms).forEach(([termKey, termData]) => {
-        const termNumber = Number(termKey);
-        Object.entries(termData.scores || {}).forEach(([student_id, raw]) => {
-          const score = (raw || {}) as any;
-          const h = (termData.highest || {}) as any;
-          rows.push({ student_id, term: termNumber, subject, written_scores: score.ww || {}, pt_scores: score.pt || {}, st_scores: score.st || {}, te_score: score.te || 0, domain_scores: score.domains || {}, highest_ww: h.ww, highest_pt: h.pt, highest_st: h.st, highest_te: h.te });
-        });
-      });
-      if (!rows.length) throw new Error('The backup contains no encoded scores.');
+      Object.entries(backup.terms).forEach(([termKey, termData]) => Object.entries(termData.scores || {}).forEach(([student_id, raw]) => {
+        const score = (raw || {}) as any; const h = (termData.highest || {}) as any;
+        rows.push({ student_id, term: Number(termKey), subject, written_scores: score.ww || {}, pt_scores: score.pt || {}, st_scores: score.st || {}, te_score: score.te || 0, domain_scores: score.domains || {}, highest_ww: h.ww, highest_pt: h.pt, highest_st: h.st, highest_te: h.te });
+      }));
+      if (!rows.length) throw new Error('The Excel backup contains no encoded scores.');
+      const confirmed = window.confirm(`This backup contains ${rows.length} learner-term record(s) for ${backup.subject} — ${backup.sectionName || 'this section'}. Restore them now?`);
+      if (!confirmed) { setBackupStatus('Restore cancelled. No online records were changed.'); return; }
       const { error } = await supabase.from('grades').upsert(rows, { onConflict: 'student_id,term,subject' });
       if (error) throw error;
-      window.alert(`Backup restored successfully: ${rows.length} learner-term record(s).`);
+      setBackupStatus(`Restore completed successfully: ${rows.length} learner-term record(s) restored.`);
+      window.alert(`Restore completed successfully: ${rows.length} learner-term record(s) restored.`);
       window.location.reload();
     } catch (error: any) {
       console.error('Class-record backup restore failed', error);
-      window.alert(error?.message || 'The backup could not be restored.');
+      setBackupStatus(error?.message || 'The Excel backup could not be restored.');
+      window.alert(error?.message || 'The Excel backup could not be restored.');
     } finally {
       if (backupInputRef.current) backupInputRef.current.value = '';
     }
@@ -2306,11 +2318,12 @@ export default function ClassRecord() {
 
         <div className="no-print mx-6 mt-4 rounded-xl border border-amber-700/60 bg-amber-950/40 px-4 py-3 text-sm text-amber-100">
           <strong>Backup reminder:</strong> {BACKUP_REMINDER}
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button onClick={downloadBackup} className="inline-flex items-center gap-2 rounded-lg bg-amber-700 px-3 py-2 font-semibold hover:bg-amber-600"><Download size={16}/> Download Backup Copy</button>
-            <button onClick={() => backupInputRef.current?.click()} className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-3 py-2 font-semibold hover:bg-slate-600"><Upload size={16}/> Upload Backup Copy</button>
-            <input ref={backupInputRef} type="file" accept="application/json,.json" className="hidden" onChange={e => { const file = e.target.files?.[0]; if (file) void restoreBackup(file); }} />
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button onClick={() => void downloadBackupFiles()} className="inline-flex items-center gap-2 rounded-lg bg-amber-700 px-3 py-2 font-semibold hover:bg-amber-600"><Download size={16}/> Download PDF + Excel Backup</button>
+            <button onClick={() => backupInputRef.current?.click()} className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-3 py-2 font-semibold hover:bg-slate-600"><Upload size={16}/> Upload Excel Restore Backup</button>
+            <input ref={backupInputRef} type="file" accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xlsx" className="hidden" onChange={e => { const file = e.target.files?.[0]; if (file) void restoreBackup(file); }} />
           </div>
+          {backupStatus && <p className="mt-2 text-xs text-amber-200">{backupStatus}</p>}
         </div>
         {/* Controls */}
         <div className="no-print px-6 py-4 flex flex-wrap gap-3 items-center">
