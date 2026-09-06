@@ -7,7 +7,7 @@ import { useActiveSection } from '@/lib/useActiveSection';
 import { useSubscription } from '@/lib/useSubscription';
 import { useSection } from '@/context/SectionContext';
 import { SUBJECT_KEY_ALIASES } from '@/lib/sf9/sf9GradeBands';
-import { BACKUP_REMINDER, ClassRecordBackup, countBackupRows, downloadClassRecordExcel, downloadRenderedClassRecordPdf, readClassRecordExcel, safeBackupFilename } from '@/lib/classRecordBackup';
+import { BACKUP_REMINDER, ClassRecordBackup, countBackupRows, downloadClassRecordExcel, downloadClassRecordJson, readClassRecordExcel, readClassRecordJson, safeBackupFilename } from '@/lib/classRecordBackup';
 
 // ── EXCEL EXPORT HELPERS ───────────────────────────────────────────────────
 // Shared by EClassRecordView and SummaryOfGradesView so the downloaded .xlsx
@@ -1496,7 +1496,7 @@ function EClassRecordView({
           <span className="text-gray-400 text-sm">{sectionName} &middot; {schoolYear}</span>
         </div>
         <div className="flex gap-3">
-          <button onClick={downloadExcel} className="flex items-center gap-2 bg-green-700 hover:bg-green-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
+          <button data-eclass-download-excel onClick={downloadExcel} className="flex items-center gap-2 bg-green-700 hover:bg-green-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
             <Download size={16}/> Download Excel
           </button>
           <button onClick={() => window.print()} className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
@@ -2030,29 +2030,30 @@ export default function ClassRecord() {
   };
   const downloadBackupFiles = async () => {
     try {
-      setBackupStatus('Preparing Excel Restore Backup first, followed by the print-preview PDF…');
+      setBackupStatus('Preparing JSON Restore Backup first, followed by the E-Class Record Excel file…');
       const backup = buildBackup();
       const rows = countBackupRows(backup);
       if (!rows) throw new Error('There are no encoded scores to back up yet.');
-      await downloadClassRecordExcel(backup, safeBackupFilename(subject, active.sectionName, 'xlsx'));
+      downloadClassRecordJson(backup, safeBackupFilename(subject, active.sectionName, 'json'));
+      // Reuse the exact Excel generator behind the E-Class Record button. The
+      // live editor has the most current values, so seed the preview first.
+      setAllTermData(prev => ({ ...prev, [term]: { scores, highest } }));
       setShowEClass(true);
       await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-      const previews = document.querySelectorAll<HTMLElement>('.eclass-print, .domain-record-shell');
-      const preview = previews[previews.length - 1];
-      if (!preview) throw new Error('The class-record print preview could not be prepared. Please open Print Preview and try again.');
-      await downloadRenderedClassRecordPdf(preview, safeBackupFilename(subject, active.sectionName, 'pdf'));
+      const excelButton = document.querySelector<HTMLButtonElement>('[data-eclass-download-excel]');
+      if (excelButton) excelButton.click();
+      else await downloadClassRecordExcel(backup, safeBackupFilename(subject, active.sectionName, 'xlsx'));
       setShowEClass(false);
-      setBackupStatus(`Backup downloaded successfully: ${rows} learner-term record(s). Excel Restore Backup was downloaded first, followed by the print-preview PDF.`);
+      setBackupStatus(`Backup downloaded successfully: ${rows} learner-term record(s). JSON Restore Backup was downloaded first, followed by the E-Class Record Excel file.`);
     } catch (error: any) {
       console.error('Class-record backup download failed', error);
-      setShowEClass(false);
       setBackupStatus(error?.message || 'The backup could not be downloaded.');
     }
   };
   const restoreBackup = async (file: File) => {
     try {
       setBackupStatus('Reading Excel restore backup…');
-      const backup = await readClassRecordExcel(file);
+      const backup = file.name.toLowerCase().endsWith('.json') ? await readClassRecordJson(file) : await readClassRecordExcel(file);
       if (backup.recordType !== 'regular') throw new Error('Please upload a regular-subject class-record backup on this page.');
       if (backup.sectionId !== active.sectionId) throw new Error('This backup belongs to a different class section.');
       if (backup.subject !== subject) throw new Error(`This backup is for ${backup.subject}, while the current subject is ${subject}.`);
@@ -2326,9 +2327,9 @@ export default function ClassRecord() {
         <div className="no-print mx-6 mt-4 rounded-xl border border-amber-700/60 bg-amber-950/40 px-4 py-3 text-sm text-amber-100">
           <strong>Backup reminder:</strong> {BACKUP_REMINDER}
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button onClick={() => void downloadBackupFiles()} className="inline-flex items-center gap-2 rounded-lg bg-amber-700 px-3 py-2 font-semibold hover:bg-amber-600"><Download size={16}/> Download PDF + Excel Backup</button>
-            <button onClick={() => backupInputRef.current?.click()} className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-3 py-2 font-semibold hover:bg-slate-600"><Upload size={16}/> Upload Excel Restore Backup</button>
-            <input ref={backupInputRef} type="file" accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xlsx" className="hidden" onChange={e => { const file = e.target.files?.[0]; if (file) void restoreBackup(file); }} />
+            <button onClick={() => void downloadBackupFiles()} className="inline-flex items-center gap-2 rounded-lg bg-amber-700 px-3 py-2 font-semibold hover:bg-amber-600"><Download size={16}/> Download JSON + Excel Backup</button>
+            <button onClick={() => backupInputRef.current?.click()} className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-3 py-2 font-semibold hover:bg-slate-600"><Upload size={16}/> Upload JSON or Excel Restore Backup</button>
+            <input ref={backupInputRef} type="file" accept="application/json,.json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xlsx" className="hidden" onChange={e => { const file = e.target.files?.[0]; if (file) void restoreBackup(file); }} />
           </div>
           {backupStatus && <p className="mt-2 text-xs text-amber-200">{backupStatus}</p>}
         </div>

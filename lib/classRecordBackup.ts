@@ -96,6 +96,27 @@ export async function downloadClassRecordExcel(payload: ClassRecordBackup, filen
   URL.revokeObjectURL(url);
 }
 
+export function downloadClassRecordJson(payload: ClassRecordBackup, filename: string) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+export async function readClassRecordJson(file: File): Promise<ClassRecordBackup> {
+  const payload = JSON.parse(await file.text()) as Partial<ClassRecordBackup>;
+  if (payload.format !== 'TeacherHub Class Record Backup') throw new Error('This JSON file is not a valid TeacherHub class-record backup.');
+  if (Number(payload.version || 0) !== 2) throw new Error('This backup format version is not supported. Please download a new backup from the current app.');
+  if (payload.recordType !== 'regular' && payload.recordType !== 'gmrc-values') throw new Error('The backup record type is invalid.');
+  if (!payload.sectionId || !payload.subject || !payload.terms || !countBackupRows(payload as ClassRecordBackup)) throw new Error('The JSON backup contains incomplete or empty class-record data.');
+  return payload as ClassRecordBackup;
+}
+
 export async function readClassRecordExcel(file: File): Promise<ClassRecordBackup> {
   const mod: any = await import('exceljs');
   const ExcelJS = mod.default ?? mod;
@@ -199,4 +220,4 @@ export async function downloadRenderedClassRecordPdf(element: HTMLElement, filen
   pdf.save(filename);
 }
 
-export const BACKUP_REMINDER = 'After entering all scores for the day, please download the Excel Restore Backup and the readable PDF copy of this class record. Keep both files in a safe location. If the online record is not saved successfully, upload the Excel Restore Backup to recover your encoded scores and continue working.';
+export const BACKUP_REMINDER = 'After entering all scores for the day, please download the JSON Restore Backup and the Excel copy of the class record. Keep both files in a safe location. If the online record is not saved successfully, upload either backup file to recover your encoded scores and continue working.';
