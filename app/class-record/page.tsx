@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ArrowLeft, Plus, Printer, Users, RefreshCw, FileText, X, UserX, ArrowRightLeft, UserCheck, UserPlus, Download } from 'lucide-react';
+import { ArrowLeft, Plus, Printer, Users, RefreshCw, FileText, X, UserX, ArrowRightLeft, UserCheck, UserPlus, Download, Upload } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useActiveSection } from '@/lib/useActiveSection';
 import { useSubscription } from '@/lib/useSubscription';
 import { useSection } from '@/context/SectionContext';
 import { SUBJECT_KEY_ALIASES } from '@/lib/sf9/sf9GradeBands';
+import { BACKUP_REMINDER, ClassRecordBackup, downloadClassRecordBackup, readClassRecordBackup, safeBackupFilename } from '@/lib/classRecordBackup';
 
 // ── EXCEL EXPORT HELPERS ───────────────────────────────────────────────────
 // Shared by EClassRecordView and SummaryOfGradesView so the downloaded .xlsx
@@ -1839,6 +1840,8 @@ export default function ClassRecord() {
   const { isCollaborator } = useSubscription();
   const { activeSection } = useSection();
   const [currentUserName, setCurrentUserName] = useState('');
+  const active = { sectionId, sectionName, schoolYear };
+  const backupInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -2011,6 +2014,50 @@ export default function ClassRecord() {
       return next;
     });
   }, [usesDomainFormat, term, subject, highest, canEditPeriod]);
+
+  const buildBackup = (): ClassRecordBackup => {
+    const terms: Record<string, { scores: Record<string, unknown>; highest: Highest }> = {};
+    [1, 2, 3].forEach(t => {
+      const source = t === term ? { scores, highest } : allTermData[t];
+      if (source) terms[String(t)] = { scores: source.scores || {}, highest: source.highest };
+    });
+    return {
+      format: 'TeacherHub Class Record Backup', version: 1, recordType: 'regular',
+      createdAt: new Date().toISOString(), sectionId: active.sectionId || '',
+      sectionName: active.sectionName, schoolYear: active.schoolYear, subject, terms,
+    };
+  };
+  const downloadBackup = () => {
+    if (!active.sectionId) return;
+    downloadClassRecordBackup(buildBackup(), safeBackupFilename(subject, active.sectionName));
+  };
+  const restoreBackup = async (file: File) => {
+    try {
+      const backup = await readClassRecordBackup(file);
+      if (backup.recordType !== 'regular') throw new Error('Please upload a regular-subject class-record backup on this page.');
+      if (backup.sectionId !== active.sectionId) throw new Error('This backup belongs to a different class section.');
+      if (backup.subject !== subject) throw new Error(`This backup is for ${backup.subject}, while the current subject is ${subject}.`);
+      const rows: Record<string, unknown>[] = [];
+      Object.entries(backup.terms).forEach(([termKey, termData]) => {
+        const termNumber = Number(termKey);
+        Object.entries(termData.scores || {}).forEach(([student_id, raw]) => {
+          const score = (raw || {}) as any;
+          const h = (termData.highest || {}) as any;
+          rows.push({ student_id, term: termNumber, subject, written_scores: score.ww || {}, pt_scores: score.pt || {}, st_scores: score.st || {}, te_score: score.te || 0, domain_scores: score.domains || {}, highest_ww: h.ww, highest_pt: h.pt, highest_st: h.st, highest_te: h.te });
+        });
+      });
+      if (!rows.length) throw new Error('The backup contains no encoded scores.');
+      const { error } = await supabase.from('grades').upsert(rows, { onConflict: 'student_id,term,subject' });
+      if (error) throw error;
+      window.alert(`Backup restored successfully: ${rows.length} learner-term record(s).`);
+      window.location.reload();
+    } catch (error: any) {
+      console.error('Class-record backup restore failed', error);
+      window.alert(error?.message || 'The backup could not be restored.');
+    } finally {
+      if (backupInputRef.current) backupInputRef.current.value = '';
+    }
+  };
 
   const compute = (sid:string)=>{
     const s=scores[sid]||{ww:{},pt:{},st:{},te:0,domains:{}};
@@ -2257,6 +2304,14 @@ export default function ClassRecord() {
           </div>
         </div>
 
+        <div className="no-print mx-6 mt-4 rounded-xl border border-amber-700/60 bg-amber-950/40 px-4 py-3 text-sm text-amber-100">
+          <strong>Backup reminder:</strong> {BACKUP_REMINDER}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button onClick={downloadBackup} className="inline-flex items-center gap-2 rounded-lg bg-amber-700 px-3 py-2 font-semibold hover:bg-amber-600"><Download size={16}/> Download Backup Copy</button>
+            <button onClick={() => backupInputRef.current?.click()} className="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-3 py-2 font-semibold hover:bg-slate-600"><Upload size={16}/> Upload Backup Copy</button>
+            <input ref={backupInputRef} type="file" accept="application/json,.json" className="hidden" onChange={e => { const file = e.target.files?.[0]; if (file) void restoreBackup(file); }} />
+          </div>
+        </div>
         {/* Controls */}
         <div className="no-print px-6 py-4 flex flex-wrap gap-3 items-center">
           <select value={subject} onChange={e=>{flushPendingHighestSave();setSubject(e.target.value);}}
