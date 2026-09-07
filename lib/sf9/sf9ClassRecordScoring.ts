@@ -62,6 +62,13 @@ export const WEIGHTS: Record<string,{ww:number;pt:number;ta:number}> = {
   'MAPEH - Music & Arts':{ww:0.20,pt:0.60,ta:0.20},
   'MAPEH - PE & Health':{ww:0.20,pt:0.60,ta:0.20},
   'GMRC/VE':{ww:0.20,pt:0.50,ta:0.30},
+  // Special Curricular Programs — same weights as their parent subjects
+  'SPJ (Journalism)':        { ww: 0.20, pt: 0.50, ta: 0.30 }, // follows English
+  'STE Mathematics':         { ww: 0.20, pt: 0.50, ta: 0.30 }, // follows Mathematics
+  'STE Science':             { ww: 0.20, pt: 0.50, ta: 0.30 }, // follows Science
+  'STE Foreign Language':    { ww: 0.20, pt: 0.50, ta: 0.30 }, // follows English
+  'SPA (Arts)':              { ww: 0.20, pt: 0.60, ta: 0.20 }, // follows MAPEH
+  'STE Research':            { ww: 0.20, pt: 0.50, ta: 0.30 }, // follows Science
   // SHS G11 subjects.
   'Mabisang Komunikasyon':{ww:0.20,pt:0.50,ta:0.30},
   'Effective Communication':{ww:0.20,pt:0.50,ta:0.30},
