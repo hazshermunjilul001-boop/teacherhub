@@ -129,7 +129,11 @@ export const calcEX = (
 export function computeFromClassRecord(row: any, subject: string): number {
   if (!row) return 0;
   if (row.domain_scores && typeof row.domain_scores === 'object') {
-    const domain = domainSummary(row.domain_scores);
+    // GMRC/Values uses per-record highest-possible-score settings. The
+    // separate class-record page saves those settings in domain_highest_scores;
+    // omitting them here makes SF9 recalculate with defaults and can produce a
+    // different grade from the E-Class Record (for example 68 instead of 88).
+    const domain = domainSummary(row.domain_scores, row.domain_highest_scores);
     if (domain.hasScores) return transmute(domain.initial);
   }
   const w  = WEIGHTS[subject] ?? {ww:0.25,pt:0.50,ta:0.25};
