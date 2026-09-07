@@ -133,7 +133,8 @@ export function computeFromClassRecord(row: any, subject: string): number {
     // separate class-record page saves those settings in domain_highest_scores;
     // omitting them here makes SF9 recalculate with defaults and can produce a
     // different grade from the E-Class Record (for example 68 instead of 88).
-    const domain = domainSummary(row.domain_scores, row.domain_highest_scores);
+    const savedHps = row.domain_highest_scores ?? row.domain_highest_scores_json ?? row.highest_domain_scores ?? {};
+    const domain = domainSummary(row.domain_scores, savedHps);
     if (domain.hasScores) return transmute(domain.initial);
   }
   const w  = WEIGHTS[subject] ?? {ww:0.25,pt:0.50,ta:0.25};
