@@ -220,4 +220,4 @@ export async function downloadRenderedClassRecordPdf(element: HTMLElement, filen
   pdf.save(filename);
 }
 
-export const BACKUP_REMINDER = 'After entering all scores for the day, please download the JSON Restore Backup and the Excel copy of the class record. Keep both files in a safe location. If the online record is not saved successfully, upload either backup file to recover your encoded scores and continue working.';
+export const BACKUP_REMINDER = 'After entering scores, download the JSON Restore Backup and Excel copy and keep them safe. Do this especially when your internet is weak — scores may not have saved properly. If scores are missing after refreshing, upload the JSON backup only to restore them. If everything looks fine after saving and refreshing, no upload is needed.';
