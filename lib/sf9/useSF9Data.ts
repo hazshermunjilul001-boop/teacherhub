@@ -156,7 +156,7 @@ export function useSF9Data(
       .from('manual_grades').select('*').eq('section_id', sectionId);
 
     const { data: conductRaw } = await supabase
-      .from('conduct_records').select('*').in('term',[1,2,3]);
+      .from('conduct_records').select('*').in('term',[1,2,3]).in('student_id', studentIds);
 
     const monthKeys = buildMonthKeys(schoolYear);
     const attendanceDates = monthKeys.flatMap(month => monthDates(month.key));
