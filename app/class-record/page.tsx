@@ -1199,11 +1199,11 @@ function EClassRecordView({
             <td style={{...td, textAlign:'left', minWidth:'140px'}}>{student.full_name}</td>
             {c.ww.map((v,i) => <td key={i} style={td}>{v||''}</td>)}
             <td style={td}>{c.totalWW||''}</td>
-            <td style={{...td, background:'#dbeafe'}}>{c.avgWW.toFixed(1)}</td>
+            <td style={{...td, background:'#dbeafe'}}>{c.avgWW.toFixed(2)}</td>
             <td style={{...td, background:'#dbeafe'}}>{c.wsWW.toFixed(2)}</td>
             {c.pt.map((v,i) => <td key={i} style={td}>{v||''}</td>)}
             <td style={td}>{c.totalPT||''}</td>
-            <td style={{...td, background:'#ede9fe'}}>{c.avgPT.toFixed(1)}</td>
+            <td style={{...td, background:'#ede9fe'}}>{c.avgPT.toFixed(2)}</td>
             <td style={{...td, background:'#ede9fe'}}>{c.wsPT.toFixed(2)}</td>
             {hasTA && <>
               {c.st.map((v,i) => <td key={i} style={td}>{v||''}</td>)}
@@ -1211,7 +1211,7 @@ function EClassRecordView({
               <td style={td}>{c.wsSt1?c.wsSt1.toFixed(2):''}</td>
               <td style={td}>{c.wsSt2?c.wsSt2.toFixed(2):''}</td>
               <td style={td}>{c.wsTe?c.wsTe.toFixed(2):''}</td>
-              <td style={{...td, background:'#fef3c7'}}>{c.avgTA.toFixed(1)}</td>
+              <td style={{...td, background:'#fef3c7'}}>{c.avgTA.toFixed(2)}</td>
               <td style={{...td, background:'#fef3c7'}}>{c.wsTA.toFixed(2)}</td>
             </>}
             <td style={{...td, background:'#f0fdf4', fontWeight:'bold'}}>{c.initial.toFixed(2)}</td>
@@ -1382,11 +1382,11 @@ function EClassRecordView({
         setCell(ws,r,2,student.full_name,{size:8,align:'left',fill:zebra});
         c.ww.forEach((v,i)=>setCell(ws,r,wwStart+i,v||'',{size:8,fill:zebra}));
         setCell(ws,r,totalWW,c.totalWW||'',{size:8,fill:zebra});
-        setCell(ws,r,psWW,Number(c.avgWW.toFixed(1)),{size:8,fill:'FFDBEAFE'});
+        setCell(ws,r,psWW,Number(c.avgWW.toFixed(2)),{size:8,fill:'FFDBEAFE'});
         setCell(ws,r,wsWW,Number(c.wsWW.toFixed(2)),{size:8,fill:'FFDBEAFE'});
         c.pt.forEach((v,i)=>setCell(ws,r,ptStart+i,v||'',{size:8,fill:zebra}));
         setCell(ws,r,totalPT,c.totalPT||'',{size:8,fill:zebra});
-        setCell(ws,r,psPT,Number(c.avgPT.toFixed(1)),{size:8,fill:'FFEDE9FE'});
+        setCell(ws,r,psPT,Number(c.avgPT.toFixed(2)),{size:8,fill:'FFEDE9FE'});
         setCell(ws,r,wsPT,Number(c.wsPT.toFixed(2)),{size:8,fill:'FFEDE9FE'});
         if (hasTA) {
           c.st.forEach((v,i)=>setCell(ws,r,stStart+i,v||'',{size:8,fill:zebra}));
@@ -1394,7 +1394,7 @@ function EClassRecordView({
           setCell(ws,r,wsSt1Col,c.wsSt1?Number(c.wsSt1.toFixed(2)):'',{size:8,fill:zebra});
           setCell(ws,r,wsSt2Col,c.wsSt2?Number(c.wsSt2.toFixed(2)):'',{size:8,fill:zebra});
           setCell(ws,r,wsTeCol,c.wsTe?Number(c.wsTe.toFixed(2)):'',{size:8,fill:zebra});
-          setCell(ws,r,psTA,Number(c.avgTA.toFixed(1)),{size:8,fill:'FFFEF3C7'});
+          setCell(ws,r,psTA,Number(c.avgTA.toFixed(2)),{size:8,fill:'FFFEF3C7'});
           setCell(ws,r,wsTA,Number(c.wsTA.toFixed(2)),{size:8,fill:'FFFEF3C7'});
         }
         setCell(ws,r,initialCol,Number(c.initial.toFixed(2)),{size:8,fill:'FFF0FDF4'});
@@ -1809,7 +1809,7 @@ function DomainClassRecordTable({ students, scores, term, subject, teacherName, 
 }
 function DomainClassRecordRow({student,index,scores,grade,editable,onUpdate,td}:{student:Student;index:number;scores:Record<string,Scores>;grade:{initial:number;term:number};editable:boolean;onUpdate:(sid:string,key:string,idx:number,value:number)=>void;td:React.CSSProperties}) {
   const row=scores[student.id]?.domains||{}; const descriptor=grade.term>=90?'ADVANCING':grade.term>=80?'BENCHMARKING':grade.term>=75?'CONNECTING':grade.term>=65?'DEVELOPING':'EMERGING';
-  return <tr><td style={td}>{index}</td><td style={{...td,textAlign:'left',whiteSpace:'nowrap'}}>{student.full_name}</td>{DOMAIN_BLOCKS.flatMap(block=>{const vals=Array.from({length:block.count},(_,i)=>row[block.key]?.[i]||0);const entered=vals.filter(v=>v>0);const avg=entered.length?entered.reduce((a,b)=>a+b,0)/entered.length:0;return [...vals.map((v,i)=><td key={block.key+i} style={td}><input type="number" min={0} max={100} value={v||''} disabled={!editable} onChange={e=>onUpdate(student.id,block.key,i,+e.target.value)} style={{width:'42px',textAlign:'center',border:'1px solid #aaa'}}/></td>),<td key={block.key+'avg'} style={td}>{avg?avg.toFixed(1):''}</td>]})}<td style={td}>{grade.initial?grade.initial.toFixed(2):''}</td><td style={{...td,fontWeight:700}}>{grade.term||''}</td><td style={td}>{grade.term?descriptor:''}</td></tr>;
+  return <tr><td style={td}>{index}</td><td style={{...td,textAlign:'left',whiteSpace:'nowrap'}}>{student.full_name}</td>{DOMAIN_BLOCKS.flatMap(block=>{const vals=Array.from({length:block.count},(_,i)=>row[block.key]?.[i]||0);const entered=vals.filter(v=>v>0);const avg=entered.length?entered.reduce((a,b)=>a+b,0)/entered.length:0;return [...vals.map((v,i)=><td key={block.key+i} style={td}><input type="number" min={0} max={100} value={v||''} disabled={!editable} onChange={e=>onUpdate(student.id,block.key,i,+e.target.value)} style={{width:'42px',textAlign:'center',border:'1px solid #aaa'}}/></td>),<td key={block.key+'avg'} style={td}>{avg?avg.toFixed(2):''}</td>]})}<td style={td}>{grade.initial?grade.initial.toFixed(2):''}</td><td style={{...td,fontWeight:700}}>{grade.term||''}</td><td style={td}>{grade.term?descriptor:''}</td></tr>;
 }
 function DomainEClassRecordView({students,termData,term,subject,teacherName,onClose}:{students:Student[];termData:TermData;term:number;subject:string;teacherName:string;onClose:()=>void}) { return <div className="fixed inset-0 z-50 bg-black/80 overflow-auto p-4"><div className="bg-white max-w-[1800px] mx-auto rounded-lg"><div className="no-print flex justify-between items-center p-3 border-b"><b>E-Class Record — {subject} — Term {term}</b><div className="flex gap-2"><button onClick={()=>window.print()} className="px-3 py-2 bg-blue-700 text-white rounded">Print / Save PDF</button><button onClick={onClose} className="px-3 py-2 bg-gray-200 rounded">Close</button></div></div><DomainClassRecordTable students={students} scores={termData.scores} term={term} subject={subject} teacherName={teacherName} editable={false} onUpdate={()=>{}}/></div><style>{`@media print{.no-print{display:none!important}.fixed{position:static!important;background:#fff!important;padding:0!important}.domain-record-shell{overflow:visible!important;padding:0!important}.domain-record-shell>div{min-width:1500px!important}@page{size:landscape;margin:5mm}}`}</style></div>; }
 
@@ -2223,7 +2223,7 @@ export default function ClassRecord() {
                   className={inp('blue')}/>
               </td>
             ))}
-            <td className="px-2 py-2 text-center text-blue-300 text-xs border-l border-gray-800 font-mono">{isInactive?'—':avgWW.toFixed(1)}</td>
+            <td className="px-2 py-2 text-center text-blue-300 text-xs border-l border-gray-800 font-mono">{isInactive?'—':avgWW.toFixed(2)}</td>
             {pt.map((v,i)=>(
               <td key={i} className="px-1 py-1 border-l border-gray-800">
                 <input type="number" min={0} max={highest.pt[i]} value={v||''} disabled={!!isInactive || !canEditPeriod(term) || !canEditComponent('pt')}
@@ -2233,7 +2233,7 @@ export default function ClassRecord() {
                   className={inp('purple')}/>
               </td>
             ))}
-            <td className="px-2 py-2 text-center text-purple-300 text-xs border-l border-gray-800 font-mono">{isInactive?'—':avgPT.toFixed(1)}</td>
+            <td className="px-2 py-2 text-center text-purple-300 text-xs border-l border-gray-800 font-mono">{isInactive?'—':avgPT.toFixed(2)}</td>
             {hasTA&&<>
               {st.map((v,i)=>(
                 <td key={i} className="px-1 py-1 border-l border-gray-800">
@@ -2251,7 +2251,7 @@ export default function ClassRecord() {
                   onKeyDown={e=>handleEnter(e,student.id,'te',null)}
                   className={inp('orange')}/>
               </td>
-              <td className="px-2 py-2 text-center text-amber-300 text-xs border-l border-gray-800 font-mono">{isInactive?'—':avgTA.toFixed(1)}</td>
+              <td className="px-2 py-2 text-center text-amber-300 text-xs border-l border-gray-800 font-mono">{isInactive?'—':avgTA.toFixed(2)}</td>
             </>}
             <td className="px-3 py-2 text-center text-gray-400 text-xs border-l border-gray-800 font-mono">{isInactive?'—':initial.toFixed(2)}</td>
             <td className={`px-3 py-2 text-center font-bold text-2xl border-l border-gray-800 ${isInactive?'text-gray-600':transmuted>=75?'text-white':'text-red-400'}`}>
@@ -2374,7 +2374,7 @@ export default function ClassRecord() {
             <div className="text-sm font-semibold text-amber-300 mb-1">{subject} — prescribed domain inputs for Term {term}</div>
             <div className="text-xs text-gray-400 mb-3">This follows the supplied workbook: five assessment domains plus Examinations. Enter ratings from 0 to 100. The six domain averages are weighted 10%, 10%, 10%, 10%, 30%, and 30%, respectively.</div>
             <div className="space-y-4">
-              {DOMAIN_BLOCKS.map(block => <div key={block.key} className="overflow-x-auto"><div className="text-xs font-semibold text-amber-200 mb-1">{block.label} ({Math.round(block.weight*100)}%)</div><table className="min-w-full text-xs"><thead><tr><th className="text-left pr-4 text-gray-500">LEARNER</th>{Array.from({length:block.count},(_,i)=><th key={i} className="px-1 text-gray-500">{i+1}</th>)}<th className="px-2 text-gray-500">AVERAGE</th></tr></thead><tbody>{activeStudents.map(student => { const vals=Array.from({length:block.count},(_,i)=>scores[student.id]?.domains?.[block.key]?.[i] || 0); const entered=vals.filter(v=>v>0); const avg=entered.length?entered.reduce((a,b)=>a+b,0)/entered.length:0; return <tr key={student.id}><td className="text-gray-200 py-1 pr-4 whitespace-nowrap">{student.full_name}</td>{vals.map((v,i)=><td key={i} className="px-1"><input type="number" min={0} max={100} value={v||''} disabled={!canEditPeriod(term)} onChange={e=>updateDomain(student.id,block.key,i,+e.target.value)} className="w-16 bg-gray-900 border border-gray-700 rounded px-1 py-1 text-white text-center" /></td>)}<td className="px-2 text-amber-300">{avg?avg.toFixed(1):''}</td></tr>})}</tbody></table></div>)}
+              {DOMAIN_BLOCKS.map(block => <div key={block.key} className="overflow-x-auto"><div className="text-xs font-semibold text-amber-200 mb-1">{block.label} ({Math.round(block.weight*100)}%)</div><table className="min-w-full text-xs"><thead><tr><th className="text-left pr-4 text-gray-500">LEARNER</th>{Array.from({length:block.count},(_,i)=><th key={i} className="px-1 text-gray-500">{i+1}</th>)}<th className="px-2 text-gray-500">AVERAGE</th></tr></thead><tbody>{activeStudents.map(student => { const vals=Array.from({length:block.count},(_,i)=>scores[student.id]?.domains?.[block.key]?.[i] || 0); const entered=vals.filter(v=>v>0); const avg=entered.length?entered.reduce((a,b)=>a+b,0)/entered.length:0; return <tr key={student.id}><td className="text-gray-200 py-1 pr-4 whitespace-nowrap">{student.full_name}</td>{vals.map((v,i)=><td key={i} className="px-1"><input type="number" min={0} max={100} value={v||''} disabled={!canEditPeriod(term)} onChange={e=>updateDomain(student.id,block.key,i,+e.target.value)} className="w-16 bg-gray-900 border border-gray-700 rounded px-1 py-1 text-white text-center" /></td>)}<td className="px-2 text-amber-300">{avg?avg.toFixed(2):''}</td></tr>})}</tbody></table></div>)}
             </div>
           </div>
         )}
