@@ -28,7 +28,10 @@ export function domainSummary(scores: DomainScores | null | undefined, highestSc
     const ws = ps * block.weight;
     return { ...block, values, highestValues, total, entered, highest, ps, ws, average: entered ? total / entered : 0 };
   });
-  const initial = summaries.reduce((sum, item) => sum + item.ws, 0);
+  // The class record displays each weighted score (WS) to two decimals.
+  // Sum those displayed-precision values so the initial grade agrees with
+  // the visible component values and with SF9.
+  const initial = summaries.reduce((sum, item) => sum + Number(item.ws.toFixed(2)), 0);
   return { summaries, initial, hasScores: summaries.some(item => item.entered > 0) };
 }
 

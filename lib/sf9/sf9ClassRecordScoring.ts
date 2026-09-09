@@ -62,13 +62,6 @@ export const WEIGHTS: Record<string,{ww:number;pt:number;ta:number}> = {
   'MAPEH - Music & Arts':{ww:0.20,pt:0.60,ta:0.20},
   'MAPEH - PE & Health':{ww:0.20,pt:0.60,ta:0.20},
   'GMRC/VE':{ww:0.20,pt:0.50,ta:0.30},
-  // Special Curricular Programs — same weights as their parent subjects
-  'SPJ (Journalism)':        { ww: 0.20, pt: 0.50, ta: 0.30 }, // follows English
-  'STE Mathematics':         { ww: 0.20, pt: 0.50, ta: 0.30 }, // follows Mathematics
-  'STE Science':             { ww: 0.20, pt: 0.50, ta: 0.30 }, // follows Science
-  'STE Foreign Language':    { ww: 0.20, pt: 0.50, ta: 0.30 }, // follows English
-  'SPA (Arts)':              { ww: 0.20, pt: 0.60, ta: 0.20 }, // follows MAPEH
-  'STE Research':            { ww: 0.20, pt: 0.50, ta: 0.30 }, // follows Science
   // SHS G11 subjects.
   'Mabisang Komunikasyon':{ww:0.20,pt:0.50,ta:0.30},
   'Effective Communication':{ww:0.20,pt:0.50,ta:0.30},
@@ -161,6 +154,10 @@ export function computeFromClassRecord(row: any, subject: string): number {
 
   // Match Class Record exactly: component weights are applied as configured;
   // missing components contribute zero and are not redistributed.
-  const initial = avgWW*w.ww + avgPT*w.pt + avgTA*w.ta;
+  // Match the class-record display: round each visible weighted component to
+  // two decimals before summing the initial grade.
+  const initial = Number((avgWW*w.ww).toFixed(2))
+    + Number((avgPT*w.pt).toFixed(2))
+    + Number((avgTA*w.ta).toFixed(2));
   return initial > 0 ? transmute(initial) : 0;
 }

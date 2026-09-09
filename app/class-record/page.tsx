@@ -506,7 +506,7 @@ function SummaryOfGradesView({
     const avgWW = calcAvg(ww, td.highest.ww);
     const avgPT = calcAvg(pt, td.highest.pt);
     const avgTA = calcEX(st[0],st[1],te, td.highest.st[0],td.highest.st[1],td.highest.te);
-    const initial = avgWW*weights.ww + avgPT*weights.pt + avgTA*(weights.ta??0.25);
+    const initial = Number((avgWW*weights.ww).toFixed(2)) + Number((avgPT*weights.pt).toFixed(2)) + Number((avgTA*(weights.ta??0.25)).toFixed(2));
     return transmute(initial);
   };
 
@@ -818,7 +818,7 @@ function MAPEHSummaryView({
     const avgWW = calcAvg(ww, td.highest.ww);
     const avgPT = calcAvg(pt, td.highest.pt);
     const avgTA = calcEX(st[0],st[1],te, td.highest.st[0],td.highest.st[1],td.highest.te);
-    const initial = avgWW*weights.ww + avgPT*weights.pt + avgTA*weights.ta;
+    const initial = Number((avgWW*weights.ww).toFixed(2)) + Number((avgPT*weights.pt).toFixed(2)) + Number((avgTA*weights.ta).toFixed(2));
     return transmute(initial);
   };
 
@@ -1117,7 +1117,7 @@ function EClassRecordView({
     const avgWW = calcAvg(ww, highest.ww);
     const avgPT = calcAvg(pt, highest.pt);
     const avgTA = calcEX(st[0],st[1],te, highest.st[0],highest.st[1],highest.te);
-    const initial = avgWW*weights.ww + avgPT*weights.pt + avgTA*(weights.ta??0.25);
+    const initial = Number((avgWW*weights.ww).toFixed(2)) + Number((avgPT*weights.pt).toFixed(2)) + Number((avgTA*(weights.ta??0.25)).toFixed(2));
     // Display-only figures to mirror the official DepEd layout's Total/WS columns.
     // None of these feed back into initial/transmuted — those are still computed
     // exactly as before, straight from avgWW/avgPT/avgTA.
@@ -2099,7 +2099,12 @@ export default function ClassRecord() {
     const avgWW=calcAvg(ww,highest.ww);
     const avgPT=calcAvg(pt,highest.pt);
     const avgTA=calcEX(st[0],st[1],te,highest.st[0],highest.st[1],highest.te);
-    const initial=avgWW*weights.ww+avgPT*weights.pt+avgTA*(weights.ta??0.25);
+    // The record displays each weighted component (WS) to two decimals.
+    // Sum those displayed-precision components so the initial grade matches
+    // the visible WS values instead of rounding a hidden full-precision sum.
+    const initial=Number((avgWW*weights.ww).toFixed(2))
+      +Number((avgPT*weights.pt).toFixed(2))
+      +Number((avgTA*(weights.ta??0.25)).toFixed(2));
     return {ww,pt,st,te,avgWW,avgPT,avgTA,initial,transmuted:transmute(initial)};
   };
 
