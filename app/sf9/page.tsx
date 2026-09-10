@@ -22,6 +22,7 @@ import { downloadSF9Docx, downloadAllSF9Docx } from '../../lib/sf9/generateSF9Do
 import { downloadSF9Pdf } from '../../lib/sf9/generateSF9Pdf';
 import SectionSF9Settings from './SectionSF9Settings';
 import SF9Card from './SF9Card';
+import SF9CommentsEditor from './SF9CommentsEditor';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Flatten a section's subject rows into leaf-level {key,label} pairs — this is
@@ -530,6 +531,7 @@ export default function SF9Page() {
   const [showManual,    setShowManual]    = useState(false);
   const [showCollab,    setShowCollab]    = useState(false);
   const [showSettings,  setShowSettings]  = useState(false);
+  const [showComments,  setShowComments]  = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [bulkProgress,  setBulkProgress]  = useState<{done:number; total:number} | null>(null);
   const [dataVersion,   setDataVersion]   = useState(0);
@@ -648,6 +650,11 @@ export default function SF9Page() {
             <button onClick={()=>setShowCollab(true)}
               className="flex items-center gap-2 bg-purple-700 hover:bg-purple-600 px-4 py-2 rounded-xl text-sm font-semibold transition">
               <Users size={16}/> Subject Teachers
+            </button>
+
+            <button onClick={()=>setShowComments(true)} disabled={!current}
+              className="flex items-center gap-2 bg-indigo-700 hover:bg-indigo-600 px-4 py-2 rounded-xl text-sm font-semibold transition disabled:opacity-50">
+              <Edit3 size={16}/> Teacher&apos;s Comments
             </button>
 
             {sf9Data.length > 0 && (
@@ -818,6 +825,14 @@ sectionId={sectionId}
           gradeLevel={numericGradeLevel}
           onClose={() => setShowSettings(false)}
           onSaved={() => { setDataVersion(v => v+1); sectionCtx.refreshSections?.(); }}
+        />
+      )}
+      {showComments && current && (
+        <SF9CommentsEditor
+          sectionId={sectionId}
+          learner={current}
+          onClose={() => setShowComments(false)}
+          onSaved={() => setDataVersion(v => v + 1)}
         />
       )}
     </>

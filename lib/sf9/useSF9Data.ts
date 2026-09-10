@@ -158,6 +158,10 @@ export function useSF9Data(
     const { data: conductRaw } = await supabase
       .from('conduct_records').select('*').in('term',[1,2,3]).in('student_id', studentIds);
 
+    const { data: commentsRaw } = await supabase
+      .from('sf9_comments').select('student_id,term,comment')
+      .eq('section_id', sectionId).in('student_id', studentIds).in('term', [1,2,3]);
+
     const monthKeys = buildMonthKeys(schoolYear);
     const attendanceDates = monthKeys.flatMap(month => monthDates(month.key));
     const [{ data: attendRaw }, { data: holidayRaw }] = await Promise.all([
@@ -248,7 +252,11 @@ export function useSF9Data(
         }
       });
 
-      return { student, grades, finalGrades, genAverage, attendance, conduct, promotionRemark };
+      const comments: Record<string,string> = {};
+      (commentsRaw ?? []).filter((row: any) => row.student_id === student.id)
+        .forEach((row: any) => { comments[String(row.term)] = row.comment ?? ''; });
+
+      return { student, grades, finalGrades, genAverage, attendance, conduct, comments, promotionRemark };
     });
 
     setSF9Data(result);
