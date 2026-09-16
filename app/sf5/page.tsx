@@ -140,6 +140,7 @@ interface LearnerSF5 {
   termGrades: Record<string, number[]>;
   finalGrades: Record<string, number>;
   mapehFinal: number;
+  mapehTerms: number[];
   generalAverage: number;
   failedSubjects: string[];
   action: 'Promoted'|'Retained'|'Conditionally Promoted'|'Dropped'|'Transferred Out'|'Transferred In';
@@ -256,6 +257,10 @@ export default function SF5Page() {
           finalGrades[subj] = recorded.length>0 ? Math.round(recorded.reduce((a,b)=>a+b,0)/recorded.length) : 0;
         });
 
+        const mapehTerms = [0,1,2].map(termIndex => {
+          const values = MAPEH_COMPONENTS.map(c => termGrades[c]?.[termIndex] ?? 0).filter(v => v > 0);
+          return values.length ? Math.round(values.reduce((a,b)=>a+b,0) / values.length) : 0;
+        });
         const mapehScores = MAPEH_COMPONENTS.map(c => finalGrades[c]).filter(v=>v>0);
         const mapehFinal  = mapehScores.length>0 ? Math.round(mapehScores.reduce((a,b)=>a+b,0)/mapehScores.length) : 0;
 
@@ -266,7 +271,7 @@ export default function SF5Page() {
         const failedSubjects = gaSubjects.filter(s => finalGrades[s]>0 && finalGrades[s]<75);
         if (mapehFinal>0 && mapehFinal<75) failedSubjects.push('MAPEH');
 
-        return { student, termGrades, finalGrades, mapehFinal, generalAverage, failedSubjects, action: determineAction(student, failedSubjects) };
+        return { student, termGrades, finalGrades, mapehFinal, mapehTerms, generalAverage, failedSubjects, action: determineAction(student, failedSubjects) };
       });
 
       setSF5Data(result);
@@ -582,17 +587,68 @@ export default function SF5Page() {
   };
 
   // ── RENDER ────────────────────────────────────────────────────────────────
+  const printSubjects = ['Filipino','English','Mathematics','Science','Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)','EPP/TLE'];
+  const subjectPrintLabel = (subject: string) => subject === 'Edukasyon sa Pagpapakatao (EsP)' ? displayGmrcLabel : subject;
+  const printGrade = (d: LearnerSF5, subject: string) => d.termGrades[subject]?.[activeTerm - 1] ?? 0;
+  const printGeneralAverage = (d: LearnerSF5) => {
+    const values = [...printSubjects.map(subject => printGrade(d, subject)), d.mapehTerms?.[activeTerm - 1] ?? 0].filter(v => v > 0);
+    return values.length ? Math.round(values.reduce((a,b) => a + b, 0) / values.length) : 0;
+  };
+  const rankedLearners = [...sf5Data]
+    .filter(d => d.student.status === 'active' && printGeneralAverage(d) > 0)
+    .sort((a,b) => printGeneralAverage(b) - printGeneralAverage(a) || a.student.full_name.localeCompare(b.student.full_name));
+  const rankByStudent = new Map(rankedLearners.map((d, i) => [d.student.id, i + 1]));
+
+  const CompositePrintView = () => (
+    <div className="sf5-composite-print">
+      <div className="title">COMPOSITE GRADES — {sectionName}</div>
+      <div className="subtitle">{schoolName} · {gradeLevel} · {schoolYear} · TERM {activeTerm}{showFinalComposite ? ' + FINAL COMPOSITE' : ''}</div>
+      <table>
+        <thead><tr>
+          <th style={{width:'4%'}}>#</th><th className="name-cell">LEARNER</th>
+          {printSubjects.map(subject => <th key={subject}>{subjectPrintLabel(subject)}<br/>T{activeTerm}{showFinalComposite ? ' / FINAL' : ''}</th>)}
+          <th>MAPEH<br/>T{activeTerm}{showFinalComposite ? ' / FINAL' : ''}</th><th>GEN.<br/>AVE.</th><th>RANK</th>
+        </tr></thead>
+        <tbody>
+          {(['M','F'] as const).map(sex => {
+            const group = sf5Data.filter(d => d.student.sex === sex);
+            if (!group.length) return null;
+            return <React.Fragment key={sex}>
+              <tr className="section-row"><td colSpan={printSubjects.length + 5}>{sex === 'M' ? 'MALE' : 'FEMALE'}</td></tr>
+              {group.map((d, i) => <tr key={d.student.id}>
+                <td>{i + 1}</td><td className="name-cell">{d.student.full_name}</td>
+                {printSubjects.map(subject => <td key={subject}>{printGrade(d, subject) || ''}{showFinalComposite ? <><br/><strong>{d.finalGrades[subject] || ''}</strong></> : null}</td>)}
+                <td>{d.mapehTerms?.[activeTerm - 1] || ''}{showFinalComposite ? <><br/><strong>{d.mapehFinal || ''}</strong></> : null}</td>
+                <td><strong>{printGeneralAverage(d) || ''}</strong></td><td>{rankByStudent.get(d.student.id) || ''}</td>
+              </tr>)}
+            </React.Fragment>;
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+
   return (
     <>
       <style>{`
         @media print {
           .no-print { display: none !important; }
           body { background: white !important; }
-          @page { size: landscape; margin: 8mm; }
+          @page { size: portrait; margin: 5mm; }
           .sf5-screen-wrapper { display: none !important; }
           .sf5-print-only { display: block !important; }
           .sf5-composite-table, .sf5-composite-table th, .sf5-composite-table td { border: 1px solid #000 !important; border-color: #000 !important; color: #000 !important; }
           .sf5-composite-table { border-collapse: collapse !important; }
+          .sf5-composite-screen { display: none !important; }
+          .sf5-composite-print-only { display: block !important; }
+          .sf5-composite-print { width: 100%; color: #000 !important; background: #fff !important; font-family: Arial, sans-serif; }
+          .sf5-composite-print table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+          .sf5-composite-print th, .sf5-composite-print td { border: 1px solid #000; color: #000; padding: 2px 1px; font-size: 6.2pt; line-height: 1.05; text-align: center; }
+          .sf5-composite-print th { background: #e5e7eb; font-weight: 700; }
+          .sf5-composite-print .name-cell { text-align: left; font-weight: 600; width: 25%; word-break: break-word; }
+          .sf5-composite-print .section-row td { background: #d9eaf7; font-weight: 700; text-align: left; }
+          .sf5-composite-print .title { text-align: center; font-weight: 700; font-size: 11pt; margin-bottom: 2px; }
+          .sf5-composite-print .subtitle { text-align: center; font-size: 7pt; margin-bottom: 5px; }
           .sf5-composite-table th { background: #f3f4f6 !important; color: #000 !important; }
           .sf5-composite-table td { background: #fff !important; color: #000 !important; }
         }
@@ -685,7 +741,7 @@ export default function SF5Page() {
 
             {/* Table view */}
             {view === 'table' && (
-              <div className="overflow-x-auto">
+              <div className="sf5-composite-screen overflow-x-auto">
                 <table className="sf5-composite-table w-full text-sm border-separate border-spacing-0" style={{minWidth:'1200px'}}>
                   <thead>
                     <tr>
@@ -730,7 +786,7 @@ export default function SF5Page() {
                               </td>
                             );
                           })}
-                          <td className={`text-center py-2 border-l border-gray-800 font-bold text-sm ${d.mapehFinal>=75?'text-emerald-400':d.mapehFinal>0?'text-red-400':'text-gray-600'}`}>{d.mapehFinal||''}</td>
+                          <td className={`text-center py-2 border-l border-gray-800 font-bold text-sm ${((d.mapehTerms?.[activeTerm-1] ?? 0)>=75)?'text-emerald-400':((d.mapehTerms?.[activeTerm-1] ?? 0)>0)?'text-red-400':'text-gray-600'}`}><div>{d.mapehTerms?.[activeTerm-1]||''}</div>{showFinalComposite && <div className="text-xs">{d.mapehFinal||''}</div>}</td>
                           <td className={`text-center py-2 border-l border-gray-800 font-bold text-lg ${d.generalAverage>=75?'text-white':d.generalAverage>0?'text-red-400':'text-gray-600'}`}>{d.generalAverage||''}</td>
                           <td className="px-3 py-2 border-l border-gray-800">
                             {d.action==='Promoted' && <span className="flex items-center gap-1 text-emerald-400 text-xs font-semibold"><CheckCircle size={14}/>Promoted{d.generalAverage>=90?' (Honors)':''}</span>}
@@ -770,7 +826,7 @@ export default function SF5Page() {
                               </td>
                             );
                           })}
-                          <td className={`text-center py-2 border-l border-gray-800 font-bold text-sm ${d.mapehFinal>=75?'text-emerald-400':d.mapehFinal>0?'text-red-400':'text-gray-600'}`}>{d.mapehFinal||''}</td>
+                          <td className={`text-center py-2 border-l border-gray-800 font-bold text-sm ${((d.mapehTerms?.[activeTerm-1] ?? 0)>=75)?'text-emerald-400':((d.mapehTerms?.[activeTerm-1] ?? 0)>0)?'text-red-400':'text-gray-600'}`}><div>{d.mapehTerms?.[activeTerm-1]||''}</div>{showFinalComposite && <div className="text-xs">{d.mapehFinal||''}</div>}</td>
                           <td className={`text-center py-2 border-l border-gray-800 font-bold text-lg ${d.generalAverage>=75?'text-white':d.generalAverage>0?'text-red-400':'text-gray-600'}`}>{d.generalAverage||''}</td>
                           <td className="px-3 py-2 border-l border-gray-800">
                             {d.action==='Promoted' && <span className="flex items-center gap-1 text-emerald-400 text-xs font-semibold"><CheckCircle size={14}/>Promoted{d.generalAverage>=90?' (Honors)':''}</span>}
@@ -802,6 +858,11 @@ export default function SF5Page() {
         )}
 
         {/* Print-only — always rendered, hidden on screen, shown on print */}
+        {view === 'table' && (
+          <div className="sf5-composite-print-only" style={{display:'none'}}>
+            <CompositePrintView/>
+          </div>
+        )}
         {view === 'sf5' && (
           <div className="sf5-print-only" style={{display:'none'}}>
             <SF5PrintView/>
