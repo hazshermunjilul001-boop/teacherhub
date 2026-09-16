@@ -204,11 +204,13 @@ export default function SF5Page() {
   const [view,        setView]        = useState<'table'|'sf5'>('table');
   const [statusModal, setStatusModal] = useState<Student|null>(null);
   const [gmrcSource, setGmrcSource] = useState('');
+  const [activeTerm, setActiveTerm] = useState<1|2|3>(1);
+  const [showFinalComposite, setShowFinalComposite] = useState(false);
 
-  const separateGmrcSource = gmrcSource === 'GMRC (Elem)' || gmrcSource === 'Values Education (JHS)'
-    ? gmrcSource
-    : (numericGradeLevel <= 6 ? 'GMRC (Elem)' : 'Values Education (JHS)');
-  const displayGmrcLabel = separateGmrcSource === 'GMRC (Elem)' ? 'GMRC' : 'Values Ed.';
+  // A blank source means the ordinary EsP class-record subject.
+  const separateGmrcSource = gmrcSource === 'GMRC (Elem)' || gmrcSource === 'Values Education (JHS)' ? gmrcSource : '';
+  const displayGmrcLabel = separateGmrcSource === 'GMRC (Elem)'
+    ? 'GMRC' : separateGmrcSource === 'Values Education (JHS)' ? 'Values Education' : 'EsP';
 
   // ── Load data ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -228,9 +230,8 @@ export default function SF5Page() {
       const storedGmrcSource = sectionMeta?.gmrc_ve_source ?? '';
       setGmrcSource(storedGmrcSource);
       const resolvedGmrcSource = storedGmrcSource === 'GMRC (Elem)' || storedGmrcSource === 'Values Education (JHS)'
-        ? storedGmrcSource
-        : (numericGradeLevel <= 6 ? 'GMRC (Elem)' : 'Values Education (JHS)');
-      const allSubjects = Array.from(new Set([...SF5_SUBJECTS, resolvedGmrcSource]));
+        ? storedGmrcSource : '';
+      const allSubjects = Array.from(new Set([...SF5_SUBJECTS, ...(resolvedGmrcSource ? [resolvedGmrcSource] : [])]));
       const { data: gradesRaw } = await supabase
         .from('grades').select('*')
         .in('subject', allSubjects)
@@ -242,8 +243,8 @@ export default function SF5Page() {
         const finalGrades: Record<string, number>  = {};
 
         allSubjects.forEach(subj => {
-          if (subj === resolvedGmrcSource) return;
-          const sourceSubject = subj === 'Edukasyon sa Pagpapakatao (EsP)' ? resolvedGmrcSource : subj;
+          if (resolvedGmrcSource && subj === resolvedGmrcSource) return;
+          const sourceSubject = subj === 'Edukasyon sa Pagpapakatao (EsP)' && resolvedGmrcSource ? resolvedGmrcSource : subj;
           const findRow = (term:number) => gradesRaw?.find(g => g.student_id===student.id && g.subject===sourceSubject && g.term===term);
           const t1row = findRow(1), t2row = findRow(2), t3row = findRow(3);
           const compute = (row:any) => row ? (sourceSubject === resolvedGmrcSource
@@ -271,7 +272,7 @@ export default function SF5Page() {
       setSF5Data(result);
       setLoading(false);
     })();
-  }, [sectionId]);
+  }, [sectionId, numericGradeLevel]);
 
   // ── CSV Export ────────────────────────────────────────────────────────────
   const exportCSV = () => {
@@ -590,7 +591,8 @@ export default function SF5Page() {
           @page { size: landscape; margin: 8mm; }
           .sf5-screen-wrapper { display: none !important; }
           .sf5-print-only { display: block !important; }
-          .sf5-composite-table, .sf5-composite-table th, .sf5-composite-table td { border-color: #000 !important; color: #000 !important; }
+          .sf5-composite-table, .sf5-composite-table th, .sf5-composite-table td { border: 1px solid #000 !important; border-color: #000 !important; color: #000 !important; }
+          .sf5-composite-table { border-collapse: collapse !important; }
           .sf5-composite-table th { background: #f3f4f6 !important; color: #000 !important; }
           .sf5-composite-table td { background: #fff !important; color: #000 !important; }
         }
@@ -666,6 +668,21 @@ export default function SF5Page() {
               </div>
             </div>
 
+            {/* Composite table controls */}
+            {view === 'table' && (
+              <div className="no-print mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900">
+                <label className="text-sm font-semibold">Show term:</label>
+                <select value={activeTerm} onChange={e => setActiveTerm(Number(e.target.value) as 1|2|3)} className="rounded-lg border border-gray-400 bg-white px-3 py-2 text-sm">
+                  <option value={1}>Term 1</option><option value={2}>Term 2</option><option value={3}>Term 3</option>
+                </select>
+                <label className="flex items-center gap-2 text-sm font-semibold">
+                  <input type="checkbox" checked={showFinalComposite} onChange={e => setShowFinalComposite(e.target.checked)} />
+                  Show final composite (Terms 1–3 average)
+                </label>
+                <span className="text-xs text-gray-500">These settings also apply when printing the Table view.</span>
+              </div>
+            )}
+
             {/* Table view */}
             {view === 'table' && (
               <div className="overflow-x-auto">
@@ -677,7 +694,7 @@ export default function SF5Page() {
                         <th key={s} className="bg-gray-800 text-center px-2 py-3 border-l border-gray-700 min-w-[80px]">
                           <div className="text-xs">{s}</div>
                           <div className="flex gap-0.5 justify-center mt-0.5">
-                            {['T1','T2','T3'].map(t=><span key={t} className="text-gray-500 text-xs">{t}</span>)}
+                            <span className="text-gray-500 text-xs">T{activeTerm}</span>{showFinalComposite && <span className="text-gray-500 text-xs ml-2">Final</span>}
                           </div>
                         </th>
                       ))}
@@ -706,8 +723,10 @@ export default function SF5Page() {
                             const final=d.finalGrades[dataKey]??0;
                             return (
                               <td key={subj} className="border-l border-gray-800">
-                                <div className="flex">{[t1,t2,t3].map((v,vi)=><span key={vi} className="text-center py-2 px-1 text-xs text-gray-400 w-7 inline-block">{v||''}</span>)}</div>
-                                <div className={`text-center text-xs font-bold pb-1 ${final>=75?'text-emerald-400':final>0?'text-red-400':'text-gray-600'}`}>{final||''}</div>
+                                <div className="flex justify-center">
+                                  <span className="text-center py-2 px-1 text-xs text-gray-400 w-10 inline-block">{[t1,t2,t3][activeTerm-1]||''}</span>
+                                  {showFinalComposite && <span className={`text-center py-2 px-1 text-xs font-bold w-10 inline-block ${final>=75?'text-emerald-400':final>0?'text-red-400':'text-gray-600'}`}>{final||''}</span>}
+                                </div>
                               </td>
                             );
                           })}
@@ -744,8 +763,10 @@ export default function SF5Page() {
                             const final=d.finalGrades[dataKey]??0;
                             return (
                               <td key={subj} className="border-l border-gray-800">
-                                <div className="flex">{[t1,t2,t3].map((v,vi)=><span key={vi} className="text-center py-2 px-1 text-xs text-gray-400 w-7 inline-block">{v||''}</span>)}</div>
-                                <div className={`text-center text-xs font-bold pb-1 ${final>=75?'text-emerald-400':final>0?'text-red-400':'text-gray-600'}`}>{final||''}</div>
+                                <div className="flex justify-center">
+                                  <span className="text-center py-2 px-1 text-xs text-gray-400 w-10 inline-block">{[t1,t2,t3][activeTerm-1]||''}</span>
+                                  {showFinalComposite && <span className={`text-center py-2 px-1 text-xs font-bold w-10 inline-block ${final>=75?'text-emerald-400':final>0?'text-red-400':'text-gray-600'}`}>{final||''}</span>}
+                                </div>
                               </td>
                             );
                           })}
@@ -781,9 +802,11 @@ export default function SF5Page() {
         )}
 
         {/* Print-only — always rendered, hidden on screen, shown on print */}
-        <div className="sf5-print-only" style={{display:'none'}}>
-          <SF5PrintView/>
-        </div>
+        {view === 'sf5' && (
+          <div className="sf5-print-only" style={{display:'none'}}>
+            <SF5PrintView/>
+          </div>
+        )}
       </div>
 
       {statusModal && (
