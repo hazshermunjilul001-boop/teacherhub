@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, Printer, RefreshCw, Download, CheckCircle, XCircle, AlertCircle, UserX, ArrowRightLeft, UserPlus, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useActiveSection } from '../../lib/useActiveSection';
+import { computeFromClassRecord } from '../../lib/sf9/sf9ClassRecordScoring';
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 const SF5_SUBJECTS = [
@@ -14,6 +15,7 @@ const SF5_SUBJECTS = [
   'MAPEH - Music & Arts', 'MAPEH - PE & Health',
 ];
 const MAPEH_COMPONENTS = ['MAPEH - Music & Arts', 'MAPEH - PE & Health'];
+const SEPARATE_GMRC_SUBJECTS = ['GMRC (Elem)', 'Values Education (JHS)'] as const;
 
 const TRANSMUTATION = [
   {min:99.50,max:100,trans:100},{min:97.50,max:99.49,trans:99},{min:96.00,max:97.49,trans:98},
@@ -194,12 +196,19 @@ function determineAction(student: Student, failedSubjects: string[]): LearnerSF5
 // ── MAIN PAGE ─────────────────────────────────────────────────────────────────
 export default function SF5Page() {
   const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear, division, region, adviser, schoolHead, district } = useActiveSection();
+  const numericGradeLevel = Number(gradeLevel.match(/\d+/)?.[0]) || 0;
 
   const [students,    setStudents]    = useState<Student[]>([]);
   const [sf5Data,     setSF5Data]     = useState<LearnerSF5[]>([]);
   const [loading,     setLoading]     = useState(true);
   const [view,        setView]        = useState<'table'|'sf5'>('table');
   const [statusModal, setStatusModal] = useState<Student|null>(null);
+  const [gmrcSource, setGmrcSource] = useState('');
+
+  const separateGmrcSource = gmrcSource === 'GMRC (Elem)' || gmrcSource === 'Values Education (JHS)'
+    ? gmrcSource
+    : (numericGradeLevel <= 6 ? 'GMRC (Elem)' : 'Values Education (JHS)');
+  const displayGmrcLabel = separateGmrcSource === 'GMRC (Elem)' ? 'GMRC' : 'Values Ed.';
 
   // ── Load data ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -215,7 +224,13 @@ export default function SF5Page() {
       setStudents(studentList);
 
       const studentIds = studentList.map(s => s.id);
-      const allSubjects = [...SF5_SUBJECTS];
+      const { data: sectionMeta } = await supabase.from('sections').select('gmrc_ve_source').eq('id', sectionId).maybeSingle();
+      const storedGmrcSource = sectionMeta?.gmrc_ve_source ?? '';
+      setGmrcSource(storedGmrcSource);
+      const resolvedGmrcSource = storedGmrcSource === 'GMRC (Elem)' || storedGmrcSource === 'Values Education (JHS)'
+        ? storedGmrcSource
+        : (numericGradeLevel <= 6 ? 'GMRC (Elem)' : 'Values Education (JHS)');
+      const allSubjects = Array.from(new Set([...SF5_SUBJECTS, resolvedGmrcSource]));
       const { data: gradesRaw } = await supabase
         .from('grades').select('*')
         .in('subject', allSubjects)
@@ -227,12 +242,14 @@ export default function SF5Page() {
         const finalGrades: Record<string, number>  = {};
 
         allSubjects.forEach(subj => {
-          const t1row = gradesRaw?.find(g => g.student_id===student.id && g.subject===subj && g.term===1);
-          const t2row = gradesRaw?.find(g => g.student_id===student.id && g.subject===subj && g.term===2);
-          const t3row = gradesRaw?.find(g => g.student_id===student.id && g.subject===subj && g.term===3);
-          const t1 = t1row ? computeTransmutedFromGrade({...t1row,subject:subj}) : 0;
-          const t2 = t2row ? computeTransmutedFromGrade({...t2row,subject:subj}) : 0;
-          const t3 = t3row ? computeTransmutedFromGrade({...t3row,subject:subj}) : 0;
+          if (subj === resolvedGmrcSource) return;
+          const sourceSubject = subj === 'Edukasyon sa Pagpapakatao (EsP)' ? resolvedGmrcSource : subj;
+          const findRow = (term:number) => gradesRaw?.find(g => g.student_id===student.id && g.subject===sourceSubject && g.term===term);
+          const t1row = findRow(1), t2row = findRow(2), t3row = findRow(3);
+          const compute = (row:any) => row ? (sourceSubject === resolvedGmrcSource
+            ? computeFromClassRecord({...row, subject: sourceSubject}, sourceSubject)
+            : computeTransmutedFromGrade({...row,subject:subj})) : 0;
+          const t1 = compute(t1row), t2 = compute(t2row), t3 = compute(t3row);
           termGrades[subj] = [t1, t2, t3];
           const recorded = [t1,t2,t3].filter(v=>v>0);
           finalGrades[subj] = recorded.length>0 ? Math.round(recorded.reduce((a,b)=>a+b,0)/recorded.length) : 0;
@@ -573,6 +590,9 @@ export default function SF5Page() {
           @page { size: landscape; margin: 8mm; }
           .sf5-screen-wrapper { display: none !important; }
           .sf5-print-only { display: block !important; }
+          .sf5-composite-table, .sf5-composite-table th, .sf5-composite-table td { border-color: #000 !important; color: #000 !important; }
+          .sf5-composite-table th { background: #f3f4f6 !important; color: #000 !important; }
+          .sf5-composite-table td { background: #fff !important; color: #000 !important; }
         }
       `}</style>
 
@@ -649,7 +669,7 @@ export default function SF5Page() {
             {/* Table view */}
             {view === 'table' && (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm border-separate border-spacing-0" style={{minWidth:'1200px'}}>
+                <table className="sf5-composite-table w-full text-sm border-separate border-spacing-0" style={{minWidth:'1200px'}}>
                   <thead>
                     <tr>
                       <th className="bg-gray-800 text-left px-3 py-3 rounded-tl-xl min-w-[200px] sticky left-0 z-10">Learner</th>
@@ -680,9 +700,10 @@ export default function SF5Page() {
                             <div className="text-xs text-gray-600">{d.student.lrn}</div>
                             {isInactive && <div className="text-xs text-amber-500 mt-0.5">{d.student.status==='dropped'?'Dropped':d.student.status==='transferred_out'?'Transferred Out':'Transferred In'}{d.student.status_date?` (${d.student.status_date})`:''}</div>}
                           </td>
-                          {['Filipino','English','Mathematics','Science','Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)','EPP/TLE'].map(subj => {
-                            const [t1,t2,t3]=d.termGrades[subj]??[0,0,0];
-                            const final=d.finalGrades[subj]??0;
+                          {['Filipino','English','Mathematics','Science','Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)','EPP/TLE'].map(s => s === 'Edukasyon sa Pagpapakatao (EsP)' ? displayGmrcLabel : s).map(subj => {
+                            const dataKey = subj === displayGmrcLabel ? 'Edukasyon sa Pagpapakatao (EsP)' : subj;
+                            const [t1,t2,t3]=d.termGrades[dataKey]??[0,0,0];
+                            const final=d.finalGrades[dataKey]??0;
                             return (
                               <td key={subj} className="border-l border-gray-800">
                                 <div className="flex">{[t1,t2,t3].map((v,vi)=><span key={vi} className="text-center py-2 px-1 text-xs text-gray-400 w-7 inline-block">{v||''}</span>)}</div>
@@ -717,9 +738,10 @@ export default function SF5Page() {
                             <div className="text-xs text-gray-600">{d.student.lrn}</div>
                             {isInactive && <div className="text-xs text-amber-500 mt-0.5">{d.student.status==='dropped'?'Dropped':d.student.status==='transferred_out'?'Transferred Out':'Transferred In'}{d.student.status_date?` (${d.student.status_date})`:''}</div>}
                           </td>
-                          {['Filipino','English','Mathematics','Science','Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)','EPP/TLE'].map(subj => {
-                            const [t1,t2,t3]=d.termGrades[subj]??[0,0,0];
-                            const final=d.finalGrades[subj]??0;
+                          {['Filipino','English','Mathematics','Science','Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)','EPP/TLE'].map(s => s === 'Edukasyon sa Pagpapakatao (EsP)' ? displayGmrcLabel : s).map(subj => {
+                            const dataKey = subj === displayGmrcLabel ? 'Edukasyon sa Pagpapakatao (EsP)' : subj;
+                            const [t1,t2,t3]=d.termGrades[dataKey]??[0,0,0];
+                            const final=d.finalGrades[dataKey]??0;
                             return (
                               <td key={subj} className="border-l border-gray-800">
                                 <div className="flex">{[t1,t2,t3].map((v,vi)=><span key={vi} className="text-center py-2 px-1 text-xs text-gray-400 w-7 inline-block">{v||''}</span>)}</div>
