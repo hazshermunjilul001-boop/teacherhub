@@ -109,6 +109,7 @@ interface LearnerSF5 {
   finalGrades: Record<string, number>;
   mapehFinal: number;
   mapehTerms: number[];
+  termGeneralAverages: number[];
   generalAverage: number;
   failedSubjects: string[];
   action: 'Promoted'|'Retained'|'Conditionally Promoted'|'Dropped'|'Transferred Out'|'Transferred In';
@@ -217,6 +218,10 @@ export default function SF5Page() {
           computedTerms[row.key] = values;
           computedFinals[row.key] = finalGradeFromTerms(values);
         });
+        const termGeneralAverages = [0,1,2].map(termIndex => {
+          const values = sf9GaKeys.map(key => computedTerms[key]?.[termIndex] ?? termGrades[key]?.[termIndex] ?? 0).filter(value => value > 0);
+          return values.length ? Math.round(values.reduce((a,b)=>a+b,0) / values.length) : 0;
+        });
         const gaValues = sf9GaKeys.map(key => computedFinals[key] ?? finalGrades[key] ?? 0);
         const generalAverage = gaValues.length > 0 && gaValues.every(v => v > 0)
           ? Math.round(gaValues.reduce((a,b)=>a+b,0) / gaValues.length) : 0;
@@ -229,7 +234,7 @@ export default function SF5Page() {
           return values.length ? Math.round(values.reduce((a,b)=>a+b,0) / values.length) : 0;
         });
         const mapehFinal = computedFinals['MAPEH'] ?? finalGradeFromTerms(mapehTerms);
-        return { student, termGrades, finalGrades: { ...finalGrades, ...computedFinals }, mapehFinal, mapehTerms, generalAverage, failedSubjects, action: determineAction(student, failedSubjects) };
+        return { student, termGrades, finalGrades: { ...finalGrades, ...computedFinals }, mapehFinal, mapehTerms, termGeneralAverages, generalAverage, failedSubjects, action: determineAction(student, failedSubjects) };
       });
       setSF5Data(result);
       setLoading(false);
@@ -541,7 +546,8 @@ export default function SF5Page() {
   // ── RENDER ────────────────────────────────────────────────────────────────
   const printSubjects = sf5SubjectColumns;
   const printGrade = (d: LearnerSF5, row: SF9SubjectRow) => rowTerms(d, row)[activeTerm - 1] ?? 0;
-  const printGeneralAverage = (d: LearnerSF5) => d.generalAverage;
+  const currentGeneralAverage = (d: LearnerSF5, termIndex = activeTerm - 1) => d.termGeneralAverages[termIndex] ?? 0;
+  const printGeneralAverage = (d: LearnerSF5) => currentGeneralAverage(d);
   const rankedLearners = [...sf5Data]
     .filter(d => (!d.student.status || d.student.status === 'active') && printGeneralAverage(d) > 0)
     .sort((a,b) => printGeneralAverage(b) - printGeneralAverage(a) || a.student.full_name.localeCompare(b.student.full_name));
@@ -555,7 +561,7 @@ export default function SF5Page() {
         <thead><tr>
           <th style={{width:'4%'}}>#</th><th className="name-cell">LEARNER</th>
           {printSubjects.map(row => <th key={row.key}>{row.label}<br/>T{activeTerm}{showFinalComposite ? ' / FINAL' : ''}</th>)}
-          <th>GEN.<br/>AVE.</th><th>RANK</th>
+          <th>GEN.<br/>AVE. T{activeTerm}</th><th>RANK</th>
         </tr></thead>
         <tbody>
           {(['M','F'] as const).map(sex => {
@@ -566,7 +572,7 @@ export default function SF5Page() {
               {group.map((d, i) => <tr key={d.student.id}>
                 <td>{i + 1}</td><td className="name-cell">{d.student.full_name}</td>
                 {printSubjects.map(row => <td key={row.key}>{printGrade(d, row) || ''}{showFinalComposite ? <><br/><strong>{rowFinal(d, row) || ''}</strong></> : null}</td>)}
-                <td><strong>{printGeneralAverage(d) || ''}</strong></td><td>{rankByStudent.get(d.student.id) || ''}</td>
+                          <td><strong>{printGeneralAverage(d) || ''}</strong></td><td>{rankByStudent.get(d.student.id) || ''}</td>
               </tr>)}
             </React.Fragment>;
           })}
@@ -701,7 +707,7 @@ export default function SF5Page() {
                           </div>
                         </th>
                       ))}
-                      <th className="bg-gray-800 text-center px-2 py-3 border-l border-gray-700 min-w-[60px]">GA</th>
+                      <th className="bg-gray-800 text-center px-2 py-3 border-l border-gray-700 min-w-[60px]">GA T{activeTerm}</th>
                       <th className="bg-gray-800 text-center px-2 py-3 border-l border-gray-700 rounded-tr-xl min-w-[140px]">Status / Action</th>
                     </tr>
                   </thead>
@@ -732,7 +738,7 @@ export default function SF5Page() {
                               </td>
                             );
                           })}
-                          <td className={`text-center py-2 border-l border-gray-800 font-bold text-lg ${d.generalAverage>=75?'text-white':d.generalAverage>0?'text-red-400':'text-gray-600'}`}>{d.generalAverage||''}</td>
+                          <td className={`text-center py-2 border-l border-gray-800 font-bold text-lg ${currentGeneralAverage(d)>=75?'text-white':currentGeneralAverage(d)>0?'text-red-400':'text-gray-600'}`}>{currentGeneralAverage(d)||''}</td>
                           <td className="px-3 py-2 border-l border-gray-800">
                             {d.action==='Promoted' && <span className="flex items-center gap-1 text-emerald-400 text-xs font-semibold"><CheckCircle size={14}/>Promoted{d.generalAverage>=90?' (Honors)':''}</span>}
                             {d.action==='Conditionally Promoted' && <div><span className="flex items-center gap-1 text-amber-400 text-xs font-semibold"><AlertCircle size={14}/>Conditional</span><div className="text-xs text-red-400 mt-0.5">{d.failedSubjects.join(', ')}</div></div>}
@@ -771,7 +777,7 @@ export default function SF5Page() {
                               </td>
                             );
                           })}
-                          <td className={`text-center py-2 border-l border-gray-800 font-bold text-lg ${d.generalAverage>=75?'text-white':d.generalAverage>0?'text-red-400':'text-gray-600'}`}>{d.generalAverage||''}</td>
+                          <td className={`text-center py-2 border-l border-gray-800 font-bold text-lg ${currentGeneralAverage(d)>=75?'text-white':currentGeneralAverage(d)>0?'text-red-400':'text-gray-600'}`}>{currentGeneralAverage(d)||''}</td>
                           <td className="px-3 py-2 border-l border-gray-800">
                             {d.action==='Promoted' && <span className="flex items-center gap-1 text-emerald-400 text-xs font-semibold"><CheckCircle size={14}/>Promoted{d.generalAverage>=90?' (Honors)':''}</span>}
                             {d.action==='Conditionally Promoted' && <div><span className="flex items-center gap-1 text-amber-400 text-xs font-semibold"><AlertCircle size={14}/>Conditional</span><div className="text-xs text-red-400 mt-0.5">{d.failedSubjects.join(', ')}</div></div>}
