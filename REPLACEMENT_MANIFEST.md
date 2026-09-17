@@ -1,18 +1,39 @@
-# TeacherHub Grade-Path Replacement Package
+# TeacherHub Grade-Path and SF5/Principal-Title Replacement Package
 
-Copy each file from this archive into the matching path under the TeacherHub project root, replacing the existing file.
+Copy each source file from this archive into the matching path under the TeacherHub project root, replacing the existing file.
 
 | Archive path | Replace at project-root path | Purpose |
 |---|---|---|
-| `app/sf5/page.tsx` | `app/sf5/page.tsx` | Makes SF5 use SF9-derived active subjects, electives, GMRC/Values source resolution, shared class-record scoring, and the same three-term final-grade rule. |
-| `app/sf9/SectionSF9Settings.tsx` | `app/sf9/SectionSF9Settings.tsx` | Persists the selected GMRC/Values source so SF5 and SF9 use the same setting. |
-| `app/sf9/useSF9Data.ts` | `lib/sf9/useSF9Data.ts` | Makes SF9 use the shared source resolver, shared score helper, shared aliases, and centralized final-grade rule. |
-| `lib/sf9/gradePath.ts` | `lib/sf9/gradePath.ts` | New shared SF9 subject/source/scoring path used by SF5 and SF9. |
-| `app/class-record/page.tsx` | `app/class-record/page.tsx` | Removes GMRC/VE from the regular class-record subject selector. The dedicated GMRC/Values page remains the entry point. |
-| `app/class-record-page.tsx` | `app/class-record-page.tsx` | Removes GMRC/VE from the duplicate legacy selector so it cannot be exposed by an alternate implementation. |
+| `app/sf5/page.tsx` | `app/sf5/page.tsx` | Removes duplicate MAPEH, aligns GA and Status, restores print GA/Rank columns, includes null-status learners in ranking, and keeps SF5 on the SF9-derived subjects/scoring path. |
+| `app/sf9/SectionSF9Settings.tsx` | `app/sf9/SectionSF9Settings.tsx` | Persists the selected GMRC/Values source. |
+| `app/sf9/SF9Card.tsx` | `app/sf9/SF9Card.tsx` | Displays the configured school-head position instead of hardcoded `School Head`. |
+| `app/class-record/page.tsx` | `app/class-record/page.tsx` | Removes GMRC/VE from the regular class-record subject selector. |
+| `app/class-record-page.tsx` | `app/class-record-page.tsx` | Removes GMRC/VE from the duplicate legacy selector. |
+| `app/sections/page.tsx` | `app/sections/page.tsx` | Adds the Position / Title field for the school head/principal. |
+| `context/SectionContext.tsx` | `context/SectionContext.tsx` | Adds the optional title field to section metadata. |
+| `lib/useActiveSection.ts` | `lib/useActiveSection.ts` | Provides a default `Principal` title to active-section consumers. |
+| `lib/sf9/useSF9Data.ts` | `lib/sf9/useSF9Data.ts` | Keeps SF9 source, labels, and final-grade logic on the shared path. |
+| `lib/sf9/gradePath.ts` | `lib/sf9/gradePath.ts` | Shared SF9 subject/source/scoring path used by SF5 and SF9. |
+| `lib/sf9/generateSF9Docx.ts` | `lib/sf9/generateSF9Docx.ts` | Uses the configured title in SF9 DOCX signatures. |
+| `principal_position_migration.sql` | Run in Supabase SQL Editor | Adds `sections.school_head_title` with default `Principal`. |
 
-## Deployment notes
+## Required database step
 
-The archive contains source replacements only. It does not contain database migrations and does not require a database migration for these changes. Existing GMRC/Values rows remain readable by the dedicated `app/gmrc-values-record/page.tsx` page and by SF9 through the configured/automatic source resolver.
+Run `principal_position_migration.sql` once in the Supabase SQL Editor **before saving a new Position / Title value** from the Sections page. Existing sections default to `Principal`.
 
-After copying the files, restart the application and verify one section with a learner who has values in all three terms. Compare the class record, SF5, SF9, and exports. If the section setting is blank, both SF5 and SF9 now follow SF9's automatic rule: `GMRC (Elem)` for Grades 2–6 and `Values Education (JHS)` for Grades 7–10.
+## How to configure
+
+Open the Sections page, edit a section, and enter one of the following, or any school-approved title:
+
+- `Principal`
+- `Principal I`
+- `Principal II`
+- `Principal III`
+- `Principal IV`
+- `School Head`
+
+The name remains in the School Head / Principal Name field. The title is stored separately and is rendered below the name in the SF9 card and SF9 DOCX output.
+
+## SF5 correction details
+
+SF5 now has exactly one MAPEH column. The GA and Status columns are positioned after the dynamic SF9 subject columns. The print preview has exactly one GA column and one Rank column after the subject columns. Ranking includes learners whose legacy status is blank/null but otherwise treats them as active.

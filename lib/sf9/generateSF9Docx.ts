@@ -218,6 +218,7 @@ export interface SF9DocxParams {
 }
 
 export async function buildSF9Docx({ data, section, frontPage, continuationPage, gaKeys }: SF9DocxParams): Promise<Blob> {
+  const schoolHeadTitle = (section?.school_head_title ?? 'Principal').trim() || 'Principal';
   const nameParts = data.student.full_name.split(',').map(s=>s.trim());
   const lastName = nameParts[0] ?? '';
   const firstMiddle = nameParts.slice(1).join(', ');
@@ -255,7 +256,7 @@ export async function buildSF9Docx({ data, section, frontPage, continuationPage,
     new Table({
       width:{size:LEFT_W,type:WidthType.DXA}, columnWidths:[LEFT_W/2, LEFT_W/2],
       rows: [ new TableRow({ children: [
-        cell([p('School Head',{align:AlignmentType.CENTER,size:12})], { borders:{...NO_BORDERS, top:THIN_BORDER}, width:{size:LEFT_W/2,type:WidthType.DXA} }),
+        cell([p(schoolHeadTitle,{align:AlignmentType.CENTER,size:12})], { borders:{...NO_BORDERS, top:THIN_BORDER}, width:{size:LEFT_W/2,type:WidthType.DXA} }),
         cell([p((section?.adviser??'').toUpperCase()||'Adviser',{align:AlignmentType.CENTER,size:12})], { borders:{...NO_BORDERS, top:THIN_BORDER}, width:{size:LEFT_W/2,type:WidthType.DXA} }),
       ]})],
     }),
@@ -287,7 +288,7 @@ export async function buildSF9Docx({ data, section, frontPage, continuationPage,
     buildSignatureLines(RIGHT_W, 'Adviser'),
     p('Cancellation of Eligibility to Transfer', { align: AlignmentType.CENTER, bold: true, size: 12 }),
     p('This learner is no longer eligible for transfer because of the following reason: ________________________________', { size: 10 }),
-    buildSignatureLines(RIGHT_W, 'School Head'),
+    buildSignatureLines(RIGHT_W, schoolHeadTitle),
   ];
 
   const outerTable = new Table({

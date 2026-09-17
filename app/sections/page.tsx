@@ -29,6 +29,7 @@ const BLANK: Partial<Section> = {
   region:      'Region XI',
   adviser:     '',
   school_head: '',
+  school_head_title: 'Principal',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -946,6 +947,7 @@ function CreateManualModal({
       region:       form.region,
       adviser:      form.adviser,
       school_head:  form.school_head,
+      school_head_title: form.school_head_title || 'Principal',
       district:     form.district,
     }).select().single();
 
@@ -971,6 +973,8 @@ function CreateManualModal({
             { label:'Division',       key:'division',    ph:'Davao City' },
             { label:'Region',         key:'region',      ph:'Region XI' },
             { label:'Adviser',        key:'adviser',     ph:'Your full name' },
+            { label:'School Head Name', key:'school_head', ph:"Principal's full name" },
+            { label:'Position / Title', key:'school_head_title', ph:'Principal, Principal I, Principal II, etc.' },
           ].map(f => (
             <div key={f.key}>
               <label className="block text-sm text-gray-400 mb-1">{f.label}</label>
@@ -1010,6 +1014,7 @@ function EditSectionModal({
     district:    section.district ?? '',
     adviser:     section.adviser,
     school_head: section.school_head ?? '',
+    school_head_title: section.school_head_title ?? 'Principal',
   });
   const [saving, setSaving] = useState(false);
 
@@ -1048,6 +1053,7 @@ function EditSectionModal({
             { label: 'Region',                  key: 'region',      ph: 'e.g. Region XI' },
             { label: 'Adviser Name',            key: 'adviser',     ph: 'Your full name' },
             { label: 'School Head / Principal', key: 'school_head', ph: "Principal's full name" },
+            { label: 'Position / Title',        key: 'school_head_title', ph: 'Principal, Principal I, Principal II, etc.' },
           ].map(f => (
             <div key={f.key}>
               <label className="block text-sm text-gray-400 mb-1">{f.label}</label>

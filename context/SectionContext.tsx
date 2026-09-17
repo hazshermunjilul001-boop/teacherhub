@@ -19,6 +19,7 @@ export interface Section {
   region: string;
   adviser: string;
   school_head?: string;
+  school_head_title?: string;
   student_count?: number;
   created_at?: string;
   // Extra fields for shared sections

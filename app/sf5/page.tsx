@@ -543,7 +543,7 @@ export default function SF5Page() {
   const printGrade = (d: LearnerSF5, row: SF9SubjectRow) => rowTerms(d, row)[activeTerm - 1] ?? 0;
   const printGeneralAverage = (d: LearnerSF5) => d.generalAverage;
   const rankedLearners = [...sf5Data]
-    .filter(d => d.student.status === 'active' && printGeneralAverage(d) > 0)
+    .filter(d => (!d.student.status || d.student.status === 'active') && printGeneralAverage(d) > 0)
     .sort((a,b) => printGeneralAverage(b) - printGeneralAverage(a) || a.student.full_name.localeCompare(b.student.full_name));
   const rankByStudent = new Map(rankedLearners.map((d, i) => [d.student.id, i + 1]));
 
@@ -555,7 +555,7 @@ export default function SF5Page() {
         <thead><tr>
           <th style={{width:'4%'}}>#</th><th className="name-cell">LEARNER</th>
           {printSubjects.map(row => <th key={row.key}>{row.label}<br/>T{activeTerm}{showFinalComposite ? ' / FINAL' : ''}</th>)}
-          <th>MAPEH<br/>T{activeTerm}{showFinalComposite ? ' / FINAL' : ''}</th><th>GEN.<br/>AVE.</th><th>RANK</th>
+          <th>GEN.<br/>AVE.</th><th>RANK</th>
         </tr></thead>
         <tbody>
           {(['M','F'] as const).map(sex => {
@@ -701,7 +701,6 @@ export default function SF5Page() {
                           </div>
                         </th>
                       ))}
-                      <th className="bg-gray-800 text-center px-2 py-3 border-l border-gray-700 min-w-[60px] text-xs">MAPEH</th>
                       <th className="bg-gray-800 text-center px-2 py-3 border-l border-gray-700 min-w-[60px]">GA</th>
                       <th className="bg-gray-800 text-center px-2 py-3 border-l border-gray-700 rounded-tr-xl min-w-[140px]">Status / Action</th>
                     </tr>

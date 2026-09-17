@@ -82,6 +82,7 @@ function ElementarySF9Card({ data, section, frontPage }: SF9CardProps) {
   const middleName = (data.student.middle_name ?? parts[2] ?? '').trim();
   const age = calcAge(data.student.birthdate);
   const schoolHead = (section?.school_head ?? '').toUpperCase();
+  const schoolHeadTitle = (section?.school_head_title ?? 'Principal').trim() || 'Principal';
   const adviser = (section?.adviser ?? '').toUpperCase();
   const border: CSSProperties = { border: '1px solid black' };
   const td: CSSProperties = { ...border, padding: '6px 5px', fontSize: '7pt', verticalAlign: 'middle', lineHeight: '1.3' };
@@ -115,7 +116,7 @@ function ElementarySF9Card({ data, section, frontPage }: SF9CardProps) {
           </div>
           <div style={{fontSize:'7pt',marginBottom:'2mm'}}>Track (SHS only): <span style={{display:'inline-block',width:'45%',borderBottom:'1px solid black'}}></span></div>
           <div style={{fontSize:'6.8pt',lineHeight:'1.2',marginBottom:'3mm'}}>Dear Parents,<br/><span style={{paddingLeft:'13mm'}}>This Performance Report presents your child&apos;s progress and achievement in the different learning areas.</span><br/><span style={{paddingLeft:'13mm'}}>The school welcomes you to reach out should you wish to know more about your child&apos;s learning and performance.</span></div>
-          <div style={{display:'flex',gap:'8mm',marginBottom:'4mm'}}><div style={{flex:1,textAlign:'center'}}><b style={{fontSize:'7.5pt'}}>{schoolHead || '\u00a0'}</b><div style={{borderTop:'1px solid black',marginTop:'1px'}}></div><i style={{fontSize:'7pt'}}>School Head</i></div><div style={{flex:1,textAlign:'center'}}><b style={{fontSize:'7.5pt'}}>{adviser || '\u00a0'}</b><div style={{borderTop:'1px solid black',marginTop:'1px'}}></div><i style={{fontSize:'7pt'}}>Adviser</i></div></div>
+          <div style={{display:'flex',gap:'8mm',marginBottom:'4mm'}}><div style={{flex:1,textAlign:'center'}}><b style={{fontSize:'7.5pt'}}>{schoolHead || '\u00a0'}</b><div style={{borderTop:'1px solid black',marginTop:'1px'}}></div><i style={{fontSize:'7pt'}}>{schoolHeadTitle}</i></div><div style={{flex:1,textAlign:'center'}}><b style={{fontSize:'7.5pt'}}>{adviser || '\u00a0'}</b><div style={{borderTop:'1px solid black',marginTop:'1px'}}></div><i style={{fontSize:'7pt'}}>Adviser</i></div></div>
           <div style={{fontWeight:'bold',textAlign:'center',fontSize:'7.5pt',marginBottom:'1mm'}}>LEARNING PROGRESS AND ACHIEVEMENT</div>
           <table style={{width:'100%',borderCollapse:'collapse',fontSize:'7pt'}}><thead><tr style={{background:'#f3f4f6'}}><th style={{...td,textAlign:'left',width:'37%'}}>Learning Areas</th><th style={{...center}} colSpan={3}>TERM</th><th style={center}>Final<br/>Grade</th><th style={center}>Remarks</th></tr><tr style={{background:'#f3f4f6'}}><th style={td}></th><th style={center}>T1</th><th style={center}>T2</th><th style={center}>T3</th><th style={center}></th><th style={center}></th></tr></thead><tbody>{rows.map(row => { const cells=data.grades[row.key] ?? []; const final=data.finalGrades[row.key] ?? 0; return <tr key={row.key}><td style={td}>{row.label}</td>{[0,1,2].map(i=>gradeCell(cells[i]?.value ?? 0,i))}<td style={{...center,fontWeight:'bold'}}>{final||''}</td><td style={{...center,fontSize:'6.5pt'}}>{final ? (final < 75 ? 'Failed' : 'Passed') : ''}</td></tr>; })}<tr style={{background:'#f0fdf4'}}><td colSpan={4} style={{...td,textAlign:'right',fontWeight:'bold'}}>General Average</td><td style={{...center,fontWeight:'bold'}}>{data.genAverage||''}</td><td style={center}>{data.promotionRemark?.toUpperCase() ?? ''}</td></tr></tbody></table>
           <div style={{marginTop:'10mm',fontSize:'6.5pt'}}><b>PERFORMANCE DESCRIPTORS</b><table style={{width:'100%',borderCollapse:'collapse',marginTop:'1mm'}}><tbody>{DESCRIPTOR_LEGEND.map(([d,s,r])=><tr key={d}><td style={{padding:'1px'}}>{s}</td><td style={{padding:'1px'}}>{d}</td><td style={{padding:'1px'}}>{r}</td></tr>)}</tbody></table></div>
@@ -125,7 +126,7 @@ function ElementarySF9Card({ data, section, frontPage }: SF9CardProps) {
           <table style={{width:'100%',borderCollapse:'collapse',fontSize:'6pt',marginBottom:'6mm'}}><thead><tr><td style={td}></td>{months.map(m=><td key={m} style={{...center,fontWeight:'bold'}}>{m}</td>)}<td style={{...center,fontWeight:'bold'}}>Total</td></tr></thead><tbody>{(['days','present','absent'] as const).map(key=><tr key={key}><td style={{...td,whiteSpace:'nowrap'}}>{key==='days'?'No. of Class Days':key==='present'?'No. of Days Present':'No. of Days Absent'}</td>{data.attendance.map((a,i)=><td key={i} style={center}>{a[key]||''}</td>)}<td style={{...center,fontWeight:'bold'}}>{total(key)||''}</td></tr>)}</tbody></table>
           <div style={{fontWeight:'bold',fontSize:'8pt',marginBottom:'2mm'}}>TEACHER&apos;S COMMENTS / REMARKS</div><div style={{display:'flex',flexDirection:'column',gap:'2mm',marginBottom:'4mm'}}>{['Term 1','Term 2','Term 3'].map((t, index)=><div key={t} style={{border:'1px solid black',height:'13mm',padding:'2px 4px',boxSizing:'border-box',whiteSpace:'pre-wrap'}}><b style={{fontSize:'7.5pt'}}>{t}</b>{data.comments?.[String(index + 1)] && <div style={{fontSize:'7pt',marginTop:'1mm'}}>{data.comments[String(index + 1)]}</div>}</div>)}</div>
           <div style={{fontWeight:'bold',textAlign:'center',fontSize:'8pt',margin:'4mm 0 3mm'}}>PARENT/S GUARDIAN&apos;S SIGNATURE</div>{['Term 1','Term 2','Term 3'].map(t=><div key={t} style={{display:'flex',gap:'2mm',alignItems:'flex-end',marginBottom:'3mm'}}><span style={{fontSize:'7.5pt',minWidth:'50px'}}>{t}</span><div style={{flex:1,borderBottom:'1px solid black'}}></div></div>)}
-          <div style={{borderTop:'1px solid #ccc',paddingTop:'3mm',marginTop:'2mm',fontSize:'7pt'}}><div style={{fontWeight:'bold',textAlign:'center',fontSize:'8pt',marginBottom:'2mm'}}>CERTIFICATE OF TRANSFER</div><p>This is to certify that the above-named learner has satisfactorily completed the requirements for the grade level indicated.</p><div style={{marginBottom:'2mm'}}>Admitted to Grade: ______________</div><div style={{marginBottom:'3mm'}}>Eligible for Admission to Grade: ______________</div><div style={{display:'flex',gap:'2mm',alignItems:'flex-end',marginBottom:'3mm'}}>Approved:<div style={{flex:1,borderBottom:'1px solid black',textAlign:'center',paddingBottom:'1mm'}}>Adviser</div></div><div style={{width:'55%',borderBottom:'1px solid black',paddingBottom:'1mm',textAlign:'center'}}>School Head</div><div style={{fontWeight:'bold',textAlign:'center',margin:'3mm 0 2mm'}}>CANCELLATION OF ELIGIBILITY TO TRANSFER</div><div style={{display:'flex',gap:'2mm',marginBottom:'3mm'}}>Admitted in:<div style={{flex:1,borderBottom:'1px solid black'}}></div>Date:<div style={{width:'20mm',borderBottom:'1px solid black'}}></div></div><div style={{width:'55%',borderBottom:'1px solid black',paddingBottom:'1mm',textAlign:'center'}}>School Head</div></div>
+          <div style={{borderTop:'1px solid #ccc',paddingTop:'3mm',marginTop:'2mm',fontSize:'7pt'}}><div style={{fontWeight:'bold',textAlign:'center',fontSize:'8pt',marginBottom:'2mm'}}>CERTIFICATE OF TRANSFER</div><p>This is to certify that the above-named learner has satisfactorily completed the requirements for the grade level indicated.</p><div style={{marginBottom:'2mm'}}>Admitted to Grade: ______________</div><div style={{marginBottom:'3mm'}}>Eligible for Admission to Grade: ______________</div><div style={{display:'flex',gap:'2mm',alignItems:'flex-end',marginBottom:'3mm'}}>Approved:<div style={{flex:1,borderBottom:'1px solid black',textAlign:'center',paddingBottom:'1mm'}}>Adviser</div></div><div style={{width:'55%',borderBottom:'1px solid black',paddingBottom:'1mm',textAlign:'center'}}>{schoolHeadTitle}</div><div style={{fontWeight:'bold',textAlign:'center',margin:'3mm 0 2mm'}}>CANCELLATION OF ELIGIBILITY TO TRANSFER</div><div style={{display:'flex',gap:'2mm',marginBottom:'3mm'}}>Admitted in:<div style={{flex:1,borderBottom:'1px solid black'}}></div>Date:<div style={{width:'20mm',borderBottom:'1px solid black'}}></div></div><div style={{width:'55%',borderBottom:'1px solid black',paddingBottom:'1mm',textAlign:'center'}}>{schoolHeadTitle}</div></div>
         </div>
       </div>
     </div>
@@ -148,6 +149,7 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
     : (afterTokens.length > 1 ? afterTokens.slice(0, -1).join(' ') : afterComma);
   const studentAge  = calcAge(data.student.birthdate);
   const schoolHead  = (section?.school_head ?? '').toUpperCase();
+  const schoolHeadTitle = (section?.school_head_title ?? 'Principal').trim() || 'Principal';
   const adviserName = (section?.adviser     ?? '').toUpperCase();
 
   const HALF_W = '138mm';
@@ -351,7 +353,7 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
           </div>
 
           <div style={{display:'flex', justifyContent:'space-between', gap:'4mm', marginBottom:'1mm'}}>
-            <SigLine name={schoolHead} title="School Head" marginTop="1mm"/>
+            <SigLine name={schoolHead} title={schoolHeadTitle} marginTop="1mm"/>
             <SigLine name={adviserName} title="Adviser" marginTop="1mm"/>
           </div>
 
@@ -466,7 +468,7 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
             </div>
             <div style={{width:'55%'}}>
               <div style={{borderBottom:'1px solid black', minHeight:'3mm'}}></div>
-              <div style={{textAlign:'center', fontStyle:'italic', fontSize:'7pt', marginTop:'1px'}}>School Head</div>
+              <div style={{textAlign:'center', fontStyle:'italic', fontSize:'7pt', marginTop:'1px'}}>{schoolHeadTitle}</div>
             </div>
 
             <div style={{fontWeight:'bold', textAlign:'center', margin:'3.5mm 0 2mm', fontSize:'8pt'}}>
@@ -480,7 +482,7 @@ export default function SF9Card({ data, section, frontPage, continuationPage }: 
             </div>
             <div style={{width:'55%'}}>
               <div style={{borderBottom:'1px solid black', minHeight:'3mm'}}></div>
-              <div style={{textAlign:'center', fontStyle:'italic', fontSize:'7pt', marginTop:'1px'}}>School Head</div>
+              <div style={{textAlign:'center', fontStyle:'italic', fontSize:'7pt', marginTop:'1px'}}>{schoolHeadTitle}</div>
             </div>
           </div>
         </div>

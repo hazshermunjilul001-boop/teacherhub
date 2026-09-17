@@ -22,6 +22,7 @@ export function useActiveSection() {
     schoolYear:  activeSection?.school_year ?? '2026 - 2027',
     adviser:     activeSection?.adviser     ?? '',
     schoolHead:  activeSection?.school_head  ?? '',
+    schoolHeadTitle: activeSection?.school_head_title ?? 'Principal',
     district:    activeSection?.district     ?? '',
 
     // Meta
