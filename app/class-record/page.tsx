@@ -100,7 +100,7 @@ const subjectStorageKeys = (subject: string) => [
 
 const SUBJECTS_JHS = [
   'Filipino', 'English', 'Mathematics', 'Science',
-  'Araling Panlipunan (AP)', 'GMRC/VE',
+  'Araling Panlipunan (AP)',
   'EPP/TLE',
   'MAPEH - Music & Arts', 'MAPEH - PE & Health',
   // Special Curricular Program subjects — each shares the assessment-component

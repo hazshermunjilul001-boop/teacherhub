@@ -5,43 +5,11 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, Printer, RefreshCw, Download, CheckCircle, XCircle, AlertCircle, UserX, ArrowRightLeft, UserPlus, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useActiveSection } from '../../lib/useActiveSection';
-import { computeFromClassRecord } from '../../lib/sf9/sf9ClassRecordScoring';
+import { finalGradeFromTerms, gradeFromClassRecord, isGMRCValuesRowKey, sf9RowsForSection, subjectStorageKeys } from '../../lib/sf9/gradePath';
+import type { SF9SubjectRow, SHSTrack } from '../../lib/sf9/sf9GradeBands';
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
-const SF5_SUBJECTS = [
-  'Filipino', 'English', 'Mathematics', 'Science',
-  'Araling Panlipunan (AP)', 'Edukasyon sa Pagpapakatao (EsP)',
-  'EPP/TLE',
-  'MAPEH - Music & Arts', 'MAPEH - PE & Health',
-];
 const MAPEH_COMPONENTS = ['MAPEH - Music & Arts', 'MAPEH - PE & Health'];
-const SEPARATE_GMRC_SUBJECTS = ['GMRC (Elem)', 'Values Education (JHS)'] as const;
-
-const TRANSMUTATION = [
-  {min:99.50,max:100,trans:100},{min:97.50,max:99.49,trans:99},{min:96.00,max:97.49,trans:98},
-  {min:95.00,max:95.99,trans:97},{min:94.00,max:94.99,trans:96},{min:93.00,max:93.99,trans:95},
-  {min:92.00,max:92.99,trans:94},{min:91.00,max:91.99,trans:93},{min:90.00,max:90.99,trans:92},
-  {min:89.00,max:89.99,trans:91},{min:88.00,max:88.99,trans:90},{min:87.00,max:87.99,trans:89},
-  {min:86.00,max:86.99,trans:88},{min:85.00,max:85.99,trans:87},{min:84.00,max:84.99,trans:86},
-  {min:83.00,max:83.99,trans:85},{min:82.00,max:82.99,trans:84},{min:81.00,max:81.99,trans:83},
-  {min:80.00,max:80.99,trans:82},{min:79.00,max:79.99,trans:81},{min:78.00,max:78.99,trans:80},
-  {min:77.00,max:77.99,trans:79},{min:76.00,max:76.99,trans:78},{min:75.00,max:75.99,trans:77},
-  {min:73.00,max:74.99,trans:76},{min:70.00,max:72.99,trans:75},{min:68.00,max:69.99,trans:74},
-  {min:66.00,max:67.99,trans:73},{min:64.00,max:65.99,trans:72},{min:62.00,max:63.99,trans:71},
-  {min:60.00,max:61.99,trans:70},{min:58.00,max:59.99,trans:69},{min:56.00,max:57.99,trans:68},
-  {min:54.00,max:55.99,trans:67},{min:52.00,max:53.99,trans:66},{min:50.00,max:51.99,trans:65},
-  {min:48.00,max:49.99,trans:64},{min:46.00,max:47.99,trans:63},{min:43.00,max:45.99,trans:62},
-  {min:40.00,max:42.99,trans:61},{min:0,max:39.99,trans:60},
-];
-const transmute = (v:number) => TRANSMUTATION.find(t=>v>=t.min&&v<=t.max)?.trans ?? 60;
-const descriptor = (g:number) => {
-  if(g>=90) return 'Outstanding';
-  if(g>=85) return 'Very Satisfactory';
-  if(g>=80) return 'Satisfactory';
-  if(g>=75) return 'Fairly Satisfactory';
-  return 'Did Not Meet Expectations';
-};
-
 // ── STATUS ────────────────────────────────────────────────────────────────────
 type StudentStatus = 'active'|'dropped'|'transferred_out'|'transferred_in';
 
@@ -147,44 +115,6 @@ interface LearnerSF5 {
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
-function calcAvgScores(scores:number[], highs:number[]): number {
-  let tot=0, cnt=0;
-  scores.forEach((s,i)=>{ if(highs[i]>0&&s>0){tot+=(s/highs[i])*100;cnt++;} });
-  return cnt>0?tot/cnt:0;
-}
-
-function computeTransmutedFromGrade(row:any): number {
-  const WEIGHTS: Record<string,{ww:number;pt:number;ta:number}> = {
-    'Filipino':{ww:0.25,pt:0.50,ta:0.25},'English':{ww:0.25,pt:0.50,ta:0.25},
-    'Mathematics':{ww:0.25,pt:0.50,ta:0.25},'Science':{ww:0.25,pt:0.50,ta:0.25},
-    'Araling Panlipunan (AP)':{ww:0.25,pt:0.50,ta:0.25},
-    'Edukasyon sa Pagpapakatao (EsP)':{ww:0.25,pt:0.50,ta:0.25},
-    'EPP/TLE':{ww:0.20,pt:0.60,ta:0.20},
-    'MAPEH - Music & Arts':{ww:0.20,pt:0.60,ta:0.20},
-    'MAPEH - PE & Health':{ww:0.20,pt:0.60,ta:0.20},
-  };
-  const w = WEIGHTS[row.subject] ?? {ww:0.25,pt:0.50,ta:0.25};
-  const ww = Array.from({length:5},(_,i)=>row.written_scores?.[i]??0);
-  const pt = Array.from({length:3},(_,i)=>row.pt_scores?.[i]??0);
-  const st = Array.from({length:2},(_,i)=>row.st_scores?.[i]??0);
-  const hww = row.highest_ww??[100,100,100,100,100];
-  const hpt = row.highest_pt??[100,100,100];
-  const hst = row.highest_st??[50,50];
-  const hte = row.highest_te??100;
-  const hasWW=ww.some(v=>v>0), hasPT=pt.some(v=>v>0), hasST=st.some(v=>v>0)||row.te_score>0;
-  if(!hasWW&&!hasPT&&!hasST) return 0;
-  const avgWW=calcAvgScores(ww,hww);
-  const avgPT=calcAvgScores(pt,hpt);
-  const avgTA=calcAvgScores([...st,row.te_score??0],[...hst,hte]);
-  const activeComponents: {avg:number;weight:number}[] = [];
-  if(hasWW) activeComponents.push({avg:avgWW,weight:w.ww});
-  if(hasPT) activeComponents.push({avg:avgPT,weight:w.pt});
-  if(hasST) activeComponents.push({avg:avgTA,weight:w.ta});
-  const totalWeight=activeComponents.reduce((s,c)=>s+c.weight,0);
-  const initial=totalWeight>0?activeComponents.reduce((s,c)=>s+(c.avg*(c.weight/totalWeight)),0):0;
-  return initial>0?transmute(initial):0;
-}
-
 function determineAction(student: Student, failedSubjects: string[]): LearnerSF5['action'] {
   if (student.status === 'dropped')         return 'Dropped';
   if (student.status === 'transferred_out') return 'Transferred Out';
@@ -194,9 +124,17 @@ function determineAction(student: Student, failedSubjects: string[]): LearnerSF5
   return 'Retained';
 }
 
+function rowTermsFromLeaf(row: SF9SubjectRow, termGrades: Record<string, number[]>): number[] {
+  if (!row.isComputed || !row.subRows?.length) return termGrades[row.key] ?? [0,0,0];
+  return [0,1,2].map(i => {
+    const values = row.subRows!.map(sub => termGrades[sub.key]?.[i] ?? 0).filter(v => v > 0);
+    return values.length ? Math.round(values.reduce((a,b)=>a+b,0) / values.length) : 0;
+  });
+}
+
 // ── MAIN PAGE ─────────────────────────────────────────────────────────────────
 export default function SF5Page() {
-  const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear, division, region, adviser, schoolHead, district } = useActiveSection();
+  const { sectionId, sectionName, gradeLevel, schoolName, schoolId, schoolYear, division, region, adviser, schoolHead, district, activeSection } = useActiveSection();
   const numericGradeLevel = Number(gradeLevel.match(/\d+/)?.[0]) || 0;
 
   const [students,    setStudents]    = useState<Student[]>([]);
@@ -207,11 +145,20 @@ export default function SF5Page() {
   const [gmrcSource, setGmrcSource] = useState('');
   const [activeTerm, setActiveTerm] = useState<1|2|3>(1);
   const [showFinalComposite, setShowFinalComposite] = useState(false);
-
-  // A blank source means the ordinary EsP class-record subject.
-  const separateGmrcSource = gmrcSource === 'GMRC (Elem)' || gmrcSource === 'Values Education (JHS)' ? gmrcSource : '';
-  const displayGmrcLabel = separateGmrcSource === 'GMRC (Elem)'
-    ? 'GMRC' : separateGmrcSource === 'Values Education (JHS)' ? 'Values Education' : 'EsP';
+  const [sf9Rows, setSf9Rows] = useState<SF9SubjectRow[]>([]);
+  const [sf9GaKeys, setSf9GaKeys] = useState<string[]>([]);
+  const sf5SubjectColumns = sf9Rows;
+  const rowTerms = (d: LearnerSF5, row: SF9SubjectRow): number[] => {
+    if (row.isComputed && row.subRows?.length) {
+      return [0,1,2].map(i => {
+        const values = row.subRows!.map(sub => d.termGrades[sub.key]?.[i] ?? 0).filter(v => v > 0);
+        return values.length ? Math.round(values.reduce((a,b)=>a+b,0) / values.length) : 0;
+      });
+    }
+    const values = d.termGrades[row.key] ?? [0,0,0];
+    return values;
+  };
+  const rowFinal = (d: LearnerSF5, row: SF9SubjectRow) => finalGradeFromTerms(rowTerms(d, row));
 
   // ── Load data ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -226,54 +173,64 @@ export default function SF5Page() {
       });
       setStudents(studentList);
 
+      const { data: sectionMeta } = await supabase.from('sections')
+        .select('gmrc_ve_source, shs_track, elective_subjects').eq('id', sectionId).maybeSingle();
+      const selectedSource = sectionMeta?.gmrc_ve_source ?? '';
+      setGmrcSource(selectedSource);
+      const path = sf9RowsForSection(
+        numericGradeLevel,
+        (sectionMeta?.shs_track as SHSTrack | null) ?? null,
+        sectionMeta?.elective_subjects ?? [],
+        selectedSource,
+      );
+      setSf9Rows(path.rows);
+      setSf9GaKeys(path.gaKeys);
+      const leafRows = path.leafRows;
+      const gradeStorageKeys = Array.from(new Set(
+        leafRows.flatMap(row => {
+          const source = isGMRCValuesRowKey(row.key) ? path.gradeSource.key : row.key;
+          return subjectStorageKeys(source);
+        })
+      ));
       const studentIds = studentList.map(s => s.id);
-      const { data: sectionMeta } = await supabase.from('sections').select('gmrc_ve_source').eq('id', sectionId).maybeSingle();
-      const storedGmrcSource = sectionMeta?.gmrc_ve_source ?? '';
-      setGmrcSource(storedGmrcSource);
-      const resolvedGmrcSource = storedGmrcSource === 'GMRC (Elem)' || storedGmrcSource === 'Values Education (JHS)'
-        ? storedGmrcSource : '';
-      const allSubjects = Array.from(new Set([...SF5_SUBJECTS, ...(resolvedGmrcSource ? [resolvedGmrcSource] : [])]));
-      const { data: gradesRaw } = await supabase
-        .from('grades').select('*')
-        .in('subject', allSubjects)
+      const { data: gradesRaw } = await supabase.from('grades').select('*')
+        .in('subject', gradeStorageKeys.length ? gradeStorageKeys : ['none'])
         .in('term', [1,2,3])
         .in('student_id', studentIds.length > 0 ? studentIds : ['none']);
 
       const result: LearnerSF5[] = studentList.map(student => {
         const termGrades: Record<string, number[]> = {};
-        const finalGrades: Record<string, number>  = {};
-
-        allSubjects.forEach(subj => {
-          if (resolvedGmrcSource && subj === resolvedGmrcSource) return;
-          const sourceSubject = subj === 'Edukasyon sa Pagpapakatao (EsP)' && resolvedGmrcSource ? resolvedGmrcSource : subj;
-          const findRow = (term:number) => gradesRaw?.find(g => g.student_id===student.id && g.subject===sourceSubject && g.term===term);
-          const t1row = findRow(1), t2row = findRow(2), t3row = findRow(3);
-          const compute = (row:any) => row ? (sourceSubject === resolvedGmrcSource
-            ? computeFromClassRecord({...row, subject: sourceSubject}, sourceSubject)
-            : computeTransmutedFromGrade({...row,subject:subj})) : 0;
-          const t1 = compute(t1row), t2 = compute(t2row), t3 = compute(t3row);
-          termGrades[subj] = [t1, t2, t3];
-          const recorded = [t1,t2,t3].filter(v=>v>0);
-          finalGrades[subj] = recorded.length>0 ? Math.round(recorded.reduce((a,b)=>a+b,0)/recorded.length) : 0;
+        const finalGrades: Record<string, number> = {};
+        leafRows.forEach(row => {
+          const sourceSubject = isGMRCValuesRowKey(row.key) ? path.gradeSource.key : row.key;
+          const values = [1,2,3].map(term => {
+            const rowData = gradesRaw?.find(g => g.student_id === student.id && subjectStorageKeys(sourceSubject).includes(g.subject) && g.term === term);
+            return rowData ? gradeFromClassRecord(rowData, row.key) : 0;
+          });
+          termGrades[row.key] = values;
+          finalGrades[row.key] = finalGradeFromTerms(values);
         });
-
-        const mapehTerms = [0,1,2].map(termIndex => {
-          const values = MAPEH_COMPONENTS.map(c => termGrades[c]?.[termIndex] ?? 0).filter(v => v > 0);
+        const computedFinals: Record<string, number> = {};
+        const computedTerms: Record<string, number[]> = {};
+        path.rows.filter(row => row.isComputed).forEach(row => {
+          const values = rowTermsFromLeaf(row, termGrades);
+          computedTerms[row.key] = values;
+          computedFinals[row.key] = finalGradeFromTerms(values);
+        });
+        const gaValues = sf9GaKeys.map(key => computedFinals[key] ?? finalGrades[key] ?? 0);
+        const generalAverage = gaValues.length > 0 && gaValues.every(v => v > 0)
+          ? Math.round(gaValues.reduce((a,b)=>a+b,0) / gaValues.length) : 0;
+        const failedSubjects = sf9GaKeys.filter(key => {
+          const value = computedFinals[key] ?? finalGrades[key] ?? 0;
+          return value > 0 && value < 75;
+        }).map(key => path.rows.find(row => row.key === key)?.label ?? key);
+        const mapehTerms = computedTerms['MAPEH'] ?? MAPEH_COMPONENTS.map(() => 0).map((_,i) => {
+          const values = MAPEH_COMPONENTS.map(key => termGrades[key]?.[i] ?? 0).filter(v => v > 0);
           return values.length ? Math.round(values.reduce((a,b)=>a+b,0) / values.length) : 0;
         });
-        const mapehScores = MAPEH_COMPONENTS.map(c => finalGrades[c]).filter(v=>v>0);
-        const mapehFinal  = mapehScores.length>0 ? Math.round(mapehScores.reduce((a,b)=>a+b,0)/mapehScores.length) : 0;
-
-        const gaSubjects = ['Filipino','English','Mathematics','Science','Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)','EPP/TLE'];
-        const gaScores = [...gaSubjects.map(s=>finalGrades[s]), mapehFinal].filter(v=>v>0);
-        const generalAverage = gaScores.length>0 ? Math.round(gaScores.reduce((a,b)=>a+b,0)/gaScores.length) : 0;
-
-        const failedSubjects = gaSubjects.filter(s => finalGrades[s]>0 && finalGrades[s]<75);
-        if (mapehFinal>0 && mapehFinal<75) failedSubjects.push('MAPEH');
-
-        return { student, termGrades, finalGrades, mapehFinal, mapehTerms, generalAverage, failedSubjects, action: determineAction(student, failedSubjects) };
+        const mapehFinal = computedFinals['MAPEH'] ?? finalGradeFromTerms(mapehTerms);
+        return { student, termGrades, finalGrades: { ...finalGrades, ...computedFinals }, mapehFinal, mapehTerms, generalAverage, failedSubjects, action: determineAction(student, failedSubjects) };
       });
-
       setSF5Data(result);
       setLoading(false);
     })();
@@ -283,14 +240,8 @@ export default function SF5Page() {
   const exportCSV = () => {
     const headers = [
       'LRN','Last Name','First Name','Middle Name','Sex','Status',
-      'Filipino T1','Filipino T2','Filipino T3','Filipino Final',
-      'English T1','English T2','English T3','English Final',
-      'Mathematics T1','Mathematics T2','Mathematics T3','Mathematics Final',
-      'Science T1','Science T2','Science T3','Science Final',
-      'AP T1','AP T2','AP T3','AP Final',
-      'EsP T1','EsP T2','EsP T3','EsP Final',
-      'EPP/TLE T1','EPP/TLE T2','EPP/TLE T3','EPP/TLE Final',
-      'MAPEH Final','General Average','Action','Notes',
+      ...sf5SubjectColumns.flatMap(row => [`${row.label} T1`, `${row.label} T2`, `${row.label} T3`, `${row.label} Final`]),
+      'General Average','Action','Notes',
     ];
     const rows = sf5Data.map(d => {
       const nameParts = d.student.full_name.split(',').map(s=>s.trim());
@@ -300,11 +251,12 @@ export default function SF5Page() {
       const midName   = firstMid.length>1 ? firstMid[firstMid.length-1] : '';
       const isInactive = d.student.status && d.student.status !== 'active';
       const row = [d.student.lrn, lastName, firstName, midName, d.student.sex==='M'?'Male':'Female', d.student.status ?? 'active'];
-      ['Filipino','English','Mathematics','Science','Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)','EPP/TLE'].forEach(subj => {
-        const [t1,t2,t3] = d.termGrades[subj] ?? [0,0,0];
-        row.push(t1?String(t1):'', t2?String(t2):'', t3?String(t3):'', d.finalGrades[subj]?String(d.finalGrades[subj]):'');
+      sf5SubjectColumns.forEach(subjectRow => {
+        const [t1,t2,t3] = rowTerms(d, subjectRow);
+        const final = rowFinal(d, subjectRow);
+        row.push(t1?String(t1):'', t2?String(t2):'', t3?String(t3):'', final?String(final):'');
       });
-      row.push(d.mapehFinal?String(d.mapehFinal):'', d.generalAverage?String(d.generalAverage):'', d.action, isInactive?(d.student.status_note||''):'');
+      row.push(d.generalAverage?String(d.generalAverage):'', d.action, isInactive?(d.student.status_note||''):'');
       return row;
     });
     const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
@@ -587,13 +539,9 @@ export default function SF5Page() {
   };
 
   // ── RENDER ────────────────────────────────────────────────────────────────
-  const printSubjects = ['Filipino','English','Mathematics','Science','Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)','EPP/TLE'];
-  const subjectPrintLabel = (subject: string) => subject === 'Edukasyon sa Pagpapakatao (EsP)' ? displayGmrcLabel : subject;
-  const printGrade = (d: LearnerSF5, subject: string) => d.termGrades[subject]?.[activeTerm - 1] ?? 0;
-  const printGeneralAverage = (d: LearnerSF5) => {
-    const values = [...printSubjects.map(subject => printGrade(d, subject)), d.mapehTerms?.[activeTerm - 1] ?? 0].filter(v => v > 0);
-    return values.length ? Math.round(values.reduce((a,b) => a + b, 0) / values.length) : 0;
-  };
+  const printSubjects = sf5SubjectColumns;
+  const printGrade = (d: LearnerSF5, row: SF9SubjectRow) => rowTerms(d, row)[activeTerm - 1] ?? 0;
+  const printGeneralAverage = (d: LearnerSF5) => d.generalAverage;
   const rankedLearners = [...sf5Data]
     .filter(d => d.student.status === 'active' && printGeneralAverage(d) > 0)
     .sort((a,b) => printGeneralAverage(b) - printGeneralAverage(a) || a.student.full_name.localeCompare(b.student.full_name));
@@ -606,7 +554,7 @@ export default function SF5Page() {
       <table>
         <thead><tr>
           <th style={{width:'4%'}}>#</th><th className="name-cell">LEARNER</th>
-          {printSubjects.map(subject => <th key={subject}>{subjectPrintLabel(subject)}<br/>T{activeTerm}{showFinalComposite ? ' / FINAL' : ''}</th>)}
+          {printSubjects.map(row => <th key={row.key}>{row.label}<br/>T{activeTerm}{showFinalComposite ? ' / FINAL' : ''}</th>)}
           <th>MAPEH<br/>T{activeTerm}{showFinalComposite ? ' / FINAL' : ''}</th><th>GEN.<br/>AVE.</th><th>RANK</th>
         </tr></thead>
         <tbody>
@@ -614,11 +562,10 @@ export default function SF5Page() {
             const group = sf5Data.filter(d => d.student.sex === sex);
             if (!group.length) return null;
             return <React.Fragment key={sex}>
-              <tr className="section-row"><td colSpan={printSubjects.length + 5}>{sex === 'M' ? 'MALE' : 'FEMALE'}</td></tr>
+              <tr className="section-row"><td colSpan={printSubjects.length + 4}>{sex === 'M' ? 'MALE' : 'FEMALE'}</td></tr>
               {group.map((d, i) => <tr key={d.student.id}>
                 <td>{i + 1}</td><td className="name-cell">{d.student.full_name}</td>
-                {printSubjects.map(subject => <td key={subject}>{printGrade(d, subject) || ''}{showFinalComposite ? <><br/><strong>{d.finalGrades[subject] || ''}</strong></> : null}</td>)}
-                <td>{d.mapehTerms?.[activeTerm - 1] || ''}{showFinalComposite ? <><br/><strong>{d.mapehFinal || ''}</strong></> : null}</td>
+                {printSubjects.map(row => <td key={row.key}>{printGrade(d, row) || ''}{showFinalComposite ? <><br/><strong>{rowFinal(d, row) || ''}</strong></> : null}</td>)}
                 <td><strong>{printGeneralAverage(d) || ''}</strong></td><td>{rankByStudent.get(d.student.id) || ''}</td>
               </tr>)}
             </React.Fragment>;
@@ -746,9 +693,9 @@ export default function SF5Page() {
                   <thead>
                     <tr>
                       <th className="bg-gray-800 text-left px-3 py-3 rounded-tl-xl min-w-[200px] sticky left-0 z-10">Learner</th>
-                      {['Filipino','English','Math','Science','AP','EsP','EPP/TLE'].map(s=>(
-                        <th key={s} className="bg-gray-800 text-center px-2 py-3 border-l border-gray-700 min-w-[80px]">
-                          <div className="text-xs">{s}</div>
+                      {sf5SubjectColumns.map(row=>(
+                        <th key={row.key} className="bg-gray-800 text-center px-2 py-3 border-l border-gray-700 min-w-[80px]">
+                          <div className="text-xs">{row.label}</div>
                           <div className="flex gap-0.5 justify-center mt-0.5">
                             <span className="text-gray-500 text-xs">T{activeTerm}</span>{showFinalComposite && <span className="text-gray-500 text-xs ml-2">Final</span>}
                           </div>
@@ -760,7 +707,7 @@ export default function SF5Page() {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr><td colSpan={11} className="bg-blue-950/50 px-3 py-1.5 text-blue-400 font-bold text-xs">MALE ({maleData.length})</td></tr>
+                    <tr><td colSpan={sf5SubjectColumns.length + 3} className="bg-blue-950/50 px-3 py-1.5 text-blue-400 font-bold text-xs">MALE ({maleData.length})</td></tr>
                     {maleData.map((d,idx) => {
                       const isInactive = d.student.status && d.student.status !== 'active';
                       return (
@@ -773,12 +720,12 @@ export default function SF5Page() {
                             <div className="text-xs text-gray-600">{d.student.lrn}</div>
                             {isInactive && <div className="text-xs text-amber-500 mt-0.5">{d.student.status==='dropped'?'Dropped':d.student.status==='transferred_out'?'Transferred Out':'Transferred In'}{d.student.status_date?` (${d.student.status_date})`:''}</div>}
                           </td>
-                          {['Filipino','English','Mathematics','Science','Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)','EPP/TLE'].map(s => s === 'Edukasyon sa Pagpapakatao (EsP)' ? displayGmrcLabel : s).map(subj => {
-                            const dataKey = subj === displayGmrcLabel ? 'Edukasyon sa Pagpapakatao (EsP)' : subj;
-                            const [t1,t2,t3]=d.termGrades[dataKey]??[0,0,0];
-                            const final=d.finalGrades[dataKey]??0;
+                          {sf5SubjectColumns.map(row => {
+                            const [t1,t2,t3] = rowTerms(d, row);
+                            const final = rowFinal(d, row);
+                            const subj = row.key;
                             return (
-                              <td key={subj} className="border-l border-gray-800">
+                              <td key={row.key} className="border-l border-gray-800">
                                 <div className="flex justify-center">
                                   <span className="text-center py-2 px-1 text-xs text-gray-400 w-10 inline-block">{[t1,t2,t3][activeTerm-1]||''}</span>
                                   {showFinalComposite && <span className={`text-center py-2 px-1 text-xs font-bold w-10 inline-block ${final>=75?'text-emerald-400':final>0?'text-red-400':'text-gray-600'}`}>{final||''}</span>}
@@ -786,7 +733,6 @@ export default function SF5Page() {
                               </td>
                             );
                           })}
-                          <td className={`text-center py-2 border-l border-gray-800 font-bold text-sm ${((d.mapehTerms?.[activeTerm-1] ?? 0)>=75)?'text-emerald-400':((d.mapehTerms?.[activeTerm-1] ?? 0)>0)?'text-red-400':'text-gray-600'}`}><div>{d.mapehTerms?.[activeTerm-1]||''}</div>{showFinalComposite && <div className="text-xs">{d.mapehFinal||''}</div>}</td>
                           <td className={`text-center py-2 border-l border-gray-800 font-bold text-lg ${d.generalAverage>=75?'text-white':d.generalAverage>0?'text-red-400':'text-gray-600'}`}>{d.generalAverage||''}</td>
                           <td className="px-3 py-2 border-l border-gray-800">
                             {d.action==='Promoted' && <span className="flex items-center gap-1 text-emerald-400 text-xs font-semibold"><CheckCircle size={14}/>Promoted{d.generalAverage>=90?' (Honors)':''}</span>}
@@ -800,7 +746,7 @@ export default function SF5Page() {
                       );
                     })}
 
-                    <tr><td colSpan={11} className="bg-pink-950/50 px-3 py-1.5 text-pink-400 font-bold text-xs">FEMALE ({femaleData.length})</td></tr>
+                    <tr><td colSpan={sf5SubjectColumns.length + 3} className="bg-pink-950/50 px-3 py-1.5 text-pink-400 font-bold text-xs">FEMALE ({femaleData.length})</td></tr>
                     {femaleData.map((d,idx) => {
                       const isInactive = d.student.status && d.student.status !== 'active';
                       return (
@@ -813,12 +759,12 @@ export default function SF5Page() {
                             <div className="text-xs text-gray-600">{d.student.lrn}</div>
                             {isInactive && <div className="text-xs text-amber-500 mt-0.5">{d.student.status==='dropped'?'Dropped':d.student.status==='transferred_out'?'Transferred Out':'Transferred In'}{d.student.status_date?` (${d.student.status_date})`:''}</div>}
                           </td>
-                          {['Filipino','English','Mathematics','Science','Araling Panlipunan (AP)','Edukasyon sa Pagpapakatao (EsP)','EPP/TLE'].map(s => s === 'Edukasyon sa Pagpapakatao (EsP)' ? displayGmrcLabel : s).map(subj => {
-                            const dataKey = subj === displayGmrcLabel ? 'Edukasyon sa Pagpapakatao (EsP)' : subj;
-                            const [t1,t2,t3]=d.termGrades[dataKey]??[0,0,0];
-                            const final=d.finalGrades[dataKey]??0;
+                          {sf5SubjectColumns.map(row => {
+                            const [t1,t2,t3] = rowTerms(d, row);
+                            const final = rowFinal(d, row);
+                            const subj = row.key;
                             return (
-                              <td key={subj} className="border-l border-gray-800">
+                              <td key={row.key} className="border-l border-gray-800">
                                 <div className="flex justify-center">
                                   <span className="text-center py-2 px-1 text-xs text-gray-400 w-10 inline-block">{[t1,t2,t3][activeTerm-1]||''}</span>
                                   {showFinalComposite && <span className={`text-center py-2 px-1 text-xs font-bold w-10 inline-block ${final>=75?'text-emerald-400':final>0?'text-red-400':'text-gray-600'}`}>{final||''}</span>}
@@ -826,7 +772,6 @@ export default function SF5Page() {
                               </td>
                             );
                           })}
-                          <td className={`text-center py-2 border-l border-gray-800 font-bold text-sm ${((d.mapehTerms?.[activeTerm-1] ?? 0)>=75)?'text-emerald-400':((d.mapehTerms?.[activeTerm-1] ?? 0)>0)?'text-red-400':'text-gray-600'}`}><div>{d.mapehTerms?.[activeTerm-1]||''}</div>{showFinalComposite && <div className="text-xs">{d.mapehFinal||''}</div>}</td>
                           <td className={`text-center py-2 border-l border-gray-800 font-bold text-lg ${d.generalAverage>=75?'text-white':d.generalAverage>0?'text-red-400':'text-gray-600'}`}>{d.generalAverage||''}</td>
                           <td className="px-3 py-2 border-l border-gray-800">
                             {d.action==='Promoted' && <span className="flex items-center gap-1 text-emerald-400 text-xs font-semibold"><CheckCircle size={14}/>Promoted{d.generalAverage>=90?' (Honors)':''}</span>}
@@ -841,7 +786,7 @@ export default function SF5Page() {
                     })}
 
                     {sf5Data.length === 0 && (
-                      <tr><td colSpan={11} className="text-center py-16 text-gray-500"><p className="text-sm mt-1">Encode grades in the Class Record module first.</p></td></tr>
+                      <tr><td colSpan={sf5SubjectColumns.length + 3} className="text-center py-16 text-gray-500"><p className="text-sm mt-1">Encode grades in the Class Record module first.</p></td></tr>
                     )}
                   </tbody>
                 </table>

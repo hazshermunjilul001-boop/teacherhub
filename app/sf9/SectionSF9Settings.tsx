@@ -160,6 +160,7 @@ export default function SectionSF9Settings({
         school_logo_url:    form.school_logo_url || null,
         shs_track:          isSHS ? (form.shs_track || null) : null,
         elective_subjects:  isSHS ? form.elective_subjects.filter(e => e.trim()) : [],
+        gmrc_ve_source:     isSHS ? null : (form.gmrc_ve_source || null),
       })
       .eq('id', sectionId);
 

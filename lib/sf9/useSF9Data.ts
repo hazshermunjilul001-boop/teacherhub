@@ -11,11 +11,10 @@ import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import {
   buildSubjectRows, computeFinalGrade, getGradeBand,
-  SUBJECT_KEY_ALIASES,
   type SF9SubjectRow, type SHSTrack,
 } from '../../lib/sf9/sf9GradeBands';
 import { getPromotionRemark, type PromotionRemark } from '../../lib/sf9/sf9Promotion';
-import { computeFromClassRecord } from '../../lib/sf9/sf9ClassRecordScoring';
+import { finalGradeFromTerms, gradeFromClassRecord, isGMRCValuesRowKey, resolveSF9GradeSource, subjectStorageKeys } from './gradePath';
 
 export interface Student { id:string; lrn:string; full_name:string; middle_name?:string; sex:string; birthdate?:string; }
 export interface Collaborator {
@@ -89,10 +88,6 @@ function getLeafKeys(rows: SF9SubjectRow[]): string[] {
   return rows.flatMap(r => (r.isComputed && r.subRows?.length ? r.subRows.map(sr => sr.key) : [r.key]));
 }
 
-function subjectStorageKeys(subject: string): string[] {
-  return [subject, ...(SUBJECT_KEY_ALIASES[subject] ?? [])];
-}
-
 export function useSF9Data(
   sectionId: string | undefined,
   gradeLevel: number | undefined,
@@ -114,10 +109,9 @@ export function useSF9Data(
 
   const allRows  = [...frontPage, ...continuationPage];
   const leafKeys = getLeafKeys(allRows);
+  const displaySource = resolveSF9GradeSource(Number(gradeLevel ?? 0), gmrcSource);
   const displayFrontPage = frontPage.map(row =>
-    row.key === 'Edukasyon sa Pagpapakatao (EsP)' && gmrcSource === 'Values Education (JHS)'
-      ? { ...row, label: 'Values Education' }
-      : row
+    isGMRCValuesRowKey(row.key) ? { ...row, label: displaySource.label } : row
   );
 
   const loadData = useCallback(async () => {
@@ -138,9 +132,7 @@ export function useSF9Data(
     const { data: sectionMeta } = await supabase.from('sections').select('gmrc_ve_source').eq('id', sectionId).maybeSingle();
     const storedGmrcSource = sectionMeta?.gmrc_ve_source as string | null;
     const selectedGmrcSource = gmrcSource || storedGmrcSource || '';
-    const queryGmrcSource = !selectedGmrcSource || selectedGmrcSource === 'GMRC/VE'
-      ? (Number(gradeLevel) <= 6 ? 'GMRC (Elem)' : 'Values Education (JHS)')
-      : selectedGmrcSource;
+    const queryGmrcSource = resolveSF9GradeSource(Number(gradeLevel), selectedGmrcSource).key;
 
     const gradeStorageKeys = Array.from(new Set([
       ...leafKeys.flatMap(subjectStorageKeys),
@@ -180,9 +172,7 @@ export function useSF9Data(
 
       leafKeys.forEach(subj => {
         const termCells = [1,2,3].map(t => {
-          const resolvedGmrcSource = !selectedGmrcSource || selectedGmrcSource === 'GMRC/VE'
-            ? (Number(gradeLevel) <= 6 ? 'GMRC (Elem)' : 'Values Education (JHS)')
-            : selectedGmrcSource;
+          const resolvedGmrcSource = resolveSF9GradeSource(Number(gradeLevel), selectedGmrcSource).key;
           const sourceKeys = (subj === 'Edukasyon sa Pagpapakatao (EsP)' || subj === 'GMRC / Values Education') && resolvedGmrcSource
             ? subjectStorageKeys(resolvedGmrcSource)
             : subjectStorageKeys(subj);
@@ -194,7 +184,7 @@ export function useSF9Data(
             ?? matchingClassRecordRows.find(g => g.domain_scores && Object.keys(g.domain_scores).length > 0)
             ?? matchingClassRecordRows[0];
           if (crRow) {
-            const v = computeFromClassRecord(crRow, subj);
+            const v = gradeFromClassRecord(crRow, subj);
             if (v > 0) { sourceMap[subj] = 'Class Record'; return { value: v, source: 'class_record' } as GradeCell; }
           }
           const manRow = manualRaw?.find(g =>
@@ -210,8 +200,7 @@ export function useSF9Data(
         grades[subj] = termCells;
         termValuesByKey[subj] = termCells.map(c => c.value);
         const allTermsFilled = termCells.every(c => c.value > 0);
-        finalGrades[subj] = allTermsFilled
-          ? Math.round(termCells.reduce((a,c)=>a+c.value,0)/termCells.length) : 0;
+        finalGrades[subj] = finalGradeFromTerms(termCells.map(c => c.value));
       });
 
       // Computed parent rows (MAPEH, Effective Communication) — same
